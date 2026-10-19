@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Text, Float } from "@react-three/drei";
+import { OrbitControls, ContactShadows, Text, Float, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { useMapStore } from "@/store/useMapStore";
 
@@ -214,6 +214,42 @@ function BuildingItem({
   );
 }
 
+function ExternalGLBCampus({
+  onSelectMesh,
+}: {
+  onSelectMesh: (meshName: string) => void;
+}) {
+  const { scene } = useGLTF("/models/ncu_campus.glb");
+
+  useEffect(() => {
+    scene.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (!child.material || child.material.name !== "clay") {
+          child.material = new THREE.MeshStandardMaterial({
+            color: child.name.includes("mgt") || child.name.includes("lib") ? "#F5F2EB" : "#D6E4F0",
+            roughness: 0.5,
+            metalness: 0.1,
+          });
+        }
+      }
+    });
+  }, [scene]);
+
+  return (
+    <primitive
+      object={scene}
+      onClick={(e: any) => {
+        e.stopPropagation();
+        if (e.object?.name) {
+          onSelectMesh(e.object.name);
+        }
+      }}
+    />
+  );
+}
+
 export function CampusScene({
   focusedLocationId,
   onSelectBuilding,
@@ -225,6 +261,13 @@ export function CampusScene({
 }) {
   const { selectedBuildingId, selectBuilding, filterCategory } = useMapStore();
   const currentSelectedId = focusedLocationId !== undefined ? focusedLocationId : selectedBuildingId;
+  const [hasGLB, setHasGLB] = useState(false);
+
+  useEffect(() => {
+    fetch("/models/ncu_campus.glb", { method: "HEAD" })
+      .then((res) => setHasGLB(res.ok))
+      .catch(() => setHasGLB(false));
+  }, []);
 
   const handleSelect = (b: BuildingNode) => {
     if (!interactive) return;
@@ -274,15 +317,26 @@ export function CampusScene({
         <meshStandardMaterial color="#2d4a3e" roughness={0.8} />
       </mesh>
 
-      {/* Buildings Mesh Grid */}
-      {filteredBuildings.map((b) => (
-        <BuildingItem
-          key={b.id}
-          building={b}
-          isSelected={currentSelectedId === b.id}
-          onSelect={handleSelect}
+      {/* Render external GLB if present, else fallback to procedural buildings */}
+      {hasGLB ? (
+        <ExternalGLBCampus
+          onSelectMesh={(meshName) => {
+            const matched = BUILDINGS.find(
+              (b) => b.id.toLowerCase().includes(meshName.toLowerCase()) || meshName.toLowerCase().includes(b.id.toLowerCase())
+            );
+            if (matched) handleSelect(matched);
+          }}
         />
-      ))}
+      ) : (
+        filteredBuildings.map((b) => (
+          <BuildingItem
+            key={b.id}
+            building={b}
+            isSelected={currentSelectedId === b.id}
+            onSelect={handleSelect}
+          />
+        ))
+      )}
 
       {/* Soft Contact Shadows */}
       <ContactShadows position={[0, 0, 0]} opacity={0.65} scale={130} blur={2.2} far={25} />
