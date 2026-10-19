@@ -1,0 +1,178 @@
+import json
+import sys
+from pathlib import Path
+
+# Add backend directory to sys.path
+backend_dir = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(backend_dir))
+
+from app.core.database import engine, SessionLocal, Base
+from app.models.tables import (
+    CampusLocation,
+    Course,
+    ClubAndActivity,
+    CampusLifeInfo,
+    RandomEvent,
+    AdminUser,
+    SystemConfig,
+)
+from app.core.security import get_password_hash
+from app.services.rag_service import course_rag_service
+
+def seed_database():
+    print("--- 正在初始化 SQLite 資料庫表格 ---")
+    Base.metadata.create_all(bind=engine)
+
+    seed_file = backend_dir / "data" / "seed_data.json"
+    if not seed_file.exists():
+        print(f"錯誤：找不到種子資料檔案 {seed_file}")
+        return
+
+    with open(seed_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    db = SessionLocal()
+    try:
+        # 1. 校園館舍節點
+        print("1. 匯入校園建築與 3D 地圖節點...")
+        for loc in data.get("campus_locations", []):
+            if not db.query(CampusLocation).filter(CampusLocation.id == loc["id"]).first():
+                db.add(CampusLocation(
+                    id=loc["id"],
+                    name=loc["name"],
+                    category=loc["category"],
+                    three_mesh_name=loc.get("three_mesh_name"),
+                    camera_pos=loc.get("camera_pos"),
+                    short_desc=loc["short_desc"],
+                    full_content=loc["full_content"],
+                    image_url=loc.get("image_url")
+                ))
+        db.commit()
+
+        # 2. 歷年課程
+        print("2. 匯入結構化歷年課程...")
+        courses_to_sync = []
+        for c in data.get("courses", []):
+            existing = db.query(Course).filter(Course.id == c["id"]).first()
+            if not existing:
+                course_obj = Course(
+                    id=c["id"],
+                    semester=c["semester"],
+                    department=c["department"],
+                    grade=c["grade"],
+                    semester_term=c["semester_term"],
+                    course_name=c["course_name"],
+                    instructor=c["instructor"],
+                    category=c["category"],
+                    credits=c["credits"],
+                    day_of_week=c["day_of_week"],
+                    period_slot=c["period_slot"],
+                    raw_schedule=c["raw_schedule"],
+                    location_id=c.get("location_id"),
+                    syllabus_summary=c["syllabus_summary"],
+                    is_synced_vec=False
+                )
+                db.add(course_obj)
+                courses_to_sync.append(c)
+        db.commit()
+
+        # 3. 社團與活動
+        print("3. 匯入社團與學生活動...")
+        for act in data.get("clubs_and_activities", []):
+            if not db.query(ClubAndActivity).filter(ClubAndActivity.id == act["id"]).first():
+                db.add(ClubAndActivity(
+                    id=act["id"],
+                    name=act["name"],
+                    type=act["type"],
+                    day_of_week=act["day_of_week"],
+                    period_slot=act["period_slot"],
+                    location_id=act.get("location_id"),
+                    prompt_context=act["prompt_context"],
+                    full_intro=act["full_intro"]
+                ))
+        db.commit()
+
+        # 4. 百科飲食交通生活細節
+        print("4. 匯入校園生活百科...")
+        for info in data.get("campus_life_info", []):
+            if not db.query(CampusLifeInfo).filter(CampusLifeInfo.title == info["title"]).first():
+                db.add(CampusLifeInfo(
+                    info_type=info["info_type"],
+                    title=info["title"],
+                    location_id=info.get("location_id"),
+                    tags=info["tags"],
+                    game_snippet=info["game_snippet"],
+                    content_md=info["content_md"]
+                ))
+        db.commit()
+
+        # 5. 突發事件池
+        print("5. 匯入模擬遊戲突發事件...")
+        for evt in data.get("random_events", []):
+            if not db.query(RandomEvent).filter(RandomEvent.id == evt["id"]).first():
+                db.add(RandomEvent(
+                    id=evt["id"],
+                    title=evt["title"],
+                    is_active=evt.get("is_active", True),
+                    weight=evt.get("weight", 10),
+                    cond_days=evt.get("cond_days"),
+                    cond_slots=evt.get("cond_slots"),
+                    cond_location=evt.get("cond_location"),
+                    cond_min_stamina=evt.get("cond_min_stamina", 0),
+                    cond_max_stamina=evt.get("cond_max_stamina", 100),
+                    event_prompt=evt["event_prompt"],
+                    preset_options=evt["preset_options"]
+                ))
+        db.commit()
+
+        # 6. 管理員帳號與系統設定
+        print("6. 建立預設管理員與系統組態...")
+        if not db.query(AdminUser).filter(AdminUser.username == "admin").first():
+            db.add(AdminUser(
+                username="admin",
+                password_hash=get_password_hash("adminpassword123"),
+                role="admin"
+            ))
+
+        if not db.query(SystemConfig).first():
+            sys_conf = data.get("system_config", {})
+            db.add(SystemConfig(
+                active_llm_model=sys_conf.get("active_llm_model", "gemma3:4b"),
+                event_trigger_prob=sys_conf.get("event_trigger_prob", 0.35),
+                system_prompt_override=sys_conf.get("system_prompt_override")
+            ))
+        db.commit()
+
+        # 7. FastEmbed 向量同步到 Qdrant
+        all_courses = db.query(Course).all()
+        print(f"7. 正在使用 FastEmbed 同步 {len(all_courses)} 門課程至 Qdrant 雙向量索引...")
+        course_dicts = [
+            {
+                "id": c.id,
+                "course_name": c.course_name,
+                "department": c.department,
+                "grade": c.grade,
+                "semester_term": c.semester_term,
+                "category": c.category,
+                "day_of_week": c.day_of_week,
+                "period_slot": c.period_slot,
+                "location_id": c.location_id,
+                "syllabus_summary": c.syllabus_summary,
+                "credits": c.credits,
+                "instructor": c.instructor,
+                "raw_schedule": c.raw_schedule,
+            }
+            for c in all_courses
+        ]
+        synced_count = course_rag_service.sync_courses_to_qdrant(course_dicts)
+        for c in all_courses:
+            c.is_synced_vec = True
+        db.commit()
+        print(f"成功同步 {synced_count} 門課程至 Qdrant 本地向量庫！")
+
+        print("=== 資料庫與向量索引初始化完成！ ===")
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    seed_database()

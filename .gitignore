@@ -1,0 +1,29 @@
+# Python
+.venv/
+backend/.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & IDE
+.env
+.env.local
+.env.*.local
+.vscode/
+.idea/
+
+# Local databases & storage
+backend/data/qdrant_storage/
+backend/data/*.sqlite-journal

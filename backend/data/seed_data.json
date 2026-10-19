@@ -1,0 +1,734 @@
+{
+  "campus_locations": [
+    {
+      "id": "loc_mgt2",
+      "name": "管理二館",
+      "category": "academic",
+      "three_mesh_name": "mesh_mgt2",
+      "camera_pos": {"pos": [12.5, 30.0, -15.2], "target": [12.5, 0.0, -15.2]},
+      "short_desc": "資訊管理學系大本營，現代化挑高採光與各類專業電腦教室。",
+      "full_content": "管理二館為中大商管與資管的核心教學大樓，擁有智慧階梯教室、多媒體網路實驗室及系學會討論室。是資管系學生上課、做專題與系學會開會的主要據點。",
+      "image_url": "/images/locations/mgt2.jpg"
+    },
+    {
+      "id": "loc_eng5",
+      "name": "工程五館",
+      "category": "academic",
+      "three_mesh_name": "mesh_eng5",
+      "camera_pos": {"pos": [-25.0, 32.0, -10.0], "target": [-25.0, 0.0, -10.0]},
+      "short_desc": "資訊工程學系與電機學院重鎮，終日散發著程式碼與電路的專案氣息。",
+      "full_content": "工程五館是中大資工系教授研究室與大型專業計算機實驗室所在地。學生常於此進行演算法實作、硬體實驗與深度學習模型訓練。",
+      "image_url": "/images/locations/eng5.jpg"
+    },
+    {
+      "id": "loc_sci5",
+      "name": "科學五館",
+      "category": "academic",
+      "three_mesh_name": "mesh_sci5",
+      "camera_pos": {"pos": [-15.0, 28.0, 20.0], "target": [-15.0, 0.0, 20.0]},
+      "short_desc": "理學院數學系與統計所重鎮，微積分與高等數學的知識殿堂。",
+      "full_content": "科學五館主要作為全校大一微積分、工程數學與基礎科學的授課場所，自習室常年有同學在此埋頭解題。",
+      "image_url": "/images/locations/sci5.jpg"
+    },
+    {
+      "id": "loc_teaching",
+      "name": "教研大樓",
+      "category": "academic",
+      "three_mesh_name": "mesh_teaching",
+      "camera_pos": {"pos": [0.0, 30.0, 5.0], "target": [0.0, 0.0, 5.0]},
+      "short_desc": "全校核心通識教育與多元跨領域課程聚集地。",
+      "full_content": "教學研究大樓聚集了全校通識中心與跨領域學程，擁有各型階梯多功能視聽教室，是全校不同科系同學交流碰撞的熱門場所。",
+      "image_url": "/images/locations/teaching.jpg"
+    },
+    {
+      "id": "loc_lib",
+      "name": "總圖書館",
+      "category": "academic",
+      "three_mesh_name": "mesh_library",
+      "camera_pos": {"pos": [5.0, 35.0, -35.0], "target": [5.0, 0.0, -35.0]},
+      "short_desc": "中大精神地標之一，豐富館藏與舒適自習沙發，期中考週的搶位戰場。",
+      "full_content": "中大總圖書館藏書超過百萬冊，提供視聽中心、個人研討室、靜讀區以及 24 小時開放的地下自習自修中心。",
+      "image_url": "/images/locations/lib.jpg"
+    },
+    {
+      "id": "loc_yiren",
+      "name": "依仁堂體育館",
+      "category": "leisure",
+      "three_mesh_name": "mesh_yiren",
+      "camera_pos": {"pos": [35.0, 25.0, 15.0], "target": [35.0, 0.0, 15.0]},
+      "short_desc": "中大大型體育賽事、熱舞社排練與室內運動的活力心臟地帶。",
+      "full_content": "依仁堂配備國際級室內木地板籃排球場、桌球室、大型多功能舞蹈教室與看台區，每逢校慶運動會與大專盃皆熱血沸騰。",
+      "image_url": "/images/locations/yiren.jpg"
+    },
+    {
+      "id": "loc_gym",
+      "name": "室內羽球館",
+      "category": "leisure",
+      "three_mesh_name": "mesh_gym",
+      "camera_pos": {"pos": [45.0, 22.0, 20.0], "target": [45.0, 0.0, 20.0]},
+      "short_desc": "頂級專業羽球場地，課後揮灑汗水與系隊友誼賽的絕佳場所。",
+      "full_content": "提供多面標準羽球場與防滑專業地墊，深受全校師生喜愛，傍晚時段通常需要提早預約場地。",
+      "image_url": "/images/locations/gym.jpg"
+    },
+    {
+      "id": "loc_dorm_boy9",
+      "name": "男九舍",
+      "category": "dorm",
+      "three_mesh_name": "mesh_boy9",
+      "camera_pos": {"pos": [-40.0, 25.0, 35.0], "target": [-40.0, 0.0, 35.0]},
+      "short_desc": "大一男生的青春據點，充滿室友夜衝宵夜與連線打遊戲的歡笑聲。",
+      "full_content": "男九舍為四人雅房格局，生活機能鄰近後門商圈與籃球場，公共區域設有自習室、交誼廳與洗衣間，是許多中大人的共同回憶。",
+      "image_url": "/images/locations/boy9.jpg"
+    },
+    {
+      "id": "loc_dorm_girl14",
+      "name": "女十四舍",
+      "category": "dorm",
+      "three_mesh_name": "mesh_girl14",
+      "camera_pos": {"pos": [-30.0, 25.0, 45.0], "target": [-30.0, 0.0, 45.0]},
+      "short_desc": "生活機能便利的新建宿舍，地下室設有美食街與健身房。",
+      "full_content": "女十四舍為現代化宿舍大樓，樓下進駐超商、手搖飲與餐飲商場，設有門禁感應刷卡系統與寬敞交誼空間。",
+      "image_url": "/images/locations/girl14.jpg"
+    },
+    {
+      "id": "loc_pine_restaurant",
+      "name": "松果餐廳",
+      "category": "dining",
+      "three_mesh_name": "mesh_pine_restaurant",
+      "camera_pos": {"pos": [-10.0, 20.0, 10.0], "target": [-10.0, 0.0, 10.0]},
+      "short_desc": "校內學生第一餐廳，提供高 CP 值的自助餐、平價便當與咖啡輕食。",
+      "full_content": "松果餐廳位於校園中心地帶，中午時段湧入各系學生快速享用午餐，內有全家超商、自助秤重便當、燒臘飯與果汁吧。",
+      "image_url": "/images/locations/pine_restaurant.jpg"
+    },
+    {
+      "id": "loc_backgate",
+      "name": "後門美食一條街",
+      "category": "dining",
+      "three_mesh_name": "mesh_backgate",
+      "camera_pos": {"pos": [-55.0, 22.0, 25.0], "target": [-55.0, 0.0, 25.0]},
+      "short_desc": "中大學生早午餐首選，炒泡麵、手工蛋餅、大份量炒飯應有盡有。",
+      "full_content": "後門美食街出校門步行 1 分鐘即可到達，密集分布著早午餐店、平價手搖杯與牛肉麵店，是沒搶到學餐時的救贖聖地。",
+      "image_url": "/images/locations/backgate.jpg"
+    },
+    {
+      "id": "loc_night_street",
+      "name": "中大宵夜街",
+      "category": "dining",
+      "three_mesh_name": "mesh_night_street",
+      "camera_pos": {"pos": [20.0, 22.0, -45.0], "target": [20.0, 0.0, -45.0]},
+      "short_desc": "深夜靈魂補給站，炭烤、鹹酥雞、滷味與豆花飄香到凌晨。",
+      "full_content": "宵夜街連接著校園東側步道，每到晚間 9 點之後便是各系辦完活動、練完社團後吃宵夜、聊天打屁的靈魂聖地。",
+      "image_url": "/images/locations/night_street.jpg"
+    },
+    {
+      "id": "loc_park_creek",
+      "name": "百花川步道",
+      "category": "leisure",
+      "three_mesh_name": "mesh_park_creek",
+      "camera_pos": {"pos": [5.0, 20.0, -10.0], "target": [5.0, 0.0, -10.0]},
+      "short_desc": "林蔭蓊鬱的浪漫水道，松鼠出沒與校園漫步的首選路徑。",
+      "full_content": "百花川貫穿中大校區，沿線綠樹成蔭，水流潺潺，兩側林木常有許多親人又敏捷的中大松鼠在枝頭躍動。",
+      "image_url": "/images/locations/park_creek.jpg"
+    },
+    {
+      "id": "loc_cathay_tree",
+      "name": "國泰大榕樹",
+      "category": "leisure",
+      "three_mesh_name": "mesh_cathay_tree",
+      "camera_pos": {"pos": [20.0, 25.0, -5.0], "target": [20.0, 0.0, -5.0]},
+      "short_desc": "中央大學經典精神象徵，綠意盎然的大草坪中心標誌。",
+      "full_content": "廣闊的大草坪正中央聳立著巨大茂密的國泰樹，每逢晴朗午後，常有學生在此野餐、吉他彈唱與放風箏。",
+      "image_url": "/images/locations/cathay_tree.jpg"
+    },
+    {
+      "id": "loc_bus_station",
+      "name": "中大正門圓環警衛室",
+      "category": "transport",
+      "three_mesh_name": "mesh_bus_station",
+      "camera_pos": {"pos": [0.0, 25.0, 50.0], "target": [0.0, 0.0, 50.0]},
+      "short_desc": "132/133 公車總站與 YouBike 2.0 大站，通往中壢市區樞紐。",
+      "full_content": "正門圓環是學生搭乘市區公車前往中壢火車站或桃園高鐵站的主要候車點，並設有超過 50 輛容量的 YouBike 2.0 租借柱。",
+      "image_url": "/images/locations/bus_station.jpg"
+    }
+  ],
+  "courses": [
+    {
+      "id": "1141_IM1001_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "計算機概論",
+      "instructor": "陳教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 1,
+      "period_slot": "morning",
+      "raw_schedule": "一234",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "深入介紹計算機硬體架構、二進位系統、作業系統原理與近代網路雲端概念，建立紮實資管專業基石。"
+    },
+    {
+      "id": "1141_IM1002_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "微積分(一)",
+      "instructor": "黃教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 2,
+      "period_slot": "morning",
+      "raw_schedule": "二234",
+      "location_id": "loc_sci5",
+      "syllabus_summary": "講授極限、導數運算、微分應用與基礎積分技巧，培養商管與計算科學必備之數理邏輯思維。"
+    },
+    {
+      "id": "1141_IM1003_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "管理學導論",
+      "instructor": "林教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 3,
+      "period_slot": "afternoon",
+      "raw_schedule": "三567",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "探討規劃、組織、領導與控制等現代管理核心機能，並結合真實企業案例分析商務決策模式。"
+    },
+    {
+      "id": "1141_IM1004_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "經濟學(一)",
+      "instructor": "吳教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 4,
+      "period_slot": "morning",
+      "raw_schedule": "四234",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "個體經濟學基礎，涵蓋供給與需求法則、市場均衡機制、消費者行為及廠商生產成本分析。"
+    },
+    {
+      "id": "1141_IM1005_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "程式設計實務與 Python",
+      "instructor": "張教授",
+      "category": "elective",
+      "credits": 3,
+      "day_of_week": 5,
+      "period_slot": "morning",
+      "raw_schedule": "五234",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "以 Python 語言從零基礎打底，涵蓋資料結構、控制流程、函式模組化與基礎網頁爬蟲實作。"
+    },
+    {
+      "id": "1141_IM2001_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 2,
+      "semester_term": 1,
+      "course_name": "資料結構",
+      "instructor": "李教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 1,
+      "period_slot": "afternoon",
+      "raw_schedule": "一567",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "探討陣列、鏈結串列、堆疊、佇列、樹狀結構與圖形演算法，強化演算法思維與時間複雜度分析。"
+    },
+    {
+      "id": "1141_IM2002_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 2,
+      "semester_term": 1,
+      "course_name": "資料庫管理系統",
+      "instructor": "王教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 3,
+      "period_slot": "morning",
+      "raw_schedule": "三234",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "關聯式資料庫正規化理論、SQL 進階查詢撰寫、交易並行控制與真實商務後端資料庫整合開發。"
+    },
+    {
+      "id": "1141_IM3001_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 3,
+      "semester_term": 1,
+      "course_name": "系統分析與設計",
+      "instructor": "周教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 4,
+      "period_slot": "afternoon",
+      "raw_schedule": "四567",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "物件導向 UML 建模、敏捷開發流程與使用者需求分析，為大三下畢業專題打下扎實系統架構能力。"
+    },
+    {
+      "id": "1141_IM3005_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 3,
+      "semester_term": 1,
+      "course_name": "人工智慧與商務應用",
+      "instructor": "趙教授",
+      "category": "elective",
+      "credits": 3,
+      "day_of_week": 2,
+      "period_slot": "afternoon",
+      "raw_schedule": "二567",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "運用機器學習與現代 LLM 技術解決商務預測、顧客分群與智慧推薦系統，包含 Python 實戰專案。"
+    },
+    {
+      "id": "1141_IM3008_A",
+      "semester": "114-1",
+      "department": "資訊管理學系",
+      "grade": 3,
+      "semester_term": 1,
+      "course_name": "現代網頁前端框架實戰",
+      "instructor": "蔡教授",
+      "category": "elective",
+      "credits": 3,
+      "day_of_week": 5,
+      "period_slot": "afternoon",
+      "raw_schedule": "五567",
+      "location_id": "loc_mgt2",
+      "syllabus_summary": "涵蓋 React、Next.js、TypeScript、狀態管理與現代化 CSS 設計，親手開發高互動性全端專案。"
+    },
+    {
+      "id": "1141_CS1001_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "計算機程式設計(一)",
+      "instructor": "郭教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 1,
+      "period_slot": "morning",
+      "raw_schedule": "一234",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "以 C/C++ 語言為主軸，講授指針操作、記憶體配置、位元運算與遞迴思維，奠定紮實底層程式底子。"
+    },
+    {
+      "id": "1141_CS1002_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 1,
+      "semester_term": 1,
+      "course_name": "離散數學",
+      "instructor": "葉教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 2,
+      "period_slot": "morning",
+      "raw_schedule": "二234",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "命題邏輯、集合論、關係與函數、圖論與組合計數，資工系演算法與密碼學的數理根基。"
+    },
+    {
+      "id": "1141_CS2001_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 2,
+      "semester_term": 1,
+      "course_name": "資料結構與演算法實習",
+      "instructor": "鄭教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 3,
+      "period_slot": "morning",
+      "raw_schedule": "三234",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "嚴謹探討紅黑樹、動態規劃、最短路徑演算法及 NP-Complete 理論，輔以高強度線上解題作業。"
+    },
+    {
+      "id": "1141_CS2003_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 2,
+      "semester_term": 1,
+      "course_name": "數位系統導論",
+      "instructor": "許教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 4,
+      "period_slot": "afternoon",
+      "raw_schedule": "四567",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "布林代數化簡、組合邏輯電路設計、正反器與同步循序電路，結合 Verilog 模擬實作。"
+    },
+    {
+      "id": "1141_CS3002_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 3,
+      "semester_term": 1,
+      "course_name": "作業系統核心原理",
+      "instructor": "何教授",
+      "category": "required",
+      "credits": 3,
+      "day_of_week": 5,
+      "period_slot": "morning",
+      "raw_schedule": "五234",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "行程排班、執行緒並行同步、虛擬記憶體分頁機制、檔案系統與 I/O 核心驅動開發。"
+    },
+    {
+      "id": "1141_CS3009_A",
+      "semester": "114-1",
+      "department": "資訊工程學系",
+      "grade": 3,
+      "semester_term": 1,
+      "course_name": "深度學習理論與實務",
+      "instructor": "宋教授",
+      "category": "elective",
+      "credits": 3,
+      "day_of_week": 1,
+      "period_slot": "afternoon",
+      "raw_schedule": "一567",
+      "location_id": "loc_eng5",
+      "syllabus_summary": "CNN、RNN、Transformer 架構剖析、損失函數最佳化及 PyTorch 實作影像與自然語言模型。"
+    },
+    {
+      "id": "1141_GE1001_A",
+      "semester": "114-1",
+      "department": "通識教育中心",
+      "grade": 0,
+      "semester_term": 1,
+      "course_name": "電影美學與視覺敘事",
+      "instructor": "陸教授",
+      "category": "general",
+      "credits": 2,
+      "day_of_week": 2,
+      "period_slot": "afternoon",
+      "raw_schedule": "二56",
+      "location_id": "loc_teaching",
+      "syllabus_summary": "透過經典電影賞析探討鏡頭語言、光影色調、剪輯節奏與當代社會人文議題探討。"
+    },
+    {
+      "id": "1141_GE1002_A",
+      "semester": "114-1",
+      "department": "通識教育中心",
+      "grade": 0,
+      "semester_term": 1,
+      "course_name": "大學生個人投資與財務規劃",
+      "instructor": "韓教授",
+      "category": "general",
+      "credits": 2,
+      "day_of_week": 4,
+      "period_slot": "afternoon",
+      "raw_schedule": "四78",
+      "location_id": "loc_teaching",
+      "syllabus_summary": "建立正確資產配置觀念，涵蓋股票、ETF、複利計算、財務報表閱讀與個人風險承受度管理。"
+    },
+    {
+      "id": "1141_GE1003_A",
+      "semester": "114-1",
+      "department": "通識教育中心",
+      "grade": 0,
+      "semester_term": 1,
+      "course_name": "探索宇宙：太空科學概論",
+      "instructor": "方教授",
+      "category": "general",
+      "credits": 2,
+      "day_of_week": 3,
+      "period_slot": "afternoon",
+      "raw_schedule": "三56",
+      "location_id": "loc_sci5",
+      "syllabus_summary": "從太陽系結構、黑洞重力波到人造衛星遙測技術，由中大知名天文團隊深入淺出導讀浩瀚宇宙。"
+    },
+    {
+      "id": "1141_GE1004_A",
+      "semester": "114-1",
+      "department": "通識教育中心",
+      "grade": 0,
+      "semester_term": 1,
+      "course_name": "台灣歷史與當代社會變遷",
+      "instructor": "沈教授",
+      "category": "general",
+      "credits": 2,
+      "day_of_week": 5,
+      "period_slot": "morning",
+      "raw_schedule": "五34",
+      "location_id": "loc_teaching",
+      "syllabus_summary": "梳理台灣近百年政治經濟脈絡，探討族群融合、公民運動與現代民主體制的演變挑戰。"
+    }
+  ],
+  "clubs_and_activities": [
+    {
+      "id": "club_hotdance",
+      "name": "熱舞社",
+      "type": "recreation_club",
+      "day_of_week": 2,
+      "period_slot": "evening",
+      "location_id": "loc_yiren",
+      "prompt_context": "在依仁堂落地窗前揮汗練習排舞，節奏重低音震耳欲聾，學長姐氣氛活潑熱絡，練習成果驗收即將展開。",
+      "full_intro": "中大最具活力的康樂性社團之一！涵蓋 Hip-hop、Popping、Breaking、Locking 等多元舞風，定期舉辦校內成發與跨校聯展。"
+    },
+    {
+      "id": "org_im_sa",
+      "name": "資管系學會",
+      "type": "student_org",
+      "day_of_week": 3,
+      "period_slot": "evening",
+      "location_id": "loc_mgt2",
+      "prompt_context": "在管二館系辦討論資管週攤位、迎新宿營的闖關活動設計，大家吃著後門買來的鹽酥雞熱烈腦力激盪。",
+      "full_intro": "資管系學生的自治組織，統籌舉辦大資盃、資管之夜、企業參訪與各項系內外交流聯誼活動。"
+    },
+    {
+      "id": "org_cs_sa",
+      "name": "資工系學會",
+      "type": "student_org",
+      "day_of_week": 4,
+      "period_slot": "evening",
+      "location_id": "loc_eng5",
+      "prompt_context": "在工五館籌備中大黑客松競賽與軟體工作坊，白板上寫滿了活動流程甘特圖與贊助廠商清單。",
+      "full_intro": "資工系學生自治與社群核心，定期舉辦程式黑客松、求職面試經驗分享會及軟體技術聚會。"
+    },
+    {
+      "id": "club_photo",
+      "name": "攝影社",
+      "type": "recreation_club",
+      "day_of_week": 1,
+      "period_slot": "evening",
+      "location_id": "loc_lib",
+      "prompt_context": "在總圖多媒體研討室交流百花川與國泰樹的外拍作品，研究手動曝光參數與黑白暗房沖印工藝。",
+      "full_intro": "用鏡頭記錄中大晨昏光影與校園四季美景，提供防潮箱設備租借、暗房技術教學及年度校慶攝影特展。"
+    },
+    {
+      "id": "club_guitar",
+      "name": "吉他社",
+      "type": "recreation_club",
+      "day_of_week": 4,
+      "period_slot": "evening",
+      "location_id": "loc_yiren",
+      "prompt_context": "在依仁堂地下琴房圍坐彈唱經典木吉他民謠與流行曲目，清脆的撥弦聲中瀰漫著文藝清新的氣息。",
+      "full_intro": "歡迎零基礎音樂愛好者加入，從基礎指法、封閉和弦到民謠彈唱、Fingerstyle 演奏，定期舉辦草地民歌音樂會。"
+    },
+    {
+      "id": "club_ai_hack",
+      "name": "AI 創新研究社",
+      "type": "academic_club",
+      "day_of_week": 5,
+      "period_slot": "evening",
+      "location_id": "loc_eng5",
+      "prompt_context": "在工五館電腦教室分享最新開源大語言模型微調成果與 Agent 架構，螢幕上閃爍著即時評測日誌。",
+      "full_intro": "專注於前瞻開源 AI 技術研討與實戰專案，探索本地推論優化、RAG 檢索與自主 Agent 系統開發。"
+    },
+    {
+      "id": "job_library",
+      "name": "圖書館服務學習工讀",
+      "type": "part_time",
+      "day_of_week": 2,
+      "period_slot": "afternoon",
+      "location_id": "loc_lib",
+      "prompt_context": "在總圖三樓安靜整理哲學與資訊類別借還書架，推著書車在陽光斜照的書架間穿梭，既安靜又能賺取生活費。",
+      "full_intro": "校內熱門工讀職缺，提供彈性排班時段，工作環境舒適安靜，享有第一時間閱覽新進館藏之便利。"
+    }
+  ],
+  "campus_life_info": [
+    {
+      "info_type": "food",
+      "title": "後門早餐一條街排隊攻略",
+      "location_id": "loc_backgate",
+      "tags": ["早餐", "平價", "後門", "早八必吃"],
+      "game_snippet": "後門早餐街的酥皮蛋餅配特調冰奶茶，是早八抵禦睡意的終極神兵利器。",
+      "content_md": "## 後門早餐一條街指南\n\n後門美食商圈緊鄰中央大學後門警衛亭，聚集了數家極受歡迎的早餐店：\n* **招牌酥皮蛋餅**：餅皮煎得金黃酥脆，內餡推薦玉米起司或九層塔豬排。\n* **炒泡麵大份量**：加顆半熟荷包蛋與自製辣醬，飽足感十足。\n* **避開排隊秘訣**：早八上課同學建議於 07:45 前抵達或提前線上點餐，以免人潮壅塞導致遲到！"
+    },
+    {
+      "info_type": "food",
+      "title": "中大宵夜街人氣美食地圖",
+      "location_id": "loc_night_street",
+      "tags": ["宵夜", "鹽酥雞", "東門", "期中慰藉"],
+      "game_snippet": "深夜的宵夜街飄散著碳烤雞排與地瓜球香氣，排隊人潮永遠絡繹不絕。",
+      "content_md": "## 宵夜街傳奇美食\n\n位於校園東側的宵夜街是中大夜生活的心臟：\n* **經典炭烤雞排**：先炸後烤、刷上甘甜特調醬汁。\n* **鹽酥雞與現炸甜不辣**：加蒜加九層塔，是熬夜寫程式和期中衝刺的熱量救星。\n* **傳統手工豆花**：黑糖冰沙配大顆手工芋圓，四季皆宜的甜品小歇好去處。"
+    },
+    {
+      "info_type": "dorm_detail",
+      "title": "男九舍與女十四舍生活開箱指南",
+      "location_id": "loc_dorm_boy9",
+      "tags": ["宿舍", "男九舍", "女十四舍", "開箱"],
+      "game_snippet": "宿舍公共洗衣間的旋轉轟鳴與走廊飄來的泡麵香，組成了中大生活的基底底色。",
+      "content_md": "## 新生住宿必備須知\n\n1. **冷氣卡與電表**：每間寢室配備獨立儲值型冷氣電表，請至舍監辦公室或指定販賣機加值。\n2. **洗衣烘衣設備**：各樓層設有投幣式洗衣機（一次 20 元）與高速烘衣機，遇到桃園梅雨季烘衣機是不可或缺的救星。\n3. **門禁與修繕申報**：宿舍大門採校園學生證 RFID 感應進出，寢室設備損壞可至數位中大校務系統填寫修繕單。"
+    },
+    {
+      "info_type": "transport",
+      "title": "校園交通指南：YouBike 2.0 與 132 公車搭乘密技",
+      "location_id": "loc_bus_station",
+      "tags": ["交通", "YouBike", "132公車", "高鐵接駁"],
+      "game_snippet": "遇上大雨時正門 YouBike 往往一車難求，記得提早查看即時車位 App！",
+      "content_md": "## 校園聯外與內部移動攻略\n\n* **YouBike 2.0 站點**：正門警衛室、後門、依仁堂及男九舍旁皆設有租借站。上下坡路段騎乘請注意減速慢行。\n* **市區接駁公車**：\n  * **132路**：由中央大學直達中壢火車站，班次最密集。\n  * **172路**：直達桃園高鐵站，週五返鄉與週日收假首選。"
+    }
+  ],
+  "random_events": [
+    {
+      "id": "evt_squirrel_attack",
+      "title": "百花川松鼠空中突襲",
+      "is_active": true,
+      "weight": 20,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning", "afternoon"],
+      "cond_location": "loc_park_creek",
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：你走在百花川步道上，樹上一隻身手敏捷的中大胖松鼠突然俯衝而下，盯上了你手上的早餐麵包！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "高舉手上的麵包急速快跑閃避，誓死捍衛美味早餐",
+          "effects": {"stamina": -10, "study": 0, "social": 5, "money": 0}
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "大方捏下一塊麵包碎屑分給松鼠，順便拿出手機合影發限時動態",
+          "effects": {"stamina": 0, "study": 0, "social": 10, "money": -30}
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "被松鼠的敏捷動作嚇到鬆手，早餐掉落地上只能默默含淚去學餐重買",
+          "effects": {"stamina": -5, "study": 0, "social": -5, "money": -50}
+        }
+      ]
+    },
+    {
+      "id": "evt_rain_ubike",
+      "title": "中大午後暴雨與 YouBike 危機",
+      "is_active": true,
+      "weight": 18,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning", "afternoon"],
+      "cond_location": null,
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：天空突然降下傾盆大雨，你趕著去下一堂課，赫然發現附近的 YouBike 站點已經全部被借光了！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "撐著雨傘頂著狂風在雨中狂奔，雖然褲管濕透但準時抵達教室",
+          "effects": {"stamina": -15, "study": 10, "social": 0, "money": 0}
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "在群組大喊求救，幸運遇到開車或騎車的熱心同學載你一程",
+          "effects": {"stamina": -5, "study": 10, "social": 10, "money": 0}
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "放棄雨中掙扎，轉進鄰近的咖啡廳點杯熱飲避雨自習",
+          "effects": {"stamina": 15, "study": 5, "social": 0, "money": -120}
+        }
+      ]
+    },
+    {
+      "id": "evt_late_wakeup",
+      "title": "早八生死時速危機",
+      "is_active": true,
+      "weight": 22,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning"],
+      "cond_location": null,
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 40,
+      "event_prompt": "突發事件：鬧鐘響了十次你都沒醒，猛然睜眼發現現在已經是 07:52！距離八點整的必修課點名只剩 8 分鐘！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "睡衣套上外套不刷牙不洗臉抓起書包，開啟百米衝刺模式衝進教室",
+          "effects": {"stamina": -20, "study": 15, "social": -5, "money": 0}
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "私訊已經坐在第一排的室友求情幫忙代簽到，自己慢慢梳洗整理",
+          "effects": {"stamina": 5, "study": 10, "social": -10, "money": -50}
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假",
+          "effects": {"stamina": 25, "study": -20, "social": 0, "money": 0}
+        }
+      ]
+    },
+    {
+      "id": "evt_night_market_queue",
+      "title": "宵夜街深淵誘惑",
+      "is_active": true,
+      "weight": 16,
+      "cond_days": [1, 2, 3, 4, 5, 6, 7],
+      "cond_slots": ["evening"],
+      "cond_location": "loc_night_street",
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：你剛忙完一整天的行程，走在宵夜街上，碳烤雞排與現炸地瓜球的香味直撲鼻腔，肚子不爭氣地咕嚕大叫！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "毫不猶豫加入排隊大軍，大買特買炸物與手搖杯回宿舍大快朵頤",
+          "effects": {"stamina": 20, "study": -5, "social": 5, "money": -200}
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "克制住食慾，只在超商買了一顆茶葉蛋和無糖豆漿，堅持健康生活",
+          "effects": {"stamina": 5, "study": 5, "social": 0, "money": -45}
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "巧遇同系的同學正在開宵夜派對，順勢坐下一起暢談未來理想",
+          "effects": {"stamina": 15, "study": 0, "social": 20, "money": -120}
+        }
+      ]
+    },
+    {
+      "id": "evt_pinecone_bonk",
+      "title": "國泰樹神之松果命中",
+      "is_active": true,
+      "weight": 14,
+      "cond_days": [1, 2, 3, 4, 5, 6, 7],
+      "cond_slots": ["afternoon"],
+      "cond_location": "loc_cathay_tree",
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：你在大草坪國泰樹下散步沉思時，一顆飽滿巨大的中大松果正好從樹頂落下，精準砸中你的頭頂！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "撿起這顆「智慧松果」帶回書桌當幸運符，感覺考試運氣大增",
+          "effects": {"stamina": -5, "study": 15, "social": 5, "money": 0}
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "摸摸發痛的腦袋自嘲笑出聲，順手將松果投進草坪邊的垃圾桶",
+          "effects": {"stamina": -5, "study": 0, "social": 0, "money": 0}
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "拍下松果特寫發校園論壇發起「誰也被國泰樹偷襲過」的趣味投票",
+          "effects": {"stamina": 0, "study": 0, "social": 15, "money": 0}
+        }
+      ]
+    }
+  ],
+  "system_config": {
+    "active_llm_model": "gemma3:4b",
+    "event_trigger_prob": 0.35,
+    "system_prompt_override": null
+  }
+}
