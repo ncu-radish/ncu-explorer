@@ -40,8 +40,8 @@ jobs:
             cd ${{ secrets.PROJECT_PATH }}
 
             echo "=== 更新程式碼庫 ==="
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin master
+            git reset --hard origin/master
 
             echo "=== 更新後端 Python 依賴 ==="
             if [ -f "backend/.venv/bin/pip" ]; then
