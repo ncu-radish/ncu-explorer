@@ -12,7 +12,7 @@ export default function HomePage() {
         {/* Compliance & Campus Tag */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-cyan-300 text-xs font-semibold tracking-wide uppercase mb-6 animate-pulse">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>符合校園資安規範 • 歐美與台灣在地合規 AI 模型</span>
+          <span>符合校園資安規範 • 歐美與台灣在地合規 AI 模型 假設看到這段文字代表 CI/CD 順利運作</span>
         </div>
 
         {/* Main Title */}
