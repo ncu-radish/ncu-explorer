@@ -16,6 +16,7 @@ from app.models.tables import (
     AdminUser,
     SystemConfig,
 )
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.services.rag_service import course_rag_service
 
@@ -127,10 +128,12 @@ def seed_database():
 
         # 6. 管理員帳號與系統設定
         print("6. 建立預設管理員與系統組態...")
-        if not db.query(AdminUser).filter(AdminUser.username == "admin").first():
+        admin_user = settings.ADMIN_DEFAULT_USERNAME
+        admin_pass = settings.ADMIN_DEFAULT_PASSWORD
+        if not db.query(AdminUser).filter(AdminUser.username == admin_user).first():
             db.add(AdminUser(
-                username="admin",
-                password_hash=get_password_hash("adminpassword123"),
+                username=admin_user,
+                password_hash=get_password_hash(admin_pass),
                 role="admin"
             ))
 

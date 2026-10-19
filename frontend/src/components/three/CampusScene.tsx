@@ -214,12 +214,14 @@ function BuildingItem({
   );
 }
 
+const CAMPUS_MODEL_URL = process.env.NEXT_PUBLIC_CAMPUS_MODEL_URL || "/models/ncu_campus.glb";
+
 function ExternalGLBCampus({
   onSelectMesh,
 }: {
   onSelectMesh: (meshName: string) => void;
 }) {
-  const { scene } = useGLTF("/models/ncu_campus.glb");
+  const { scene } = useGLTF(CAMPUS_MODEL_URL);
 
   useEffect(() => {
     scene.traverse((child: any) => {
@@ -264,7 +266,7 @@ export function CampusScene({
   const [hasGLB, setHasGLB] = useState(false);
 
   useEffect(() => {
-    fetch("/models/ncu_campus.glb", { method: "HEAD" })
+    fetch(CAMPUS_MODEL_URL, { method: "HEAD" })
       .then((res) => setHasGLB(res.ok))
       .catch(() => setHasGLB(false));
   }, []);
