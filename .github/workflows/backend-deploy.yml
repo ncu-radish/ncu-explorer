@@ -1,9 +1,12 @@
-name: Deploy to Self-Hosted Server
+name: Deploy backend to Self-Hosted Server
 
 on:
   push:
-    branches: [ "master" ]
-
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -51,15 +54,8 @@ jobs:
               exit 1
             fi
 
-            echo "=== 建置前端 Next.js ==="
-            cd frontend
-            npm ci
-            npm run build
-            cd ..
-
             echo "=== 重啟系統服務 ==="
             sudo systemctl restart ncu-backend
-            sudo systemctl restart ncu-frontend
 
             echo "=== 部署完成 ==="
           EOF

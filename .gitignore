@@ -27,3 +27,4 @@ yarn-error.log*
 # Local databases & storage
 backend/data/qdrant_storage/
 backend/data/*.sqlite-journal
+backend/data/*.sqlite

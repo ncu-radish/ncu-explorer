@@ -1,0 +1,60 @@
+name: Deploy frontend to Self-Hosted Server
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Cloudflared
+        run: |
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+          rm cloudflared.deb
+
+      - name: Setup SSH Configuration
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # 透過 ProxyCommand 引導流量經由 cloudflared 連入主機
+          cat >> ~/.ssh/config << 'EOF'
+          Host tunnel-server
+            HostName ${{ secrets.SSH_HOST }}
+            User ${{ secrets.SSH_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared access ssh --hostname %h
+          EOF
+
+      - name: Deploy Application via SSH
+        run: |
+          ssh tunnel-server << 'EOF'
+            set -e
+            cd ${{ secrets.PROJECT_PATH }}
+
+            echo "=== 更新程式碼庫 ==="
+            git fetch origin master
+            git reset --hard origin/master
+
+            echo "=== 建置前端 Next.js ==="
+            cd frontend
+            npm ci
+            npm run build
+            cd ..
+
+            echo "=== 重啟系統服務 ==="
+            sudo systemctl restart ncu-frontend
+
+            echo "=== 部署完成 ==="
+          EOF
