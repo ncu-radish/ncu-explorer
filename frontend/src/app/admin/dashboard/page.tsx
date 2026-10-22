@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ShieldCheck,
@@ -14,10 +14,16 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  UploadCloud,
+  FileBox,
+  AlertCircle,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
+import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
 
-export default function AdminDashboardPage() {
+function DashboardContent() {
   const [metrics, setMetrics] = useState<any | null>(null);
   const [activeModel, setActiveModel] = useState<string>("gemma3:4b");
   const [triggerProb, setTriggerProb] = useState<number>(0.35);
@@ -25,6 +31,14 @@ export default function AdminDashboardPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+
+  // 3D Model Upload State
+  const [modelInfo, setModelInfo] = useState<any | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDashboard = async () => {
     try {
@@ -37,8 +51,18 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const loadModelInfo = async () => {
+    try {
+      const info = await adminApi.getModelInfo();
+      setModelInfo(info);
+    } catch (err) {
+      console.error("載入模型資訊失敗:", err);
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
+    loadModelInfo();
   }, []);
 
   const handleSaveConfig = async () => {
@@ -72,6 +96,45 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith(".glb")) {
+        setUploadError("僅支援上傳 .glb 格式之 3D 模型檔案");
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
+      setUploadError(null);
+      setUploadSuccess(null);
+    }
+  };
+
+  const handleUploadModel = async () => {
+    if (!selectedFile) {
+      setUploadError("請先選擇要上傳的 .glb 檔案");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      const res = await adminApi.uploadModel(selectedFile);
+      setUploadSuccess(res.message);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      await loadModelInfo();
+    } catch (err: any) {
+      setUploadError(err.message || "上傳失敗，請確認檔案有效性與網路連線");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#FAF8F5]">
       {/* Header */}
@@ -79,7 +142,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/explore"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors border border-stone-300 shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold transition-colors border border-stone-300 shadow-xs"
             title="回中央相關資料"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -91,7 +154,7 @@ export default function AdminDashboardPage() {
               管理控制台
             </h1>
             <p className="text-xs text-stone-500">
-              監控模擬數據、動態調整事件觸發機率與課程資料同步
+              維護 3D 校園模型、調校 AI 推論參數與課程雙向量索引
             </p>
           </div>
         </div>
@@ -136,6 +199,138 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ================================================================= */}
+      {/* 3D Campus Model (.glb) Upload Card */}
+      {/* ================================================================= */}
+      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs flex flex-col gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-200 gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <FileBox className="w-5 h-5 text-indigo-600" />
+              3D 校園地圖模型更新 (.glb)
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              直接上傳更新伺服器上的 <code className="font-mono text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">campus_buildings.glb</code> 檔案
+            </p>
+          </div>
+
+          <Link
+            href="/map"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold border border-indigo-200 transition-colors w-fit shadow-2xs"
+          >
+            <span>預覽 3D 地圖</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Current Model Status Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs">
+          <div>
+            <span className="text-stone-400 block mb-0.5">伺服器模型檔案</span>
+            <span className="font-mono font-bold text-stone-800">
+              {modelInfo?.filename || "campus_buildings.glb"}
+            </span>
+          </div>
+          <div>
+            <span className="text-stone-400 block mb-0.5">目前檔案大小</span>
+            <span className="font-mono font-bold text-stone-800">
+              {modelInfo?.file_size_formatted || "讀取中..."}
+            </span>
+          </div>
+          <div>
+            <span className="text-stone-400 block mb-0.5">最後更新時間</span>
+            <span className="font-mono text-stone-700">
+              {modelInfo?.last_modified || "尚未更新"}
+            </span>
+          </div>
+        </div>
+
+        {modelInfo?.has_backup && (
+          <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-amber-600" />
+              伺服器已自動建立上一版安全備份檔案 (<code className="font-mono">campus_buildings.glb.bak</code> - {modelInfo.backup_size_formatted})
+            </span>
+            <span className="text-[10px] text-amber-600 font-mono hidden sm:inline">
+              備份時間: {modelInfo.backup_last_modified}
+            </span>
+          </div>
+        )}
+
+        {/* Success / Error Messages */}
+        {uploadSuccess && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span className="font-semibold">{uploadSuccess}</span>
+            </div>
+            <Link
+              href="/map"
+              className="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold transition-colors whitespace-nowrap shadow-2xs"
+            >
+              立刻前往 3D 地圖查看
+            </Link>
+          </div>
+        )}
+
+        {uploadError && (
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{uploadError}</span>
+          </div>
+        )}
+
+        {/* File Dropzone / Selector */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".glb"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="glb-file-upload"
+          />
+
+          <label
+            htmlFor="glb-file-upload"
+            className="flex-1 p-5 rounded-2xl border-2 border-dashed border-stone-300 hover:border-indigo-400 bg-stone-50 hover:bg-stone-100/70 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 text-center group"
+          >
+            <UploadCloud className="w-7 h-7 text-stone-400 group-hover:text-indigo-600 transition-colors" />
+            <span className="text-xs font-bold text-stone-700 group-hover:text-indigo-700">
+              {selectedFile ? selectedFile.name : "點擊或拖曳選擇新版 .glb 檔案"}
+            </span>
+            <span className="text-[11px] text-stone-400">
+              {selectedFile
+                ? `檔案大小: ${(selectedFile.size / 1024).toFixed(1)} KB`
+                : "僅支援標準 glTF 二進位模型檔案 (.glb，上限 100MB)"}
+            </span>
+          </label>
+
+          <button
+            onClick={handleUploadModel}
+            disabled={!selectedFile || isUploading}
+            className="px-6 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all shrink-0 sm:w-56"
+          >
+            {isUploading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>正在上傳覆寫...</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-4 h-4" />
+                <span>上傳並更新伺服器檔案</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <p className="text-[11px] text-stone-400 leading-relaxed border-t border-stone-100 pt-3">
+          提示：上傳後系統會即時覆寫前端資源目錄中的模型檔案，瀏覽器刷新後即可呈現全新館舍外觀。為確保 3D 地圖互動搜尋正常，請確認 Blender 中的物件名稱（Object Name）與 <code className="font-mono text-stone-600">buildings.json</code> 中的建築 ID 相符。
+        </p>
+      </div>
 
       {/* AI Model Switcher & System Config Card */}
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs flex flex-col gap-5">
@@ -216,7 +411,7 @@ export default function AdminDashboardPage() {
           disabled={isSaving}
           className="w-fit px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
         >
-          {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
           <span>儲存並套用設定</span>
         </button>
       </div>
@@ -247,6 +442,10 @@ export default function AdminDashboardPage() {
   );
 }
 
-function Save(props: any) {
-  return <CheckCircle2 {...props} />;
+export default function AdminDashboardPage() {
+  return (
+    <AdminAuthGuard>
+      <DashboardContent />
+    </AdminAuthGuard>
+  );
 }

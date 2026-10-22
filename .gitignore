@@ -30,3 +30,4 @@ backend/data/*.sqlite-journal
 backend/data/*.sqlite
 
 *.glb
+*.glb.bak

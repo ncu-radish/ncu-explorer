@@ -1,7 +1,11 @@
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
+import shutil
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-from app.core.database import get_db
+from app.core.config import settings
+from app.core.database import get_db, Base, engine
 from app.models.tables import (
     AdminUser,
     SystemConfig,
@@ -25,12 +29,24 @@ from app.schemas.admin import (
     SandboxTestResponse,
 )
 from app.schemas.llm import TurnGenerationSchema, OptionItem
-from app.core.security import verify_password, create_access_token, get_current_admin
+from app.core.security import verify_password, create_access_token, get_current_admin, get_password_hash
 from app.core.llm_client import call_ollama_structured
 from app.services.prompts import TURN_NARRATIVE_PROMPT_TEMPLATE
 from app.services.rag_service import course_rag_service
 
 router = APIRouter(prefix="/admin", tags=["Admin CMS"])
+
+def ensure_admin_seeded(db: Session):
+    Base.metadata.create_all(bind=engine)
+    admin_user = settings.ADMIN_DEFAULT_USERNAME
+    existing = db.query(AdminUser).filter(AdminUser.username == admin_user).first()
+    if not existing:
+        db.add(AdminUser(
+            username=admin_user,
+            password_hash=get_password_hash(settings.ADMIN_DEFAULT_PASSWORD),
+            role="admin"
+        ))
+        db.commit()
 
 # 合規開源模型清單與研發機構
 AVAILABLE_MODELS = [
@@ -43,6 +59,7 @@ AVAILABLE_MODELS = [
 
 @router.post("/auth/login", response_model=TokenResponse)
 def admin_login(req: LoginRequest, db: Session = Depends(get_db)):
+    ensure_admin_seeded(db)
     user = db.query(AdminUser).filter(AdminUser.username == req.username).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(
@@ -57,8 +74,19 @@ def admin_login(req: LoginRequest, db: Session = Depends(get_db)):
         role=user.role
     )
 
+@router.get("/auth/me")
+def get_current_admin_info(current_admin: AdminUser = Depends(get_current_admin)):
+    return {
+        "username": current_admin.username,
+        "role": current_admin.role,
+        "is_authenticated": True
+    }
+
 @router.get("/dashboard", response_model=DashboardMetricsResponse)
-def get_dashboard_metrics(db: Session = Depends(get_db)):
+def get_dashboard_metrics(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     total_sessions = db.query(GameSession).count()
     config = db.query(SystemConfig).first()
     active_model = config.active_llm_model if config else "gemma3:4b"
@@ -95,7 +123,10 @@ def get_dashboard_metrics(db: Session = Depends(get_db)):
     )
 
 @router.get("/config", response_model=SystemConfigDTO)
-def get_config(db: Session = Depends(get_db)):
+def get_config(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     conf = db.query(SystemConfig).first()
     if not conf:
         conf = SystemConfig(active_llm_model="gemma3:4b", event_trigger_prob=0.35)
@@ -109,7 +140,11 @@ def get_config(db: Session = Depends(get_db)):
     )
 
 @router.put("/config", response_model=SystemConfigDTO)
-def update_config(req: SystemConfigUpdate, db: Session = Depends(get_db)):
+def update_config(
+    req: SystemConfigUpdate,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     conf = db.query(SystemConfig).first()
     if not conf:
         conf = SystemConfig()
@@ -131,12 +166,19 @@ def update_config(req: SystemConfigUpdate, db: Session = Depends(get_db)):
     )
 
 @router.get("/events", response_model=List[RandomEventDTO])
-def list_random_events(db: Session = Depends(get_db)):
+def list_random_events(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     events = db.query(RandomEvent).all()
     return [RandomEventDTO.model_validate(e) for e in events]
 
 @router.post("/events", response_model=RandomEventDTO)
-def create_random_event(req: RandomEventCreate, db: Session = Depends(get_db)):
+def create_random_event(
+    req: RandomEventCreate,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     existing = db.query(RandomEvent).filter(RandomEvent.id == req.id).first()
     if existing:
         raise HTTPException(status_code=400, detail="事件代碼已存在")
@@ -160,7 +202,12 @@ def create_random_event(req: RandomEventCreate, db: Session = Depends(get_db)):
     return RandomEventDTO.model_validate(ev)
 
 @router.put("/events/{event_id}", response_model=RandomEventDTO)
-def update_random_event(event_id: str, req: RandomEventUpdate, db: Session = Depends(get_db)):
+def update_random_event(
+    event_id: str,
+    req: RandomEventUpdate,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     ev = db.query(RandomEvent).filter(RandomEvent.id == event_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="找不到指定事件")
@@ -174,7 +221,11 @@ def update_random_event(event_id: str, req: RandomEventUpdate, db: Session = Dep
     return RandomEventDTO.model_validate(ev)
 
 @router.delete("/events/{event_id}")
-def delete_random_event(event_id: str, db: Session = Depends(get_db)):
+def delete_random_event(
+    event_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     ev = db.query(RandomEvent).filter(RandomEvent.id == event_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="找不到指定事件")
@@ -183,7 +234,11 @@ def delete_random_event(event_id: str, db: Session = Depends(get_db)):
     return {"message": f"成功刪除事件 {event_id}"}
 
 @router.post("/events/sandbox", response_model=SandboxTestResponse)
-async def live_sandbox_test(req: SandboxTestRequest, db: Session = Depends(get_db)):
+async def live_sandbox_test(
+    req: SandboxTestRequest,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     conf = db.query(SystemConfig).first()
     active_model = conf.active_llm_model if conf else "gemma3:4b"
 
@@ -232,7 +287,12 @@ async def live_sandbox_test(req: SandboxTestRequest, db: Session = Depends(get_d
     return SandboxTestResponse(generated_story=story)
 
 @router.put("/locations/{loc_id}")
-def update_location_node(loc_id: str, data: Dict[str, Any], db: Session = Depends(get_db)):
+def update_location_node(
+    loc_id: str,
+    data: Dict[str, Any],
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     loc = db.query(CampusLocation).filter(CampusLocation.id == loc_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="找不到指定場域")
@@ -251,7 +311,10 @@ def update_location_node(loc_id: str, data: Dict[str, Any], db: Session = Depend
     return {"message": "場域節點資料更新成功", "location": loc.id}
 
 @router.post("/courses/sync")
-def trigger_vector_sync(db: Session = Depends(get_db)):
+def trigger_vector_sync(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     unsynced = db.query(Course).filter(Course.is_synced_vec == False).all()
     if not unsynced:
         # If all synced, we can resync all
@@ -282,3 +345,112 @@ def trigger_vector_sync(db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": f"成功同步 {synced_count} 門課程至 Qdrant 雙向量庫！", "count": synced_count}
+
+
+# =========================================================================
+# 3D Campus Model (.glb) Management Endpoints
+# =========================================================================
+
+def get_model_paths():
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    model_dir = project_root / "frontend" / "public" / "models"
+    model_file = model_dir / "campus_buildings.glb"
+    backup_file = model_dir / "campus_buildings.glb.bak"
+    return model_dir, model_file, backup_file
+
+
+@router.get("/model/info")
+def get_campus_model_info(current_admin: AdminUser = Depends(get_current_admin)):
+    """取得伺服器目前 3D 地圖模型檔案狀態"""
+    _, model_file, backup_file = get_model_paths()
+
+    info = {
+        "exists": model_file.exists(),
+        "filename": "campus_buildings.glb",
+        "file_size_bytes": 0,
+        "file_size_formatted": "0 KB",
+        "last_modified": None,
+        "has_backup": backup_file.exists(),
+        "backup_size_formatted": "0 KB" if not backup_file.exists() else f"{backup_file.stat().st_size / 1024:.1f} KB",
+        "backup_last_modified": None if not backup_file.exists() else datetime.fromtimestamp(backup_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    if model_file.exists():
+        stat = model_file.stat()
+        size_bytes = stat.st_size
+        info["file_size_bytes"] = size_bytes
+        info["file_size_formatted"] = (
+            f"{size_bytes / 1024:.1f} KB" if size_bytes < 1024 * 1024
+            else f"{size_bytes / (1024 * 1024):.2f} MB"
+        )
+        info["last_modified"] = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+    return info
+
+
+@router.post("/model/upload")
+async def upload_campus_model(
+    file: UploadFile = File(...),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """上傳新版本 3D 校園地圖模型 (.glb) 到伺服器，自動備份上一版檔案"""
+    filename = file.filename or ""
+    if not filename.lower().endswith(".glb"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不支援的檔案格式，請上傳 .glb 格式之 3D 模型檔案"
+        )
+
+    content = await file.read()
+    if len(content) < 12:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="檔案損毀或無效的 GLB 檔案（檔案過小）"
+        )
+
+    # 驗證 glTF binary 魔術位元組
+    magic = content[:4]
+    if magic != b"glTF":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="無效的 GLB 檔案：Magic header 不是 'glTF'"
+        )
+
+    # 檔案大小限制 100MB
+    max_size = 100 * 1024 * 1024
+    if len(content) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="檔案過大，GLB 模型檔案上限為 100MB"
+        )
+
+    model_dir, model_file, backup_file = get_model_paths()
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    # 備份原檔案
+    backup_created = False
+    if model_file.exists():
+        try:
+            shutil.copy2(model_file, backup_file)
+            backup_created = True
+        except Exception as e:
+            print(f"備份舊模型時警告: {e}")
+
+    # 寫入新檔案
+    with open(model_file, "wb") as f:
+        f.write(content)
+
+    size_formatted = (
+        f"{len(content) / 1024:.1f} KB" if len(content) < 1024 * 1024
+        else f"{len(content) / (1024 * 1024):.2f} MB"
+    )
+
+    return {
+        "status": "success",
+        "message": "校園 3D 地圖模型 (campus_buildings.glb) 上傳並更新成功！",
+        "filename": filename,
+        "size_bytes": len(content),
+        "size_formatted": size_formatted,
+        "backup_created": backup_created,
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }

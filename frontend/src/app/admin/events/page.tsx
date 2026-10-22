@@ -14,8 +14,9 @@ import {
   Zap,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
+import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
 
-export default function AdminEventsPage() {
+function EventsContent() {
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
@@ -296,5 +297,13 @@ export default function AdminEventsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminEventsPage() {
+  return (
+    <AdminAuthGuard>
+      <EventsContent />
+    </AdminAuthGuard>
   );
 }

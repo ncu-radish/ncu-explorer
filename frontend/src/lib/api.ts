@@ -2,14 +2,33 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  };
+  
+  const headers: Record<string, string> = {};
+  
+  // Only set Content-Type to application/json if body is not FormData
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Attach stored JWT admin token if available
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("ncu_admin_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
+  if (options.headers) {
+    Object.assign(headers, options.headers);
+  }
 
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const errorText = await res.text();
+    // If unauthorized, clear invalid token
+    if (res.status === 401 && typeof window !== "undefined" && endpoint.startsWith("/admin")) {
+      localStorage.removeItem("ncu_admin_token");
+    }
     throw new Error(`API Error [${res.status}]: ${errorText || res.statusText}`);
   }
   return res.json() as Promise<T>;
@@ -117,6 +136,26 @@ export const exploreApi = {
 
 // Admin API
 export const adminApi = {
+  login: async (username: string, password: string) => {
+    const res = await fetchApi<{ access_token: string; token_type: string; username: string; role: string }>(
+      "/admin/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }
+    );
+    if (typeof window !== "undefined" && res.access_token) {
+      localStorage.setItem("ncu_admin_token", res.access_token);
+    }
+    return res;
+  },
+  logout: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("ncu_admin_token");
+    }
+  },
+  getMe: () =>
+    fetchApi<{ username: string; role: string; is_authenticated: boolean }>("/admin/auth/me"),
   getDashboard: () => fetchApi<any>("/admin/dashboard"),
   getConfig: () => fetchApi<any>("/admin/config"),
   updateConfig: (data: any) =>
@@ -148,4 +187,31 @@ export const adminApi = {
     fetchApi<any>("/admin/courses/sync", {
       method: "POST",
     }),
+  getModelInfo: () =>
+    fetchApi<{
+      exists: boolean;
+      filename: string;
+      file_size_bytes: number;
+      file_size_formatted: string;
+      last_modified: string | null;
+      has_backup: boolean;
+      backup_size_formatted: string;
+      backup_last_modified: string | null;
+    }>("/admin/model/info"),
+  uploadModel: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<{
+      status: string;
+      message: string;
+      filename: string;
+      size_bytes: number;
+      size_formatted: string;
+      backup_created: boolean;
+      updated_at: string;
+    }>("/admin/model/upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
