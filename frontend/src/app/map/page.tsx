@@ -1,217 +1,484 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { MapPin, X, BookOpen, Users, Coffee, RotateCcw, ArrowLeft } from "lucide-react";
+import {
+  Search,
+  X,
+  MapPin,
+  Building2,
+  Compass,
+  RotateCcw,
+  ArrowLeft,
+  ChevronRight,
+  BookOpen,
+  Home,
+  Utensils,
+  Trophy,
+  Landmark,
+  Layers,
+  Info,
+} from "lucide-react";
 import { useMapStore } from "@/store/useMapStore";
-import { exploreApi } from "@/lib/api";
+import { exploreApi, Building } from "@/lib/api";
 
 const CampusScene = dynamic(
   () => import("@/components/three/CampusScene").then((mod) => mod.CampusScene),
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-[#090d16] text-cyan-400 text-sm">
-        載入 3D 校園地圖...
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF8F5] text-stone-500 gap-3">
+        <div className="w-8 h-8 border-3 border-stone-300 border-t-blue-600 rounded-full animate-spin" />
+        <span className="text-sm font-medium tracking-wide">載入中央大學 3D 校園地圖...</span>
       </div>
     ),
   }
 );
 
+const CATEGORIES = [
+  { key: "all", label: "全部", icon: Layers },
+  { key: "teaching", label: "教學館舍", icon: BookOpen },
+  { key: "dorm", label: "學生宿舍", icon: Home },
+  { key: "function", label: "行政功能", icon: Landmark },
+  { key: "sport", label: "運動場館", icon: Trophy },
+  { key: "restaurant", label: "生活餐飲", icon: Utensils },
+];
+
+function CategoryBadge({ category }: { category?: string | null }) {
+  switch (category) {
+    case "teaching":
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+          教學館舍
+        </span>
+      );
+    case "dorm":
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-medium">
+          學生宿舍
+        </span>
+      );
+    case "function":
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
+          行政功能
+        </span>
+      );
+    case "sport":
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+          運動場館
+        </span>
+      );
+    case "restaurant":
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
+          生活餐飲
+        </span>
+      );
+    default:
+      return (
+        <span className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200 font-medium">
+          校園館舍
+        </span>
+      );
+  }
+}
+
 function MapContent() {
   const searchParams = useSearchParams();
-  const initialLoc = searchParams.get("loc");
+  const initialBldgId = searchParams.get("bldg") || searchParams.get("loc");
 
   const {
     selectedBuildingId,
     selectBuilding,
-    isDrawerOpen,
-    closeDrawer,
-    filterCategory,
-    setFilterCategory,
+    hoveredBuildingId,
+    setHoveredBuilding,
     resetCamera,
   } = useMapStore();
 
-  const [buildingDetail, setBuildingDetail] = useState<any | null>(null);
-  const [allLocations, setAllLocations] = useState<any[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedBuildingDetail, setSelectedBuildingDetail] = useState<Building | null>(null);
 
-  useEffect(() => {
-    exploreApi.getLocations().then(setAllLocations).catch(console.error);
-  }, []);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const activeItemRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (initialLoc) {
-      selectBuilding(initialLoc);
+  // Fetch buildings from backend API (connected to SQLite RDBMS)
+  const fetchBuildings = async (q?: string, cat?: string) => {
+    try {
+      setLoading(true);
+      const data = await exploreApi.getBuildings({
+        q: q || undefined,
+        category: cat !== "all" ? cat : undefined,
+      });
+      setBuildings(data);
+    } catch (err) {
+      console.error("載入建築物資料失敗:", err);
+    } finally {
+      setLoading(false);
     }
-  }, [initialLoc, selectBuilding]);
+  };
 
+  // Initial load
   useEffect(() => {
-    if (selectedBuildingId) {
-      exploreApi
-        .getLocationDetail(selectedBuildingId)
-        .then(setBuildingDetail)
-        .catch(console.error);
+    fetchBuildings(searchQuery, selectedCategory);
+  }, [selectedCategory]);
+
+  // Handle URL query param for direct linking
+  useEffect(() => {
+    if (initialBldgId) {
+      selectBuilding(initialBldgId);
+    }
+  }, [initialBldgId, selectBuilding]);
+
+  // Keep selected building detail in sync
+  useEffect(() => {
+    if (!selectedBuildingId) {
+      setSelectedBuildingDetail(null);
+      return;
+    }
+
+    const found = buildings.find((b) => b.id === selectedBuildingId);
+    if (found) {
+      setSelectedBuildingDetail(found);
     } else {
-      setBuildingDetail(null);
+      exploreApi.getBuildingDetail(selectedBuildingId)
+        .then(setSelectedBuildingDetail)
+        .catch(() => setSelectedBuildingDetail(null));
+    }
+  }, [selectedBuildingId, buildings]);
+
+  // Scroll active building card into view in the list
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [selectedBuildingId]);
 
-  const categories = [
-    { key: null, label: "全部建築" },
-    { key: "academic", label: "教學館舍" },
-    { key: "dorm", label: "學生宿舍" },
-    { key: "dining", label: "生活餐飲" },
-    { key: "leisure", label: "運動休閒" },
-  ];
+  // Debounced search handler
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchBuildings(searchQuery, selectedCategory);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectBuilding = (id: string) => {
+    if (selectedBuildingId === id) {
+      // Toggle or keep focus
+      selectBuilding(id);
+    } else {
+      selectBuilding(id);
+    }
+  };
 
   return (
-    <div className="relative flex-1 w-full h-screen overflow-hidden bg-[#FAF8F5]">
-      {/* Top Floating Control Bar */}
-      <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 max-w-[90vw]">
-        <Link
-          href="/explore"
-          className="px-3 py-2 rounded-xl text-xs font-semibold bg-white text-stone-700 hover:text-stone-900 border border-stone-300 hover:bg-stone-50 flex items-center gap-1.5 transition-colors shadow-xs"
-          title="回中央相關資料"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>回相關資料</span>
-        </Link>
-
-        <div className="bg-white p-1 rounded-2xl flex items-center gap-1 border border-stone-300 shadow-xs">
-          {categories.map((cat) => (
-            <button
-              key={cat.key || "all"}
-              onClick={() => setFilterCategory(cat.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                filterCategory === cat.key
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
-              }`}
+    <div className="flex w-full h-screen overflow-hidden bg-[#FAF8F5]">
+      {/* ================= LEFT SIDEBAR: Search & Building List ================= */}
+      <aside className="w-full md:w-[440px] lg:w-[480px] h-full flex flex-col bg-white border-r border-stone-200 z-10 shrink-0 shadow-sm">
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-stone-200 bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <Link
+              href="/explore"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
             >
-              {cat.label}
-            </button>
-          ))}
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>回中央相關資料</span>
+            </Link>
+            <span className="text-[11px] font-mono font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+              {buildings.length} 棟館舍
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-stone-900 leading-tight">NCU 3D 校園地圖</h1>
+              <p className="text-[11px] text-stone-500">中央大學互動式館舍與系所導覽</p>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mt-3">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜尋代號 (如 E6)、館名、系所、別名..."
+              className="w-full pl-9 pr-8 py-2 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-md hover:bg-stone-200 transition-colors"
+                title="清除搜尋"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Search scope hint */}
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-stone-400 overflow-x-auto whitespace-nowrap">
+            <span className="font-medium text-stone-500">支援欄位:</span>
+            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">館舍名稱</span>
+            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">教室代號 (E6/C2)</span>
+            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">系所辦公室</span>
+            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">別名 (工五/管二)</span>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-1 scrollbar-none">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const isSelected = selectedCategory === cat.key;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Location Dropdown Quick Jump */}
-        <select
-          value={selectedBuildingId || ""}
-          onChange={(e) => {
-            const locId = e.target.value;
-            if (locId) selectBuilding(locId);
-          }}
-          className="px-3 py-2 rounded-xl text-xs text-stone-800 border border-stone-300 bg-white focus:outline-none focus:border-blue-500 shadow-xs"
-        >
-          <option value="">快速導覽館舍節點...</option>
-          {allLocations.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
-
-        <button
-          onClick={resetCamera}
-          className="p-2 rounded-xl bg-white text-stone-700 hover:text-stone-900 border border-stone-300 hover:bg-stone-50 cursor-pointer shadow-xs"
-          title="重置視角"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* 3D Scene */}
-      <div className="w-full h-full">
-        <CampusScene />
-      </div>
-
-      {/* Right Slideout Drawer */}
-      {isDrawerOpen && buildingDetail && (
-        <div className="absolute top-0 right-0 z-30 w-full sm:w-[420px] h-full bg-white border-l border-stone-200 shadow-xl p-6 overflow-y-auto animate-in slide-in-from-right duration-200 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-4">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 border border-stone-300">
-                {buildingDetail.category}
-              </span>
+        {/* Selected Building Detail Card (Pinned when selected) */}
+        {selectedBuildingDetail && (
+          <div className="p-4 bg-blue-50/50 border-b border-blue-200/80 transition-all">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CategoryBadge category={selectedBuildingDetail.category} />
+                {selectedBuildingDetail.classroom_code && (
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold shadow-2xs">
+                    代號: {selectedBuildingDetail.classroom_code}
+                  </span>
+                )}
+                {selectedBuildingDetail.alias && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-white text-stone-700 border border-stone-300 font-medium">
+                    別稱: {selectedBuildingDetail.alias}
+                  </span>
+                )}
+              </div>
               <button
-                onClick={closeDrawer}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 cursor-pointer transition-colors"
+                onClick={() => selectBuilding(null)}
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-md hover:bg-stone-200/50 transition-colors"
+                title="關閉詳細資訊"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <h2 className="text-2xl font-bold text-stone-900 mb-2 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-blue-600" />
-              {buildingDetail.name}
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>{selectedBuildingDetail.name_zh}</span>
             </h2>
 
-            <p className="text-xs text-stone-600 mb-4 font-medium">
-              {buildingDetail.short_desc}
-            </p>
+            {selectedBuildingDetail.name_en && (
+              <p className="text-xs text-stone-500 font-sans mt-0.5 ml-5.5">
+                {selectedBuildingDetail.name_en}
+              </p>
+            )}
 
-            <div className="p-4 rounded-xl mb-6 bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed">
-              {buildingDetail.full_content}
-            </div>
-
-            {/* Courses held here */}
-            {buildingDetail.courses?.length > 0 && (
-              <div className="mb-5">
-                <h3 className="text-xs font-bold text-stone-900 flex items-center gap-1.5 mb-2">
-                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  在此開課之課程 ({buildingDetail.courses.length})
-                </h3>
-                <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto">
-                  {buildingDetail.courses.map((c: any) => (
-                    <div
-                      key={c.id}
-                      className="p-2 rounded-lg bg-stone-50 border border-stone-200 text-xs flex items-center justify-between"
+            {/* Departments */}
+            {selectedBuildingDetail.departments && selectedBuildingDetail.departments.length > 0 && (
+              <div className="mt-3 ml-5.5">
+                <p className="text-[11px] font-semibold text-stone-700 mb-1">所屬系所與單位：</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedBuildingDetail.departments.map((dept, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[11px] px-2 py-0.5 bg-white text-stone-700 rounded border border-stone-200 shadow-2xs font-medium"
                     >
-                      <span className="font-semibold text-stone-800">{c.course_name}</span>
-                      <span className="text-[10px] text-stone-500 font-mono">{c.raw_schedule}</span>
-                    </div>
+                      {dept}
+                    </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Clubs stationed here */}
-            {buildingDetail.activities?.length > 0 && (
-              <div className="mb-5">
-                <h3 className="text-xs font-bold text-stone-900 flex items-center gap-1.5 mb-2">
-                  <Users className="w-3.5 h-3.5 text-purple-600" />
-                  常態活動社團 ({buildingDetail.activities.length})
-                </h3>
-                <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto">
-                  {buildingDetail.activities.map((a: any) => (
-                    <div key={a.id} className="p-2 rounded-lg bg-stone-50 border border-stone-200 text-xs">
-                      <span className="font-semibold text-purple-700 block">{a.name}</span>
-                      <span className="text-[11px] text-stone-500 line-clamp-1">{a.full_intro}</span>
-                    </div>
-                  ))}
-                </div>
+            {/* Description */}
+            {selectedBuildingDetail.description && (
+              <div className="mt-3 ml-5.5 text-xs text-stone-600 leading-relaxed max-h-36 overflow-y-auto pr-1">
+                <div
+                  className="prose prose-xs text-stone-600 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-1"
+                  dangerouslySetInnerHTML={{ __html: selectedBuildingDetail.description }}
+                />
               </div>
             )}
 
-            {/* Nearby Life Info */}
-            {buildingDetail.life_infos?.length > 0 && (
-              <div>
-                <h3 className="text-xs font-bold text-stone-900 flex items-center gap-1.5 mb-2">
-                  <Coffee className="w-3.5 h-3.5 text-amber-600" />
-                  周遭餐飲生活指南
-                </h3>
-                {buildingDetail.life_infos.map((info: any) => (
-                  <div key={info.id} className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs">
-                    <span className="font-bold text-amber-800 block mb-1">{info.title}</span>
-                    <p className="text-[11px] text-stone-600 line-clamp-2">{info.game_snippet}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="mt-3 ml-5.5 flex items-center gap-2">
+              <button
+                onClick={() => selectBuilding(selectedBuildingDetail.id)}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                重新聚焦視角
+              </button>
+              <span className="text-stone-300">|</span>
+              <span className="text-[10px] text-stone-400 font-mono">
+                ID: {selectedBuildingDetail.id}
+              </span>
+            </div>
           </div>
+        )}
+
+        {/* Scrollable Building List */}
+        <div
+          ref={listContainerRef}
+          className="flex-1 overflow-y-auto p-3 space-y-2 divide-y divide-stone-100"
+        >
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-2">
+              <div className="w-6 h-6 border-2 border-stone-300 border-t-blue-600 rounded-full animate-spin" />
+              <span className="text-xs">檢索建築物資料...</span>
+            </div>
+          ) : buildings.length === 0 ? (
+            <div className="py-16 text-center text-stone-400">
+              <Building2 className="w-8 h-8 mx-auto mb-2 text-stone-300" />
+              <p className="text-xs font-medium">找不到符合條件的建築物</p>
+              <p className="text-[11px] text-stone-400 mt-1">
+                請嘗試搜尋代號 (如 E6)、系所或別名 (如工五)
+              </p>
+            </div>
+          ) : (
+            buildings.map((bldg) => {
+              const isSelected = bldg.id === selectedBuildingId;
+              const isHovered = bldg.id === hoveredBuildingId;
+
+              return (
+                <div
+                  key={bldg.id}
+                  ref={isSelected ? activeItemRef : null}
+                  onClick={() => handleSelectBuilding(bldg.id)}
+                  onMouseEnter={() => setHoveredBuilding(bldg.id)}
+                  onMouseLeave={() => setHoveredBuilding(null)}
+                  className={`p-3 rounded-xl transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-blue-50/80 border-blue-500 shadow-xs ring-1 ring-blue-500"
+                      : isHovered
+                      ? "bg-stone-50 border-stone-300"
+                      : "bg-white hover:bg-stone-50 border-stone-200"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <CategoryBadge category={bldg.category} />
+                        {bldg.classroom_code && (
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-300">
+                            {bldg.classroom_code}
+                          </span>
+                        )}
+                        {bldg.alias && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                            {bldg.alias}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-sm font-bold text-stone-900 truncate">
+                        {bldg.name_zh}
+                      </h3>
+
+                      {bldg.name_en && (
+                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                          {bldg.name_en}
+                        </p>
+                      )}
+
+                      {/* Department snippet */}
+                      {bldg.departments && bldg.departments.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {bldg.departments.slice(0, 2).map((dept, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] text-stone-600 bg-stone-100/80 px-1.5 py-0.5 rounded border border-stone-200 truncate max-w-[180px]"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                          {bldg.departments.length > 2 && (
+                            <span className="text-[10px] text-stone-400 self-center">
+                              +{bldg.departments.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <ChevronRight
+                      className={`w-4 h-4 mt-2 shrink-0 transition-transform ${
+                        isSelected ? "text-blue-600 translate-x-0.5" : "text-stone-300"
+                      }`}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      )}
+      </aside>
+
+      {/* ================= RIGHT 3D CANVAS ================= */}
+      <main className="flex-1 h-full relative overflow-hidden bg-[#FAF8F5]">
+        {/* Top Control Bar Overlay */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <button
+            onClick={resetCamera}
+            className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/90 backdrop-blur-xs text-stone-700 hover:text-stone-900 border border-stone-300 hover:bg-white shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            title="重置全景鳥瞰視角"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>全景鳥瞰</span>
+          </button>
+        </div>
+
+        {/* 3D Scene Viewport */}
+        <div className="w-full h-full">
+          <CampusScene
+            buildings={buildings}
+            onSelectBuilding={handleSelectBuilding}
+          />
+        </div>
+
+        {/* Bottom Legend Overlay */}
+        <div className="absolute bottom-4 right-4 z-20 bg-white/90 backdrop-blur-xs p-3 rounded-2xl border border-stone-300 shadow-sm text-xs hidden sm:block">
+          <div className="font-semibold text-stone-700 text-[11px] mb-2 flex items-center gap-1">
+            <Info className="w-3.5 h-3.5 text-stone-500" />
+            <span>3D 地圖圖例與操作</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-stone-600">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+              <span>點選目標館舍</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-300 border border-stone-400" />
+              <span>一般建築幾何</span>
+            </div>
+          </div>
+          <p className="text-[10px] text-stone-400 mt-2 border-t border-stone-200 pt-1.5">
+            滑鼠左鍵旋轉 ‧ 右鍵平移 ‧ 滾輪縮放視角
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
@@ -220,8 +487,8 @@ export default function MapPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex-1 flex items-center justify-center text-stone-600 text-sm bg-[#FAF8F5]">
-          載入 3D 地圖中...
+        <div className="w-full h-screen flex items-center justify-center bg-[#FAF8F5] text-stone-500 text-sm">
+          載入中...
         </div>
       }
     >

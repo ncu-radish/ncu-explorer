@@ -77,8 +77,27 @@ export const courseApi = {
     }),
 };
 
+export interface Building {
+  id: string;
+  name_zh: string;
+  name_en?: string | null;
+  category?: string | null;
+  classroom_code?: string | null;
+  departments?: string[];
+  alias?: string | null;
+  description?: string | null;
+}
+
 // Explore & 3D Map API
 export const exploreApi = {
+  getBuildings: (params?: { q?: string; category?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.q) query.append("q", params.q);
+    if (params?.category) query.append("category", params.category);
+    const qs = query.toString();
+    return fetchApi<Building[]>(`/explore/buildings${qs ? `?${qs}` : ""}`);
+  },
+  getBuildingDetail: (id: string) => fetchApi<Building>(`/explore/buildings/${id}`),
   getLocations: (category?: string) => {
     const query = category ? `?category=${category}` : "";
     return fetchApi<any[]>(`/explore/locations${query}`);

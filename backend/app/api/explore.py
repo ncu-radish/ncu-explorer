@@ -1,11 +1,117 @@
 from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import or_, cast, String
 from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.models.tables import CampusLocation, CampusLifeInfo, ClubAndActivity, Course
-from app.schemas.explore import LocationResponse, LocationDetailResponse, CampusLifeItem
+from pathlib import Path
+import json
+from app.core.database import get_db, engine, Base
+from app.models.tables import CampusLocation, CampusLifeInfo, ClubAndActivity, Course, Building
+from app.schemas.explore import LocationResponse, LocationDetailResponse, CampusLifeItem, BuildingResponse
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
+
+def ensure_buildings_seeded(db: Session):
+    Base.metadata.create_all(bind=engine)
+    count = db.query(Building).count()
+    if count == 0:
+        buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
+        if buildings_file.exists():
+            with open(buildings_file, "r", encoding="utf-8") as f:
+                bldgs = json.load(f)
+            for b in bldgs:
+                db.add(Building(
+                    id=b["id"],
+                    name_zh=b["name_zh"],
+                    name_en=b.get("name_en"),
+                    category=b.get("category"),
+                    classroom_code=b.get("classroom_code"),
+                    departments=b.get("departments") or [],
+                    alias=b.get("alias"),
+                    description=b.get("description"),
+                ))
+            db.commit()
+
+
+# Common NCU department/school abbreviations for smarter search
+COMMON_ACRONYMS = {
+    "資工": "資訊工程",
+    "資管": "資訊管理",
+    "電機": "電機工程",
+    "通訊": "通訊工程",
+    "機械": "機械工程",
+    "土木": "土木工程",
+    "化材": "化學工程與材料工程",
+    "生科": "生命科學",
+    "生醫": "生醫科學與工程",
+    "光電": "光電科學與工程",
+    "企管": "企業管理",
+    "財金": "財務金融",
+    "經研": "經濟",
+    "中研": "中國文學",
+    "英文": "英美語文",
+    "法文": "法國語文",
+    "地科": "地球科學",
+    "大氣": "大氣科學",
+}
+
+
+@router.get("/buildings", response_model=List[BuildingResponse])
+def get_buildings(
+    q: Optional[str] = Query(None, description="搜尋關鍵字 (id, name_zh, name_en, classroom_code, alias, departments)"),
+    category: Optional[str] = Query(None, description="建築物分類篩選"),
+    db: Session = Depends(get_db)
+):
+    ensure_buildings_seeded(db)
+    query = db.query(Building)
+
+    if category and category.lower() != "all":
+        query = query.filter(Building.category == category)
+
+    all_bldgs = query.order_by(Building.name_zh).all()
+
+    if q and q.strip():
+        term = q.strip().lower()
+        expanded_term = COMMON_ACRONYMS.get(q.strip(), "").lower()
+
+        matched = []
+        for b in all_bldgs:
+            id_val = (b.id or "").lower()
+            name_zh_val = (b.name_zh or "").lower()
+            name_en_val = (b.name_en or "").lower()
+            code_val = (b.classroom_code or "").lower()
+            alias_val = (b.alias or "").lower()
+            dept_vals = [(d or "").lower() for d in (b.departments or [])]
+            desc_val = (b.description or "").lower()
+
+            def matches(keyword: str) -> bool:
+                if not keyword:
+                    return False
+                return (
+                    keyword in id_val
+                    or keyword in name_zh_val
+                    or keyword in name_en_val
+                    or keyword in code_val
+                    or keyword in alias_val
+                    or any(keyword in d for d in dept_vals)
+                    or keyword in desc_val
+                )
+
+            if matches(term) or (expanded_term and matches(expanded_term)):
+                matched.append(b)
+
+        return matched
+
+    return all_bldgs
+
+
+@router.get("/buildings/{building_id}", response_model=BuildingResponse)
+def get_building_detail(building_id: str, db: Session = Depends(get_db)):
+    ensure_buildings_seeded(db)
+    bldg = db.query(Building).filter(Building.id == building_id).first()
+    if not bldg:
+        raise HTTPException(status_code=404, detail=f"找不到指定的建築物 ({building_id})")
+    return bldg
+
 
 @router.get("/locations", response_model=List[LocationResponse])
 def get_all_locations(

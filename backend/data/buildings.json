@@ -1,0 +1,661 @@
+[
+  {
+    "id": "bldg_dorm_hsi_wang",
+    "name_zh": "曦望居",
+    "name_en": "Hsi Wang Dorm",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [
+      "北區傳達室"
+    ],
+    "alias": null,
+    "description": "<ol>\n<li>依地形分為 A 棟與 B 棟，為男女分棟之性別友善宿舍。</li>\n<li>宿舍設有 3 部電梯。</li>\n<li>房型分雙人與單人套房宿舍。</li>\n<li>2 人房分為床組同側與雙側之上鋪床型，</li>\n<li>單人房為下鋪床型。</li>\n<li>夜間自主熄大燈、24 小時刷卡門禁。</li>\n<li>寢室無公用電扇，需自備。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_ncu_guest_house",
+    "name_zh": "中大會館",
+    "name_en": "NCU Guest House",
+    "category": "dorm",
+    "classroom_code": "HO2",
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層，地上 5 層之建物。</li>\n<li>走廊末端設有 B1 ~ 5 樓無障礙電梯一座。</li>\n<li>性別友善宿舍，提供大學部、碩、博之男、女、多元性別同學申請。</li>\n<li>寢室分為單人與雙人寢室，申請性別僅以寢室為單位區分，其他資源共享。</li>\n<li>5 樓分配以任務使用作導向，部分期間提供教務處當作闈場使用。</li>\n<li>位置坐落於北區宿舍群，由北區傳達室處理宿舍事務。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n<li>計算機中心不提供宿舍網路，同學需自備或洽詢電信廠商。</li>\n<li>宿舍無提供冰箱、吹風機、床墊等用品，同學需自備（現場若有可使用，但損壞不維修）。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_international",
+    "name_zh": "國際學生宿舍",
+    "name_en": "International Student Dormitory",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [
+      "住宿服務組"
+    ],
+    "alias": null,
+    "description": "<ol>\n<li>112 年更為大學部女生宿舍，為 2 人一寢之套房宿舍，申請方式為舊生登記抽籤。</li>\n<li>為下鋪型床組，書桌無檯燈需自備。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_g1",
+    "name_zh": "學生女一舍",
+    "name_en": "female Dorm #1",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 3 層 4 人雅房舊生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_g2",
+    "name_zh": "學生女二舍",
+    "name_en": "female Dorm #2",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 3 層 4 人雅房新生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_g3",
+    "name_zh": "學生女三舍",
+    "name_en": "female Dorm #3",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [
+      "西區傳達室"
+    ],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 3 層 4 人雅房舊生宿舍，設有無障礙電梯 1 部。</li>\n<li>1 樓為共用之室內洗、曬衣場；韻律室與交誼廳暨簡易廚房，無寢室設備。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_g4",
+    "name_zh": "學生女四舍",
+    "name_en": "female Dorm #4",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 5 層建物，4 人雅房新生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_g14",
+    "name_zh": "學生女十四舍",
+    "name_en": "female Dorm #14",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [
+      "東區傳達室"
+    ],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層，地上 12 層之 4 人套房宿舍，設有 4 部電梯</li>\n<li>1 樓有愛心寢室 10 間，設有下鋪提供有需要或臨時受傷學生申請。</li>\n<li>8 ~ 12 樓為研究生宿舍；2 ~ 7 樓為大學部舊生宿舍</li>\n<li>寢室浴室不含浴簾，需要可自行購買。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b3",
+    "name_zh": "學生男三舍",
+    "name_en": "Male Dorm #3",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 3 層之 4 人雅房舊生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b5",
+    "name_zh": "學生男五舍",
+    "name_en": "Male Dorm #5",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [
+      "南區傳達室"
+    ],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 3 層建物，2人雅房，男研究生宿舍，設有無障礙電梯一座。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自主熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b6",
+    "name_zh": "學生男六舍",
+    "name_en": "Male Dorm #6",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層、地上 3 層之雅房宿舍； 1、2 樓為雙人寢室、3 樓為單人寢室。</li>\n<li>寢室無公用電扇、無桌燈需自備。</li>\n<li>部分公共空間與男七舍共同使用。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b7",
+    "name_zh": "學生男七舍",
+    "name_en": "Male Dorm #7",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層地上 3 層之 4 人雅房舊生宿舍。</li>\n<li>部分公共空間與男六舍共同使用</li>\n<li>一樓為松果餐廳。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b9",
+    "name_zh": "學生男九舍",
+    "name_en": "Male Dorm #9",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層地上 5 層之 4 人雅房新生宿舍。</li>\n<li>3 ~ 5 樓均設有室內曬衣場、2 樓設有簡易廚房。</li>\n<li>男9A舍、男9B舍 中間連接處 3 樓設有共用之多功能活動室，4 樓有閱讀室。</li>\n<li>寢室冷氣電力自付，使用冷氣可至北區傳達室旁之儲值機購買電力計費儲值卡。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b11",
+    "name_zh": "學生男十一舍",
+    "name_en": "Male Dorm #11",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地下 1 層、地上 5 層之 4 人雅房舊生宿舍，有電梯；地下室為書局、眼鏡行商場。</li>\n<li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女 14 舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b12",
+    "name_zh": "學生男十二舍",
+    "name_en": "Male Dorm #12",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>為地上 5 層之 4 人雅房舊生宿舍，無電梯。</li>\n<li>一樓有 4 間特殊房，下鋪床位，床組尺寸 220 &times; 110 cm，提供受傷同學或身材壯碩同學住宿</li>\n<li>寢室冷氣電力自付，使用冷氣需至北區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>寢室床組四角落各有 5 &times; 5cm柱子</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_b13",
+    "name_zh": "學生男十三舍",
+    "name_en": "Male Dorm #13",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol>\n<li>因位於坡地，面對校園為 5 樓之 8 層樓建物，無電梯。</li>\n<li>為 4 人上舖之套房宿舍。</li>\n<li>分別於 1 樓、3 樓與5 樓設置 24 小時門禁刷卡大門。</li>\n<li>1 樓、5 樓設有簡易廚房，各樓層均設有公用空間。</li>\n<li>0 時 ~ 6 時自主熄大燈、24 小時刷卡門禁。</li>\n<li>寢室無公用電扇，若有需要請自備小型電扇</li>\n<li>為大一新生宿舍，建議自備掃具維護浴廁整潔。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電），可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n</ol>"
+  },
+  {
+    "id": "bldg_dorm_staff",
+    "name_zh": "教職員宿舍",
+    "name_en": "Faculty & Staff Dorm",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_hong_jing",
+    "name_zh": "鴻經館",
+    "name_en": "Hong-Jing Building",
+    "category": "teaching",
+    "classroom_code": "M",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_general_edu",
+    "name_zh": "綜教館",
+    "name_en": "General Education Building",
+    "category": "teaching",
+    "classroom_code": "O",
+    "departments": [
+      "語言中心"
+    ],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_mgmt_1",
+    "name_zh": "志希館",
+    "name_en": "Zhi-Xi Building",
+    "category": "teaching",
+    "classroom_code": "I",
+    "departments": [
+      "管理學院辦公室",
+      "產學深耕總中心",
+      "IMBA辦公室",
+      "EMI辦公室",
+      "電算中心"
+    ],
+    "alias": "管理一館;管一",
+    "description": ""
+  },
+  {
+    "id": "bldg_mgmt_2",
+    "name_zh": "管理二館",
+    "name_en": "Management Building #2",
+    "category": "teaching",
+    "classroom_code": "I1",
+    "departments": [
+      "資訊管理學系系辦",
+      "經濟系系辦",
+      "企業管理學系系辦",
+      "財務金融學系系辦",
+      "人力資源管理研究所辦公室",
+      "產業經濟研究所辦公室",
+      "工業管理研究所辦公室",
+      "會計研究所辦公室",
+      "管院電算中心"
+    ],
+    "alias": "館二",
+    "description": ""
+  },
+  {
+    "id": "bldg_science_0",
+    "name_zh": "理學院教學館",
+    "name_en": "Classroom Building for College of Science",
+    "category": "teaching",
+    "classroom_code": "H2",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_science_1",
+    "name_zh": "科學一館",
+    "name_en": "Science Building #1",
+    "category": "teaching",
+    "classroom_code": "S",
+    "departments": [
+      "地科院辦公室"
+    ],
+    "alias": "科一",
+    "description": ""
+  },
+  {
+    "id": "bldg_science_2",
+    "name_zh": "科學二館",
+    "name_en": "Science Building #2",
+    "category": "teaching",
+    "classroom_code": "S1",
+    "departments": [
+      "理學院辦公室"
+    ],
+    "alias": "科二",
+    "description": ""
+  },
+  {
+    "id": "bldg_science_3",
+    "name_zh": "科學三館",
+    "name_en": "Science Building #3",
+    "category": "teaching",
+    "classroom_code": "S2",
+    "departments": [],
+    "alias": "科三",
+    "description": ""
+  },
+  {
+    "id": "bldg_science_4",
+    "name_zh": "健雄館(科四館)",
+    "name_en": "Chien-Shiung Building (Science Building #4)",
+    "category": "teaching",
+    "classroom_code": "S4",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_science_5",
+    "name_zh": "科學五館",
+    "name_en": "Science Building #5",
+    "category": "teaching",
+    "classroom_code": "S5",
+    "departments": [],
+    "alias": "科五",
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_1",
+    "name_zh": "工程一館",
+    "name_en": "Engineering Building #1",
+    "category": "teaching",
+    "classroom_code": "E",
+    "departments": [],
+    "alias": "工一",
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_2",
+    "name_zh": "工程二館",
+    "name_en": "Engineering Building #2",
+    "category": "teaching",
+    "classroom_code": "E1",
+    "departments": [
+      "電機工程學系系辦",
+      "通訊工程學系系辦"
+    ],
+    "alias": "工二",
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_m",
+    "name_zh": "機械館",
+    "name_en": "Mechanical Engineering Building",
+    "category": "teaching",
+    "classroom_code": "E2",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_env",
+    "name_zh": "環工化工館",
+    "name_en": "Environmental & Chemical Engineering Building",
+    "category": "teaching",
+    "classroom_code": "E3",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_ml",
+    "name_zh": "機電實驗室",
+    "name_en": "Mechatronics Laboratory",
+    "category": "teaching",
+    "classroom_code": "E4",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_ecce",
+    "name_zh": "大型力學實驗室",
+    "name_en": "Experiment Center of Civil Engineering",
+    "category": "teaching",
+    "classroom_code": "E5",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_5",
+    "name_zh": "工程五館",
+    "name_en": "Engineering Building #5",
+    "category": "teaching",
+    "classroom_code": "E6",
+    "departments": [
+      "資訊電機學院辦公室",
+      "工學院辦公室",
+      "資訊工程學系系辦"
+    ],
+    "alias": "工五",
+    "description": ""
+  },
+  {
+    "id": "bldg_eng_wind",
+    "name_zh": "風洞實驗室及品保中心",
+    "name_en": "Wind Tunnol Laboratory / Center of Quality Assurance",
+    "category": "teaching",
+    "classroom_code": "EQ",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_rc2",
+    "name_zh": "研究中心大樓二期",
+    "name_en": "Research Center Building #2",
+    "category": "teaching",
+    "classroom_code": "R3",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_space",
+    "name_zh": "太空及遙測研究中心",
+    "name_en": "Center for Space & Remote Sensing Research",
+    "category": "teaching",
+    "classroom_code": "R2",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_exper_1",
+    "name_zh": "實習一廠",
+    "name_en": "Experimental Building #1",
+    "category": "teaching",
+    "classroom_code": "EH",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_exper_3",
+    "name_zh": "實習三廠",
+    "name_en": "Experimental Building #3",
+    "category": "teaching",
+    "classroom_code": "H3",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_art_1",
+    "name_zh": "文學⼀館",
+    "name_en": "Liberal Arts Building #1",
+    "category": "teaching",
+    "classroom_code": "A",
+    "departments": [],
+    "alias": "文一",
+    "description": ""
+  },
+  {
+    "id": "bldg_art_2",
+    "name_zh": "文學二館",
+    "name_en": "Liberal Arts Building #2",
+    "category": "teaching",
+    "classroom_code": "C2",
+    "departments": [],
+    "alias": "文二",
+    "description": ""
+  },
+  {
+    "id": "bldg_art_3",
+    "name_zh": "人文社會科學大樓",
+    "name_en": "Humanities & Social Sciences Building",
+    "category": "teaching",
+    "classroom_code": "LS",
+    "departments": [
+      "文學院辦公室"
+    ],
+    "alias": "文三;文學三館",
+    "description": ""
+  },
+  {
+    "id": "bldg_hk",
+    "name_zh": "客家學院大樓",
+    "name_en": "College of Hakka Studies Building",
+    "category": "teaching",
+    "classroom_code": "HK",
+    "departments": [
+      "客家學院辦公室"
+    ],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_optics",
+    "name_zh": "國鼎光電大樓",
+    "name_en": "Kwoh-Ting Optics and Photonics Building",
+    "category": "teaching",
+    "classroom_code": "IL",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_admin",
+    "name_zh": "行政大樓",
+    "name_en": "Administrative Building",
+    "category": "function",
+    "classroom_code": "A1",
+    "departments": [
+      "總務處",
+      "秘書室"
+    ],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_lib_main",
+    "name_zh": "總圖書館",
+    "name_en": "Main Library",
+    "category": "function",
+    "classroom_code": "L2",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_lib_old",
+    "name_zh": "中正圖書館",
+    "name_en": "Zhong-Zheng Library (Old Library)",
+    "category": "function",
+    "classroom_code": "L",
+    "departments": [
+      "服務學習發展中心",
+      "K書中心",
+      "學務處",
+      "輔導處",
+      "諮商輔導中心"
+    ],
+    "alias": "舊圖書館",
+    "description": ""
+  },
+  {
+    "id": "bldg_lib_kwoh_ting",
+    "name_zh": "國鼎圖書資料館",
+    "name_en": "Kwoh-Ting Library and Archives",
+    "category": "function",
+    "classroom_code": "L3",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_ihouse",
+    "name_zh": "享想空間",
+    "name_en": "iHouse",
+    "category": "function",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_zhi_dao_hall",
+    "name_zh": "志道樓",
+    "name_en": "Zhi-Dao Hall",
+    "category": "function",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_jude",
+    "name_zh": "據德樓",
+    "name_en": "Ju-De Hall",
+    "category": "function",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_youyi",
+    "name_zh": "游藝館",
+    "name_en": "You-Yi Hall",
+    "category": "function",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_grand_lecture",
+    "name_zh": "大講堂",
+    "name_en": "Grand Lecture Hall",
+    "category": "function",
+    "classroom_code": "LH",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_auditorium",
+    "name_zh": "大禮堂",
+    "name_en": "Multi-functional Auditorium",
+    "category": "function",
+    "classroom_code": "MA",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_tr",
+    "name_zh": "教學研究綜合大樓",
+    "name_en": "Teaching & Research Building",
+    "category": "function",
+    "classroom_code": "TR",
+    "departments": [
+      "永續與綠能科技研究學院辦公室",
+      "國際事務處",
+      "教務處",
+      "教學發展中心"
+    ],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_rcast",
+    "name_zh": "前瞻科技中心",
+    "name_en": "Research Center for Advanced Science and Technology",
+    "category": "function",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_song_guo",
+    "name_zh": "松果館",
+    "name_en": "Song-Guo \"Pine Cone\" Building",
+    "category": "function",
+    "classroom_code": "IC",
+    "departments": [
+      "產學營運中心"
+    ],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_res_gar",
+    "name_zh": "松苑餐廳",
+    "name_en": "Pine Garden Restaurant",
+    "category": "restaurant",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_swim",
+    "name_zh": "室內游泳池",
+    "name_en": "Indoor Swimming Pool",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_yireng",
+    "name_zh": "依仁堂",
+    "name_en": "Yi-Reng Hall",
+    "category": "sport",
+    "classroom_code": "YH",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  }
+]

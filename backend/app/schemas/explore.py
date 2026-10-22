@@ -33,3 +33,17 @@ class CampusLifeItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BuildingResponse(BaseModel):
+    id: str
+    name_zh: str
+    name_en: Optional[str] = None
+    category: Optional[str] = None
+    classroom_code: Optional[str] = None
+    departments: Optional[List[str]] = []
+    alias: Optional[str] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True

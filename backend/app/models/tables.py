@@ -118,3 +118,16 @@ class SystemConfig(Base):
     active_llm_model = Column(String(50), default="gemma3:4b", nullable=False)
     event_trigger_prob = Column(Float, default=0.35, nullable=False)
     system_prompt_override = Column(Text, nullable=True)
+
+
+class Building(Base):
+    __tablename__ = "buildings"
+
+    id = Column(String(50), primary_key=True, index=True)
+    name_zh = Column(String(100), nullable=False, index=True)
+    name_en = Column(String(100), nullable=True, index=True)
+    category = Column(String(50), nullable=True, index=True)
+    classroom_code = Column(String(20), nullable=True, index=True)
+    departments = Column(JSON, nullable=True)  # List[str]
+    alias = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
