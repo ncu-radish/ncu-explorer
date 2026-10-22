@@ -1,13 +1,12 @@
-name: Deploy frontend to Self-Hosted Server
+name: Backend CD
 
 on:
   push:
     branches:
       - master
     paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-deploy.yml'
-
+      - 'backend/**'
+      - '.github/workflows/backend-cd.yml'
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -47,14 +46,16 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
 
-            echo "=== 建置前端 Next.js ==="
-            cd frontend
-            npm ci
-            npm run build
-            cd ..
+            echo "=== 更新後端 Python 依賴 ==="
+            if [ -f "backend/.venv/bin/pip" ]; then
+              ./backend/.venv/bin/pip install -r backend/requirements.txt
+            else
+              echo "找不到虛擬環境，請確認 backend/.venv 是否存在"
+              exit 1
+            fi
 
             echo "=== 重啟系統服務 ==="
-            sudo systemctl restart ncu-frontend
+            sudo systemctl restart ncu-backend
 
             echo "=== 部署完成 ==="
           EOF
