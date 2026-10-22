@@ -293,11 +293,11 @@ export function CampusScene({
         if (interactive) selectBuilding(null);
       }}
     >
-      <color attach="background" args={["#0c111d"]} />
-      <ambientLight intensity={0.7} />
+      <color attach="background" args={["#FAF8F5"]} />
+      <ambientLight intensity={0.9} />
       <directionalLight
         position={[40, 60, 30]}
-        intensity={1.4}
+        intensity={1.5}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-70}
@@ -305,18 +305,18 @@ export function CampusScene({
         shadow-camera-top={70}
         shadow-camera-bottom={-70}
       />
-      <directionalLight position={[-40, 30, -30]} intensity={0.4} color="#60a5fa" />
+      <directionalLight position={[-40, 30, -30]} intensity={0.4} color="#fef3c7" />
 
-      {/* Campus Ground Plane (Pastel Sage Green & Paths) */}
+      {/* Campus Ground Plane (Warm Beige & Paths) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
         <planeGeometry args={[160, 160]} />
-        <meshStandardMaterial color="#192437" roughness={0.9} />
+        <meshStandardMaterial color="#E8E3D8" roughness={0.9} />
       </mesh>
 
-      {/* Great Lawn Area (大草坪) */}
+      {/* Great Lawn Area (Soft Pastel Sage Green) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[10, 0.05, -5]} receiveShadow>
         <circleGeometry args={[22, 32]} />
-        <meshStandardMaterial color="#2d4a3e" roughness={0.8} />
+        <meshStandardMaterial color="#D1DDD0" roughness={0.8} />
       </mesh>
 
       {/* Render external GLB if present, else fallback to procedural buildings */}

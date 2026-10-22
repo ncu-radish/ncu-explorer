@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Compass, RotateCcw, MapPin, Maximize2 } from "lucide-react";
+import { Compass, RotateCcw, MapPin, Maximize2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useSimulatorStore } from "@/store/useSimulatorStore";
 import { OnboardingModal } from "@/components/simulator/OnboardingModal";
@@ -18,7 +18,7 @@ const CampusScene = dynamic(
     ssr: false,
     loading: () => (
       <div className="w-full h-full flex items-center justify-center bg-black/40 text-gray-500 text-xs">
-        載入 3D 校園沙盤...
+        載入 3D 校園...
       </div>
     ),
   }
@@ -67,35 +67,49 @@ export default function SimulatorPage() {
       <SummaryModal isOpen={isGameOver} />
 
       {/* Top Simulator Control Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-stone-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-cyan-400 flex items-center justify-center border border-blue-400/30">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors border border-stone-300 shadow-xs"
+            title="回首頁"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>回首頁</span>
+          </Link>
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
             <Compass className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               中央大學一週生活模擬器
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-cyan-300 border border-blue-500/30">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                 Turn {Math.min(21, currentTurn + 1)} / 21
               </span>
             </h1>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-stone-500">
               {currentSlotInfo.title ? `當前行程：${currentSlotInfo.title}` : "正在排程中..."}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/explore"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs transition-colors border border-stone-300 shadow-xs"
+          >
+            <span>相關資料</span>
+          </Link>
           <button
             onClick={resetSimulation}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-panel hover:bg-white/10 text-gray-300 hover:text-white text-xs transition-colors border border-white/10 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs transition-colors border border-stone-300 shadow-xs cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>重新開局</span>
           </button>
           <Link
             href="/map"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-cyan-300 text-xs transition-colors border border-cyan-500/30"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             <span>全螢幕 3D 地圖</span>
@@ -122,10 +136,10 @@ export default function SimulatorPage() {
         {/* Right Column: 3D PiP + Story Narrative (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-4">
           {/* 3D PiP Mini Map */}
-          <div className="h-48 sm:h-52 rounded-2xl glass-panel overflow-hidden relative border border-white/10">
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md text-xs text-cyan-300 border border-white/10">
-              <MapPin className="w-3 h-3 text-cyan-400" />
-              <span>3D 場域子母畫面：{currentLocationName || "中大校園"}</span>
+          <div className="h-48 sm:h-52 rounded-2xl bg-white overflow-hidden relative border border-stone-200 shadow-xs">
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
+              <MapPin className="w-3 h-3 text-blue-600" />
+              <span>3D 場景：{currentLocationName || "中大校園"}</span>
             </div>
 
             <CampusScene

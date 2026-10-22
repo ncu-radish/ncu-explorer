@@ -20,13 +20,13 @@ export function WeeklySchedule({
   onSelectSlot?: (slot: ScheduleSlot) => void;
 }) {
   return (
-    <div className="glass-panel rounded-2xl p-4 flex flex-col h-full border border-white/10">
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+    <div className="bg-white rounded-2xl p-4 flex flex-col h-full border border-stone-200 shadow-xs">
+      <div className="flex items-center justify-between mb-3 pb-2 border-b border-stone-200">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-sm font-bold text-white">一週動態行事曆 (21 時段)</h3>
+          <Calendar className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm font-bold text-stone-900">一週動態行事曆 (21 時段)</h3>
         </div>
-        <span className="text-[11px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+        <span className="text-[11px] font-mono text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
           進度 {Math.min(21, currentTurn + 1)} / 21
         </span>
       </div>
@@ -34,7 +34,7 @@ export function WeeklySchedule({
       <div className="grid grid-cols-7 gap-1.5 overflow-x-auto text-center flex-1">
         {DAYS.map((dayName, dIdx) => (
           <div key={dIdx} className="flex flex-col gap-1 min-w-[70px]">
-            <span className="text-[11px] font-bold text-gray-400 py-1 bg-white/5 rounded-t-lg">
+            <span className="text-[11px] font-bold text-stone-600 py-1 bg-stone-100 rounded-t-lg">
               {dayName}
             </span>
             {SLOTS.map((slotMeta, sIdx) => {
@@ -43,11 +43,11 @@ export function WeeklySchedule({
               const isCurrent = turnIdx === currentTurn;
               const isPast = turnIdx < currentTurn;
 
-              let typeColor = "border-white/5 bg-white/5 text-gray-400";
+              let typeColor = "border-stone-200 bg-stone-50 text-stone-600";
               if (slot?.type === "course") {
-                typeColor = "border-blue-500/30 bg-blue-500/10 text-blue-300";
+                typeColor = "border-blue-200 bg-blue-50 text-blue-800";
               } else if (slot?.type === "club") {
-                typeColor = "border-purple-500/30 bg-purple-500/10 text-purple-300";
+                typeColor = "border-purple-200 bg-purple-50 text-purple-800";
               }
 
               return (
@@ -56,25 +56,27 @@ export function WeeklySchedule({
                   onClick={() => slot && onSelectSlot && onSelectSlot(slot)}
                   className={`p-1.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer h-20 ${typeColor} ${
                     isCurrent
-                      ? "ring-2 ring-cyan-400 bg-blue-600/30 shadow-md shadow-cyan-500/20 scale-[1.02]"
+                      ? "ring-2 ring-blue-500 bg-blue-100 shadow-xs scale-[1.02]"
                       : isPast
                       ? "opacity-60"
-                      : "hover:border-cyan-500/40"
+                      : "hover:border-stone-400"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[9px] font-mono mb-1">
-                    <span className="text-gray-400">{slotMeta.label.slice(0, 1)}</span>
-                    {isCurrent && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                    )}
+                  <div>
+                    <span className="text-[9px] font-mono block opacity-75">
+                      {slotMeta.key === "morning" ? "早" : slotMeta.key === "afternoon" ? "午" : "晚"}
+                    </span>
+                    <span className="text-[11px] font-bold line-clamp-2 leading-tight">
+                      {slot?.title || "自由探索"}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold line-clamp-2 leading-tight">
-                    {slot?.title || "自由時間"}
-                  </span>
-                  <span className="text-[8px] text-gray-400 truncate flex items-center gap-0.5 mt-auto">
-                    <MapPin className="w-2.5 h-2.5 shrink-0" />
-                    {slot?.location_name || "校園"}
-                  </span>
+
+                  {slot?.location_name && (
+                    <span className="text-[9px] opacity-75 truncate flex items-center gap-0.5">
+                      <MapPin className="w-2.5 h-2.5 shrink-0" />
+                      {slot.location_name}
+                    </span>
+                  )}
                 </div>
               );
             })}
