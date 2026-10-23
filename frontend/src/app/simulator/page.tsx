@@ -10,6 +10,7 @@ import { StatsBar } from "@/components/simulator/StatsBar";
 import { WeeklySchedule } from "@/components/simulator/WeeklySchedule";
 import { StoryDialog } from "@/components/simulator/StoryDialog";
 import { SummaryModal } from "@/components/simulator/SummaryModal";
+import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -62,10 +63,11 @@ export default function SimulatorPage() {
 
   const currentSlotInfo = weeklySchedule[currentTurn] || {};
   const dayName = DAYS[Math.max(0, Math.min(4, (currentSlotInfo.day || 1) - 1))];
-  const slotName = SLOTS_MAP[currentSlotInfo.slot || "slot_1"] || currentSlotInfo.time_label || "當前時段";
+  const slotName = currentSlotInfo.display_time || currentSlotInfo.time_label || SLOTS_MAP[currentSlotInfo.slot || "slot_1"] || "當前時段";
+  const totalTurns = weeklySchedule.length || 30;
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-5">
+    <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-4 sm:gap-5">
       {/* Onboarding Dialog */}
       <OnboardingModal isOpen={!sessionId} />
 
@@ -90,7 +92,7 @@ export default function SimulatorPage() {
             <h1 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               中央大學一週生活模擬器
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Turn {Math.min(30, currentTurn + 1)} / 30
+                Turn {Math.min(totalTurns, currentTurn + 1)} / {totalTurns}
               </span>
             </h1>
             <p className="text-xs text-stone-500">
@@ -125,6 +127,16 @@ export default function SimulatorPage() {
 
       {/* Four Dimensions Stats Bar */}
       <StatsBar stats={stats} />
+
+      {/* Dedicated Campus Time & Atmosphere Widget */}
+      <CampusTimeWidget
+        slot={currentSlotInfo}
+        currentTurn={currentTurn}
+        totalTurns={totalTurns}
+        onFocusLocation={() => {
+          if (currentLocationId) setFocusedLoc(currentLocationId);
+        }}
+      />
 
       {/* Main Game Interface: Left Calendar + Right Narrative & 3D PiP */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">

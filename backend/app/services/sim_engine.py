@@ -30,15 +30,37 @@ logger = logging.getLogger(__name__)
 
 DAY_NAMES = ["週一", "週二", "週三", "週四", "週五"]
 
-SLOT_CONFIG = [
-    ("slot_1", "晨光早課 (08:00~10:00 第1-2節)", ["1", "2"]),
-    ("slot_2", "上午主修 (10:00~12:00 第3-4節)", ["3", "4"]),
-    ("slot_3", "午膳漫步 (12:00~13:00 午間Z節)", ["Z"]),
-    ("slot_4", "午後專修 (13:00~15:00 第5-6節)", ["5", "6"]),
-    ("slot_5", "下晝研討 (15:00~17:00 第7-8節)", ["7", "8"]),
-    ("slot_6", "晚間校園 (18:00~21:00 社團夜色)", ["9", "A", "B", "C"]),
-]
-SLOT_NAMES = {cfg[0]: cfg[1] for cfg in SLOT_CONFIG}
+NCU_PERIOD_TIME: dict[str, tuple[str, str]] = {
+    "1": ("08:00", "08:50"),
+    "2": ("09:00", "09:50"),
+    "3": ("10:00", "10:50"),
+    "4": ("11:00", "11:50"),
+    "Z": ("12:00", "12:50"),
+    "5": ("13:00", "13:50"),
+    "6": ("14:00", "14:50"),
+    "7": ("15:00", "15:50"),
+    "8": ("16:00", "16:50"),
+    "9": ("17:00", "17:50"),
+    "A": ("18:30", "19:20"),
+    "B": ("19:25", "20:15"),
+    "C": ("20:20", "21:10"),
+    "D": ("21:15", "22:05"),
+}
+
+PERIOD_ORDER = ["1", "2", "3", "4", "Z", "5", "6", "7", "8", "9", "A", "B", "C", "D"]
+
+def get_periods_time_range(periods: list[str]) -> tuple[str, str, str]:
+    """Given a list of period strings like ['2', '3', '4'], returns ('09:00', '11:50', '第 2-4 節 (09:00~11:50)')"""
+    sorted_p = sorted([p for p in periods if p in NCU_PERIOD_TIME], key=lambda x: PERIOD_ORDER.index(x))
+    if not sorted_p:
+        return ("08:00", "09:50", "08:00~09:50")
+    start = NCU_PERIOD_TIME[sorted_p[0]][0]
+    end = NCU_PERIOD_TIME[sorted_p[-1]][1]
+    if len(sorted_p) == 1:
+        p_str = f"第 {sorted_p[0]} 節"
+    else:
+        p_str = f"第 {sorted_p[0]}-{sorted_p[-1]} 節"
+    return start, end, f"{p_str} ({start}~{end})"
 
 DAY_MAP = {
     "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5,
@@ -379,7 +401,7 @@ class SimEngine:
             if total_credits == prev_credits:
                 break
 
-        # 3. 鋪設週一到週五完整時間軸 (5天 x 6時段 = 30時段)
+        # 3. 鋪設週一到週五完整真實作息時間軸 (Google Calendar 風格連續日程)
         schedule: list[ScheduleSlot] = []
 
         dining_spots = [
@@ -398,91 +420,220 @@ class SimEngine:
 
         for day in range(1, 6):
             day_name = DAY_NAMES[day - 1]
-            for slot_key, slot_label, target_pers in SLOT_CONFIG:
-                # 尋找是否有開課排在該天該節次
-                matched_course = None
-                for c in enrolled_courses:
-                    for cd, pers in c["parsed_periods"]:
-                        if cd == day and any(p in target_pers for p in pers):
-                            matched_course = c
-                            break
-                    if matched_course:
-                        break
+            day_courses = []
+            for c in enrolled_courses:
+                for cd, pers in c["parsed_periods"]:
+                    if cd == day:
+                        s_time, e_time, p_label = get_periods_time_range(pers)
+                        day_courses.append({
+                            "course": c,
+                            "periods": pers,
+                            "start_time": s_time,
+                            "end_time": e_time,
+                            "period_label": p_label,
+                        })
+            day_courses.sort(key=lambda x: x["start_time"])
 
-                if matched_course:
+            # (1) 晨光朝氣 · 宿舍起居 (07:30 ~ 08:30) - 方便一早宿舍出發與早餐模擬
+            schedule.append(ScheduleSlot(
+                day=day,
+                slot="07:30",
+                title="晨光朝氣 · 宿舍起居與出發",
+                type="dorm",
+                location_id="loc_dorm_boy9",
+                location_name="學生宿舍區",
+                start_time="07:30",
+                end_time="08:30",
+                display_time="07:30 ~ 08:30",
+                time_label=f"{day_name} 晨光起居 (07:30~08:30)",
+                periods=[]
+            ))
+
+            # (2) 上午時段：是否有上午課程 (start_time < 12:00)
+            m_courses = [dc for dc in day_courses if dc["start_time"] < "12:00"]
+            if m_courses:
+                for dc in m_courses:
+                    c = dc["course"]
                     loc_id, loc_name = map_campus_location(
-                        matched_course.get("location"),
-                        matched_course.get("name"),
+                        c.get("location"),
+                        c.get("name"),
                         dept
                     )
                     schedule.append(ScheduleSlot(
                         day=day,
-                        slot=slot_key,
-                        title=f"{matched_course['name']} ({matched_course['category']})",
+                        slot=dc["start_time"],
+                        title=f"{c['name']} ({c['category']})",
                         type="course",
                         location_id=loc_id,
                         location_name=loc_name,
-                        course_id=matched_course.get("code") or matched_course["name"],
-                        course_code=matched_course.get("code"),
-                        course_category=matched_course["category"],
-                        credits=matched_course["credits"],
-                        instructor=matched_course.get("teacher"),
-                        raw_schedule=matched_course.get("time"),
-                        time_label=f"{day_name} {slot_label}",
-                        periods=target_pers
+                        course_id=c.get("code") or c["name"],
+                        course_code=c.get("code"),
+                        course_category=c["category"],
+                        credits=c["credits"],
+                        instructor=c.get("teacher"),
+                        raw_schedule=c.get("time"),
+                        start_time=dc["start_time"],
+                        end_time=dc["end_time"],
+                        display_time=f"{dc['start_time']} ~ {dc['end_time']}",
+                        time_label=f"{day_name} {dc['period_label']}",
+                        periods=dc["periods"]
                     ))
-                elif slot_key == "slot_3":
-                    # 中午午休時段
-                    spot = dining_spots[(day - 1) % len(dining_spots)]
+            else:
+                # 上午無課：自主晨讀
+                spot = free_spots[(day * 2) % len(free_spots)]
+                schedule.append(ScheduleSlot(
+                    day=day,
+                    slot="09:30",
+                    title="晨曦漫步 · 圖書館自主研習",
+                    type="free",
+                    location_id=spot[0],
+                    location_name=spot[1],
+                    start_time="09:30",
+                    end_time="11:30",
+                    display_time="09:30 ~ 11:30",
+                    time_label=f"{day_name} 悠閒晨間 (09:30~11:30)",
+                    periods=["2", "3", "4"]
+                ))
+
+            # (3) 午膳時段 (12:00 ~ 13:00)
+            has_z_course = any("Z" in dc["periods"] for dc in day_courses)
+            if not has_z_course:
+                dining_spot = dining_spots[(day - 1) % len(dining_spots)]
+                schedule.append(ScheduleSlot(
+                    day=day,
+                    slot="12:00",
+                    title="校園午膳與漫步休憩",
+                    type="lunch",
+                    location_id=dining_spot[0],
+                    location_name=dining_spot[1],
+                    start_time="12:00",
+                    end_time="13:00",
+                    display_time="12:00 ~ 13:00",
+                    time_label=f"{day_name} 午膳漫步 (12:00~13:00)",
+                    periods=["Z"]
+                ))
+
+            # (4) 下午時段：是否有下午課程 (13:00 <= start_time < 18:00)
+            a_courses = [dc for dc in day_courses if "13:00" <= dc["start_time"] < "18:00"]
+            if a_courses:
+                for dc in a_courses:
+                    c = dc["course"]
+                    loc_id, loc_name = map_campus_location(
+                        c.get("location"),
+                        c.get("name"),
+                        dept
+                    )
                     schedule.append(ScheduleSlot(
                         day=day,
-                        slot=slot_key,
-                        title="校園午膳與漫步休憩",
-                        type="lunch",
-                        location_id=spot[0],
-                        location_name=spot[1],
-                        time_label=f"{day_name} {slot_label}",
-                        periods=target_pers
+                        slot=dc["start_time"],
+                        title=f"{c['name']} ({c['category']})",
+                        type="course",
+                        location_id=loc_id,
+                        location_name=loc_name,
+                        course_id=c.get("code") or c["name"],
+                        course_code=c.get("code"),
+                        course_category=c["category"],
+                        credits=c["credits"],
+                        instructor=c.get("teacher"),
+                        raw_schedule=c.get("time"),
+                        start_time=dc["start_time"],
+                        end_time=dc["end_time"],
+                        display_time=f"{dc['start_time']} ~ {dc['end_time']}",
+                        time_label=f"{day_name} {dc['period_label']}",
+                        periods=dc["periods"]
                     ))
-                elif slot_key == "slot_6":
-                    # 晚間時段 (社團或夜間生活)
-                    club_name = profile.clubs[(day - 1) % len(profile.clubs)] if profile.clubs else None
-                    if club_name and day in (2, 4):  # 常態週二、週四社課
-                        schedule.append(ScheduleSlot(
-                            day=day,
-                            slot=slot_key,
-                            title=f"{club_name} (社團課堂與交流)",
-                            type="club",
-                            location_id="loc_teaching",
-                            location_name="學生活動中心 / 綜教館",
-                            time_label=f"{day_name} {slot_label}",
-                            periods=target_pers
-                        ))
-                    else:
-                        spot = free_spots[day % len(free_spots)]
-                        schedule.append(ScheduleSlot(
-                            day=day,
-                            slot=slot_key,
-                            title="夜間自習與校園生活",
-                            type="free",
-                            location_id=spot[0],
-                            location_name=spot[1],
-                            time_label=f"{day_name} {slot_label}",
-                            periods=target_pers
-                        ))
+            else:
+                # 下午無課：自主探索
+                spot = free_spots[(day * 3) % len(free_spots)]
+                schedule.append(ScheduleSlot(
+                    day=day,
+                    slot="14:00",
+                    title="午後微風 · 校園自主探索與自習",
+                    type="free",
+                    location_id=spot[0],
+                    location_name=spot[1],
+                    start_time="14:00",
+                    end_time="16:00",
+                    display_time="14:00 ~ 16:00",
+                    time_label=f"{day_name} 午後自主 (14:00~16:00)",
+                    periods=["6", "7"]
+                ))
+
+            # (5) 晚間時段 (18:30 ~ 20:30)：夜間課程或社團交流
+            e_courses = [dc for dc in day_courses if dc["start_time"] >= "18:00"]
+            if e_courses:
+                for dc in e_courses:
+                    c = dc["course"]
+                    loc_id, loc_name = map_campus_location(
+                        c.get("location"),
+                        c.get("name"),
+                        dept
+                    )
+                    schedule.append(ScheduleSlot(
+                        day=day,
+                        slot=dc["start_time"],
+                        title=f"{c['name']} ({c['category']})",
+                        type="course",
+                        location_id=loc_id,
+                        location_name=loc_name,
+                        course_id=c.get("code") or c["name"],
+                        course_code=c.get("code"),
+                        course_category=c["category"],
+                        credits=c["credits"],
+                        instructor=c.get("teacher"),
+                        raw_schedule=c.get("time"),
+                        start_time=dc["start_time"],
+                        end_time=dc["end_time"],
+                        display_time=f"{dc['start_time']} ~ {dc['end_time']}",
+                        time_label=f"{day_name} {dc['period_label']}",
+                        periods=dc["periods"]
+                    ))
+            else:
+                club_name = profile.clubs[(day - 1) % len(profile.clubs)] if profile.clubs else None
+                if club_name and day in (2, 4):  # 常態週二、週四社課
+                    schedule.append(ScheduleSlot(
+                        day=day,
+                        slot="18:30",
+                        title=f"{club_name} (社團課堂與交流)",
+                        type="club",
+                        location_id="loc_teaching",
+                        location_name="學生活動中心 / 綜教館",
+                        start_time="18:30",
+                        end_time="20:30",
+                        display_time="18:30 ~ 20:30",
+                        time_label=f"{day_name} 晚間社團 (18:30~20:30)",
+                        periods=["A", "B"]
+                    ))
                 else:
-                    # 日間空堂
-                    spot = free_spots[(day + len(schedule)) % len(free_spots)]
+                    spot = free_spots[day % len(free_spots)]
                     schedule.append(ScheduleSlot(
                         day=day,
-                        slot=slot_key,
-                        title="空堂自主學習與探索",
+                        slot="18:30",
+                        title="晚風漫步 · 總圖書館研習與放空",
                         type="free",
                         location_id=spot[0],
                         location_name=spot[1],
-                        time_label=f"{day_name} {slot_label}",
-                        periods=target_pers
+                        start_time="18:30",
+                        end_time="20:30",
+                        display_time="18:30 ~ 20:30",
+                        time_label=f"{day_name} 晚間漫步 (18:30~20:30)",
+                        periods=["A", "B"]
                     ))
+
+            # (6) 深夜時光 · 宿舍生活 (21:30 ~ 23:00) - 方便夜間回宿舍與室友互動模擬
+            schedule.append(ScheduleSlot(
+                day=day,
+                slot="21:30",
+                title="夜幕深垂 · 宿舍夜生活與就寢",
+                type="dorm",
+                location_id="loc_dorm_boy9",
+                location_name="學生宿舍 / 宵夜街",
+                start_time="21:30",
+                end_time="23:00",
+                display_time="21:30 ~ 23:00",
+                time_label=f"{day_name} 深夜宿舍 (21:30~23:00)",
+                periods=[]
+            ))
 
         return schedule
 
@@ -503,9 +654,9 @@ class SimEngine:
         turn = session.current_turn
         slot_info = session.weekly_schedule[turn]
         day_num = slot_info.get("day", 1)
-        slot_name = slot_info.get("slot", "morning")
         day_str = DAY_NAMES[(day_num - 1) % len(DAY_NAMES)]
-        slot_str = SLOT_NAMES.get(slot_name, slot_info.get("time_label", "校園時段"))
+        slot_name = slot_info.get("slot") or "morning"
+        slot_str = slot_info.get("time_label") or slot_info.get("display_time") or "校園時段"
 
         loc_id = slot_info.get("location_id") or "loc_park_creek"
         loc = db.query(CampusLocation).filter(CampusLocation.id == loc_id).first()
@@ -514,7 +665,13 @@ class SimEngine:
 
         # 撈取該館舍生活背景碎片
         life_info = db.query(CampusLifeInfo).filter(CampusLifeInfo.location_id == loc_id).first()
-        life_snippet = life_info.game_snippet if life_info else "微風徐徐吹過百花川與大草坪，下課鐘聲在校園迴盪。"
+        if slot_info.get("type") == "dorm":
+            if "07:" in (slot_info.get("start_time") or ""):
+                life_snippet = "晨光透過宿舍窗櫺灑進房內，室友鬧鐘作響，走廊傳來盥洗刷牙聲與趕早八的步伐聲。"
+            else:
+                life_snippet = "深夜的學生宿舍瀰漫著泡麵與宵夜街的香氣，交誼廳有人在討論作業，走廊偶爾傳來室友的歡笑聲。"
+        else:
+            life_snippet = life_info.game_snippet if life_info else "微風徐徐吹過百花川與大草坪，下課鐘聲在校園迴盪。"
 
         # 判定突發事件
         chosen_event = None

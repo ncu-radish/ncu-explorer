@@ -12,9 +12,9 @@ class SimStartRequest(BaseModel):
 
 class ScheduleSlot(BaseModel):
     day: int  # 1~5 (週一至週五)
-    slot: str  # slot_1 ~ slot_6
+    slot: str  # slot identifier or time key
     title: str
-    type: str  # course, club, lunch, free
+    type: str  # course, club, lunch, dorm, free
     location_id: str | None = None
     location_name: str | None = None
     course_id: str | None = None
@@ -26,6 +26,9 @@ class ScheduleSlot(BaseModel):
     time_label: str | None = None
     periods: list[str] | None = None
     club_id: str | None = None
+    start_time: str | None = None  # e.g. "10:00"
+    end_time: str | None = None  # e.g. "12:50"
+    display_time: str | None = None  # e.g. "10:00 ~ 12:50"
 
 class SimStartResponse(BaseModel):
     session_id: str

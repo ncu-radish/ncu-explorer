@@ -5,7 +5,7 @@ export interface ScheduleSlot {
   day: number;
   slot: string;
   title: string;
-  type: "course" | "club" | "lunch" | "free";
+  type: "course" | "club" | "lunch" | "dorm" | "free";
   location_id?: string;
   location_name?: string;
   course_id?: string;
@@ -17,6 +17,9 @@ export interface ScheduleSlot {
   time_label?: string;
   periods?: string[];
   club_id?: string;
+  start_time?: string;
+  end_time?: string;
+  display_time?: string;
 }
 
 export interface OptionItem {

@@ -6,7 +6,13 @@ def test_build_weekly_schedule_default():
     """Test default schedule when no department or grade is given (default Freshman 1151)"""
     profile = OnboardingParseSchema()
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) == 30
+    assert len(schedule) >= 25
+
+    # Check days, time fields and dorm activities
+    days = set(s.day for s in schedule)
+    assert days == {1, 2, 3, 4, 5}
+    assert any(s.type == "dorm" for s in schedule)
+    assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     unique_courses = {}
     for s in schedule:
@@ -17,6 +23,7 @@ def test_build_weekly_schedule_default():
     total_credits = sum(unique_courses.values())
     assert 16 <= total_credits <= 25, f"Default credits should be 16~25, got {total_credits}"
 
+
 def test_build_weekly_schedule_freshman_im():
     """Test Freshman (大一) Information Management course scheduling"""
     profile = OnboardingParseSchema(
@@ -26,13 +33,13 @@ def test_build_weekly_schedule_freshman_im():
         club="熱音社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) == 30, f"Expected 30 turns, got {len(schedule)}"
+    assert len(schedule) >= 25
 
-    # Check 5 days and 6 slots
+    # Check 5 days, start_time/end_time presence
     days = set(s.day for s in schedule)
     assert days == {1, 2, 3, 4, 5}
-    slots = set(s.slot for s in schedule)
-    assert slots == {"slot_1", "slot_2", "slot_3", "slot_4", "slot_5", "slot_6"}
+    assert all(s.start_time and s.end_time for s in schedule)
+    assert any(s.type == "dorm" for s in schedule)
 
     # Calculate total unique credits
     unique_courses = {}
@@ -44,6 +51,7 @@ def test_build_weekly_schedule_freshman_im():
     total_credits = sum(unique_courses.values())
     assert 16 <= total_credits <= 25, f"Credits for Freshman should be 16~25, got {total_credits}"
 
+
 def test_build_weekly_schedule_sophomore():
     """Test Sophomore (大二) course scheduling with sports & electives"""
     profile = OnboardingParseSchema(
@@ -53,7 +61,7 @@ def test_build_weekly_schedule_sophomore():
         club="系學會",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) == 30
+    assert len(schedule) >= 25
 
     unique_courses = {}
     for s in schedule:
@@ -64,6 +72,7 @@ def test_build_weekly_schedule_sophomore():
     total_credits = sum(unique_courses.values())
     assert 16 <= total_credits <= 25, f"Credits for Sophomore should be 16~25, got {total_credits}"
 
+
 def test_build_weekly_schedule_junior():
     """Test Junior (大三) course scheduling"""
     profile = OnboardingParseSchema(
@@ -73,7 +82,7 @@ def test_build_weekly_schedule_junior():
         club="吉他社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) == 30
+    assert len(schedule) >= 25
 
     unique_courses = {}
     for s in schedule:
@@ -84,6 +93,7 @@ def test_build_weekly_schedule_junior():
     total_credits = sum(unique_courses.values())
     assert 16 <= total_credits <= 25, f"Credits for Junior should be 16~25, got {total_credits}"
 
+
 def test_build_weekly_schedule_senior():
     """Test Senior (大四) course scheduling with low required credits"""
     profile = OnboardingParseSchema(
@@ -93,7 +103,7 @@ def test_build_weekly_schedule_senior():
         club="吉他社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) == 30
+    assert len(schedule) >= 25
 
     unique_courses = {}
     for s in schedule:

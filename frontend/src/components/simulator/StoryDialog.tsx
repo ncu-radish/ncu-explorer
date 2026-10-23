@@ -29,7 +29,7 @@ export function StoryDialog({
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
             <Clock className="w-3.5 h-3.5" />
-            {dayName} {slotName}
+            {dayName} {slot?.display_time || slot?.time_label || slotName}
           </span>
 
           <button
