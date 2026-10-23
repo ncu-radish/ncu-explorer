@@ -1,15 +1,57 @@
-name: Backend CD
+name: Backend Pipeline
 
 on:
-  workflow_run:
-    workflows: ["Backend CI"]
-    types:
-      - completed
+  pull_request:
     branches:
       - master
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+
 jobs:
+  test:
+    name: Lint, Type Check & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff mypy pytest httpx
+
+      - name: Run Ruff Linter
+        run: ruff check .
+
+      - name: Run MyPy Type Check
+        run: mypy . --ignore-missing-imports
+
+      - name: Run Pytest
+        env:
+          ENVIRONMENT: test
+        run: pytest -v
+
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy to Self-Hosted Server
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -27,7 +69,6 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          # 透過 ProxyCommand 引導流量經由 cloudflared 連入主機
           cat >> ~/.ssh/config << 'EOF'
           Host tunnel-server
             HostName ${{ secrets.SSH_HOST }}
