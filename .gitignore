@@ -26,8 +26,20 @@ yarn-error.log*
 
 # Local databases & storage
 backend/data/qdrant_storage/
+backend/data/chroma_db/
 backend/data/*.sqlite-journal
 backend/data/*.sqlite
+backend/data/*.sqlite3
+backend/data/*.db
+backend/data/*.db-journal
+backend/data/courses*
+backend/data/umap*
+backend/data/serials*
+*.db
+*.sqlite
+*.sqlite3
+*.joblib
 
 *.glb
 *.glb.bak
+tmp/

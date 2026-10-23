@@ -30,7 +30,14 @@ from app.schemas.admin import (
     SystemConfigUpdate,
     TokenResponse,
 )
+from app.schemas.courses import (
+    VectorProjectRequest,
+    VectorProjectResponse,
+    VectorUniverseResponse,
+)
 from app.schemas.llm import OptionItem, TurnGenerationSchema
+from app.services.course_db import course_db_service
+from app.services.course_vector_service import course_vector_service
 from app.services.prompts import TURN_NARRATIVE_PROMPT_TEMPLATE
 from app.services.rag_service import course_rag_service
 
@@ -453,4 +460,52 @@ async def upload_campus_model(
         "size_formatted": size_formatted,
         "backup_created": backup_created,
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+# =========================================================================
+# 3D Vector Database Visualization & Real-time Projection Endpoints
+# =========================================================================
+
+@router.get("/vector-space/data", response_model=VectorUniverseResponse)
+def get_vector_space_data(current_admin: AdminUser = Depends(get_current_admin)):
+    """取得 3D 向量星系投影之全量課程節點與降維座標"""
+    try:
+        data = course_vector_service.get_3d_universe_data()
+        return VectorUniverseResponse(**data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"讀取 3D 向量資料失敗: {str(e)}")
+
+
+@router.post("/vector-space/project", response_model=VectorProjectResponse)
+def project_query_in_vector_space(
+    req: VectorProjectRequest,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """即時將輸入之自然語言需求投影為 3D 向量空間座標，並回傳 Top-K 鄰近連線課程"""
+    try:
+        result = course_vector_service.project_query_3d(
+            query=req.query,
+            top_k=req.top_k,
+            semester=req.semester,
+            department=req.department
+        )
+        return VectorProjectResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"即時向量投影計算失敗: {str(e)}")
+
+
+@router.get("/vector-space/stats")
+def get_vector_space_stats(current_admin: AdminUser = Depends(get_current_admin)):
+    """取得向量資料庫統計資訊（集合名稱、維度、模型、學期佔比等）"""
+    universe = course_vector_service.get_3d_universe_data()
+    meta = course_db_service.get_meta()
+    return {
+        "collection_name": "ncu_courses",
+        "embedding_model": "BAAI/bge-small-zh-v1.5",
+        "dimensions": 512,
+        "distance_metric": "cosine",
+        "total_courses": universe.get("total", 0),
+        "semesters": meta.get("semesters", []),
+        "department_count": len(meta.get("departments", [])),
     }

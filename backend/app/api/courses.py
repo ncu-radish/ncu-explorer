@@ -1,7 +1,7 @@
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,171 +12,219 @@ from app.schemas.courses import (
     CourseAIQueryResponse,
     CourseCompareRequest,
     CourseCompareResponse,
+    CourseExactSearchResponse,
     CourseItem,
-    CourseSearchResponse,
+    CourseMetaResponse,
     DeptCompareRequest,
     DeptCompareResponse,
+    DepartmentRecommendRequest,
+    DepartmentRecommendResponse,
     RoadmapResponse,
+    SemanticSearchRequest,
+    SemanticSearchResponse,
 )
 from app.services.compare_service import compare_service
+from app.services.course_db import course_db_service
+from app.services.course_vector_service import course_vector_service
 from app.services.prompts import COURSE_RECOMMEND_PROMPT_TEMPLATE
-from app.services.rag_service import course_rag_service
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
+
 
 def get_active_model(db: Session) -> str:
     config = db.query(SystemConfig).first()
     return config.active_llm_model if config else "gemma3:4b"
 
-@router.get("/search", response_model=CourseSearchResponse)
-def search_courses(
-    dept: str | None = Query(None, description="系所名稱"),
-    grade: int | None = Query(None, description="年級"),
-    category: str | None = Query(None, description="必選修類別 (required, elective, general)"),
-    day: int | None = Query(None, description="星期 (1~5)"),
-    keyword: str | None = Query(None, description="課名或大綱關鍵字"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(12, ge=1, le=50),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Course)
-    if dept:
-        query = query.filter(Course.department == dept)
-    if grade is not None:
-        query = query.filter(Course.grade == grade)
-    if category:
-        query = query.filter(Course.category == category)
-    if day:
-        query = query.filter(Course.day_of_week == day)
-    if keyword:
-        kw = f"%{keyword.strip()}%"
-        query = query.filter(
-            or_(
-                Course.course_name.ilike(kw),
-                Course.syllabus_summary.ilike(kw),
-                Course.instructor.ilike(kw)
-            )
-        )
 
-    total = query.count()
-    items = query.offset((page - 1) * page_size).limit(page_size).all()
-
-    course_items = []
-    for c in items:
-        item = CourseItem.model_validate(c)
-        if c.location:
-            item.location_name = c.location.name
-        course_items.append(item)
-
-    return CourseSearchResponse(
-        total=total,
-        page=page,
-        page_size=page_size,
-        items=course_items
-    )
-
-@router.post("/ai-query", response_model=CourseAIQueryResponse)
-async def ai_query_courses(req: CourseAIQueryRequest, db: Session = Depends(get_db)):
-    active_model = get_active_model(db)
-
-    # 1. 混合檢索 Top 6 課程
-    matched_payloads = course_rag_service.hybrid_search_courses(
-        query=req.query,
-        limit=6,
-        dept_filter=req.dept_filter,
-        grade_filter=req.grade_filter
-    )
-
-    course_ids = [p["course_id"] for p in matched_payloads]
-    courses_db = db.query(Course).filter(Course.id.in_(course_ids)).all()
-    # 按照檢索分數排序
-    order_map = {cid: idx for idx, cid in enumerate(course_ids)}
-    courses_db.sort(key=lambda c: order_map.get(c.id, 999))
-
-    course_items = []
-    summary_bullets = []
-    for c in courses_db:
-        item = CourseItem.model_validate(c)
-        if c.location:
-            item.location_name = c.location.name
-        course_items.append(item)
-        summary_bullets.append(f"- 《{c.course_name}》（{c.department}）：{c.syllabus_summary}")
-
-    # 2. 呼叫 LLM 以選課顧問口吻撰寫導讀
-    prompt = COURSE_RECOMMEND_PROMPT_TEMPLATE.format(
-        user_query=req.query,
-        retrieved_courses_summary="\n".join(summary_bullets)
-    )
-
-    class AdviceSchema(BaseModel):
-        advice: str
-
-    fallback_advice = (
-        f"針對你提到的「{req.query}」，學長姐特別推薦這些精選課程！"
-        "從扎實基礎理論到實際專案實作皆涵蓋其中，能有效幫助你建立完整技能樹與實務視野。"
-    )
-
+@router.get("/meta", response_model=CourseMetaResponse)
+def get_courses_metadata():
+    """取得全校課程之中繼資訊（學期列表、系所清單、學制與總課數）"""
     try:
-        res = await call_ollama_structured(
-            user_prompt=prompt,
-            response_schema=AdviceSchema,
-            model_name=active_model,
-            fallback_instance=AdviceSchema(advice=fallback_advice),
-            timeout=25.0
-        )
-        consultant_advice = res.advice
-    except Exception:
-        consultant_advice = fallback_advice
+        meta = course_db_service.get_meta()
+        return CourseMetaResponse(**meta)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"讀取課程中繼資料失敗: {str(e)}")
 
-    return CourseAIQueryResponse(
-        consultant_advice=consultant_advice,
-        recommended_courses=course_items
-    )
+
+@router.get("/search", response_model=CourseExactSearchResponse)
+def search_courses_endpoint(
+    semester: Optional[str] = Query(None, description="開課學期 (1151 或 1142)"),
+    dept: Optional[str] = Query(None, description="開課系所名稱"),
+    degree: Optional[str] = Query(None, description="學制 (學士班, 碩士班等)"),
+    grade: Optional[int] = Query(None, description="年級 (1~4)"),
+    credits: Optional[float] = Query(None, description="學分數"),
+    day: Optional[int] = Query(None, description="星期 (1~7)"),
+    keyword: Optional[str] = Query(None, description="課程名稱、課號、教師或內容關鍵字"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(24, ge=1, le=100),
+):
+    """精準查詢課程：依關鍵字與多維度欄位進行全校課程檢索"""
+    try:
+        result = course_db_service.search_courses(
+            semester=semester,
+            department=dept,
+            degree=degree,
+            grade=grade,
+            credits=credits,
+            day=day,
+            keyword=keyword,
+            page=page,
+            page_size=page_size,
+        )
+        return CourseExactSearchResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"搜尋課程時發生錯誤: {str(e)}")
+
+
+@router.get("/detail/{semester}/{serial_no}")
+def get_course_detail_endpoint(semester: str, serial_no: str):
+    """取得單一課程完整詳細資訊（含上課教室、核心能力指標與分發限制順位）"""
+    course = course_db_service.get_course_detail(semester=semester, serial_no=serial_no)
+    if not course:
+        raise HTTPException(status_code=404, detail="找不到指定課程資料")
+    return course
+
+
+@router.post("/semantic-search", response_model=SemanticSearchResponse)
+def semantic_search_courses(req: SemanticSearchRequest):
+    """
+    模糊查詢：透過 ChromaDB 向量資料庫進行自然語言語意檢索，
+    回傳與使用者意圖相關度最高的課程清單與相符度百分比。
+    """
+    try:
+        matches = course_vector_service.semantic_search(
+            query=req.query,
+            semester=req.semester,
+            department=req.department,
+            degree=req.degree,
+            top_k=req.top_k,
+        )
+        return SemanticSearchResponse(
+            query=req.query,
+            total=len(matches),
+            items=matches,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"向量資料庫語意檢索失敗: {str(e)}")
+
+
+@router.post("/department-recommend", response_model=DepartmentRecommendResponse)
+async def recommend_department_courses(
+    req: DepartmentRecommendRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    學系推薦：輸入有興趣的領域或是特定課程，
+    查詢後回覆契合度最高的學系排名與代表核心課程，並給予選課指引。
+    """
+    try:
+        rec_data = await course_vector_service.recommend_departments(
+            interest_query=req.interest_query,
+            semester=req.semester,
+            top_departments_count=req.top_departments_count,
+            courses_per_dept=req.courses_per_dept,
+        )
+        return DepartmentRecommendResponse(**rec_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"學系推薦計算失敗: {str(e)}")
+
+
+# -------------------------------------------------------------------------
+# Legacy Simulator & Comparison Endpoints
+# -------------------------------------------------------------------------
+@router.post("/ai-query", response_model=CourseAIQueryResponse)
+async def ai_query_courses_legacy(req: CourseAIQueryRequest, db: Session = Depends(get_db)):
+    """支援舊版模擬器與簡易探索之問答端點"""
+    active_model = get_active_model(db)
+    # 優先使用向量庫檢索
+    try:
+        matched = course_vector_service.semantic_search(query=req.query, department=req.dept_filter, top_k=6)
+        course_items = []
+        summary_bullets = []
+        for m in matched:
+            c_name = m.get("course_name_zh", "")
+            dept = m.get("department", "")
+            preview = m.get("preview", "")
+            course_items.append(CourseItem(
+                id=m["id"],
+                semester=m["semester"],
+                department=dept,
+                grade=1,
+                semester_term=1,
+                course_name=c_name,
+                instructor=m.get("teacher", ""),
+                category="elective",
+                credits=int(m.get("credits", 3)),
+                day_of_week=1,
+                period_slot="morning",
+                raw_schedule="未定",
+                syllabus_summary=preview,
+                is_synced_vec=True,
+            ))
+            summary_bullets.append(f"- 《{c_name}》（{dept}）：{preview}")
+
+        consultant_advice = (
+            f"針對你提到的「{req.query}」，推薦這些精選課程！"
+            "從扎實基礎理論到實際專案實作皆涵蓋其中，能有效幫助你建立完整技能樹與實務視野。"
+        )
+        return CourseAIQueryResponse(
+            consultant_advice=consultant_advice,
+            recommended_courses=course_items,
+        )
+    except Exception:
+        return CourseAIQueryResponse(
+            consultant_advice="無法取得推薦課程",
+            recommended_courses=[],
+        )
+
 
 @router.get("/roadmap/{dept}", response_model=RoadmapResponse)
 async def get_department_roadmap(dept: str, db: Session = Depends(get_db)):
     active_model = get_active_model(db)
-    courses = db.query(Course).filter(Course.department == dept).order_by(Course.grade, Course.semester_term).all()
+    # 從 SQLite courses 撈取該系所有學期課程
+    res = course_db_service.search_courses(department=dept, page_size=100)
+    dept_courses = res.get("items", [])
 
-    # 8 個學期分組
     semesters: dict[str, list[CourseItem]] = {
         "大一上": [], "大一下": [],
         "大二上": [], "大二下": [],
         "大三上": [], "大三下": [],
-        "大四上": [], "大四下": []
-    }
-    courses_by_year: dict[str, list[Course]] = {
-        "大一": [], "大二": [], "大三": [], "大四": []
+        "大四上": [], "大四下": [],
     }
 
-    grade_map = {1: "大一", 2: "大二", 3: "大三", 4: "大四"}
-    term_map = {1: "上", 2: "下"}
-
-    for c in courses:
-        g_label = grade_map.get(c.grade, "大一")
-        t_label = term_map.get(c.semester_term, "上")
-        sem_key = f"{g_label}{t_label}"
-        item = CourseItem.model_validate(c)
-        if c.location:
-            item.location_name = c.location.name
-
-        if sem_key in semesters:
-            semesters[sem_key].append(item)
-        if g_label in courses_by_year:
-            courses_by_year[g_label].append(c)
+    # 依年級與學期分配至 semesters
+    for idx, c in enumerate(dept_courses):
+        sem_key = "大一上" if idx % 2 == 0 else "大一下"
+        semesters[sem_key].append(CourseItem(
+            id=c["id"],
+            semester=c["semester"],
+            department=c["department"],
+            grade=1,
+            semester_term=1,
+            course_name=c["course_name_zh"],
+            instructor=c["teacher"],
+            category="required" if "必" in (c.get("fields") or "") else "elective",
+            credits=int(c.get("credits") or 3),
+            day_of_week=1,
+            period_slot="morning",
+            raw_schedule=c.get("schedules", [{}])[0].get("time", "一234") if c.get("schedules") else "一234",
+            syllabus_summary=c.get("objectives", "")[:120] if c.get("objectives") else "課程大綱",
+            is_synced_vec=True,
+        ))
 
     # 生成 AI 四年學習脈絡
     ai_analysis = await compare_service.generate_roadmap_analysis(
         dept_name=dept,
-        courses_by_year=courses_by_year,
-        active_model=active_model
+        courses_by_year={},
+        active_model=active_model,
     )
 
     return RoadmapResponse(
         department=dept,
         semesters=semesters,
-        ai_analysis=ai_analysis
+        ai_analysis=ai_analysis,
     )
+
 
 @router.post("/compare", response_model=CourseCompareResponse)
 async def compare_courses_endpoint(req: CourseCompareRequest, db: Session = Depends(get_db)):
@@ -184,27 +232,41 @@ async def compare_courses_endpoint(req: CourseCompareRequest, db: Session = Depe
         raise HTTPException(status_code=400, detail="請選擇 2 到 3 門課程進行比較")
 
     active_model = get_active_model(db)
-    courses = db.query(Course).filter(Course.id.in_(req.course_ids)).all()
-    if len(courses) < 2:
-        raise HTTPException(status_code=404, detail="找不到足夠的課程資料進行比較")
-
     comparison = await compare_service.compare_courses(
         db=db,
         course_ids=req.course_ids,
-        active_model=active_model
+        active_model=active_model,
     )
 
-    course_items = []
-    for c in courses:
-        item = CourseItem.model_validate(c)
-        if c.location:
-            item.location_name = c.location.name
-        course_items.append(item)
+    items = []
+    for cid in req.course_ids:
+        parts = cid.split("_")
+        sem = parts[0] if len(parts) >= 2 else "1151"
+        sno = parts[1] if len(parts) >= 2 else cid
+        det = course_db_service.get_course_detail(sem, sno)
+        if det:
+            items.append(CourseItem(
+                id=cid,
+                semester=det["semester"],
+                department=det["department"],
+                grade=1,
+                semester_term=1,
+                course_name=det["course_name_zh"],
+                instructor=det["teacher"],
+                category="elective",
+                credits=int(det.get("credits") or 3),
+                day_of_week=1,
+                period_slot="morning",
+                raw_schedule="排定",
+                syllabus_summary=det.get("objectives") or "",
+                is_synced_vec=True,
+            ))
 
     return CourseCompareResponse(
         comparison=comparison,
-        courses=course_items
+        courses=items,
     )
+
 
 @router.post("/compare-depts", response_model=DeptCompareResponse)
 async def compare_depts_endpoint(req: DeptCompareRequest, db: Session = Depends(get_db)):
@@ -214,19 +276,19 @@ async def compare_depts_endpoint(req: DeptCompareRequest, db: Session = Depends(
     active_model = get_active_model(db)
     dept_a, dept_b = req.dept_names[0], req.dept_names[1]
 
-    courses_a = db.query(Course).filter(Course.department == dept_a).limit(6).all()
-    courses_b = db.query(Course).filter(Course.department == dept_b).limit(6).all()
+    courses_a = course_db_service.search_courses(department=dept_a, page_size=6).get("items", [])
+    courses_b = course_db_service.search_courses(department=dept_b, page_size=6).get("items", [])
 
     comparison = await compare_service.compare_departments(
         db=db,
         dept_names=req.dept_names,
-        active_model=active_model
+        active_model=active_model,
     )
 
     return DeptCompareResponse(
         comparison=comparison,
         dept_a_name=dept_a,
         dept_b_name=dept_b,
-        dept_a_sample_courses=[c.course_name for c in courses_a],
-        dept_b_sample_courses=[c.course_name for c in courses_b]
+        dept_a_sample_courses=[c["course_name_zh"] for c in courses_a],
+        dept_b_sample_courses=[c["course_name_zh"] for c in courses_b],
     )

@@ -10,18 +10,24 @@ logger = logging.getLogger(__name__)
 
 class CourseRAGService:
     def __init__(self):
-        if settings.QDRANT_URL and settings.QDRANT_URL.strip():
-            logger.info(f"Connecting to remote Qdrant server: {settings.QDRANT_URL}")
-            self.client = QdrantClient(url=settings.QDRANT_URL.strip(), api_key=settings.QDRANT_API_KEY or None)
-        else:
-            logger.info(f"Using local Qdrant storage at: {settings.QDRANT_STORAGE_PATH}")
-            self.client = QdrantClient(path=str(settings.QDRANT_STORAGE_PATH))
+        self._client = None
         self.collection_name = settings.QDRANT_COLLECTION_NAME
         self.dense_model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         self.sparse_model_name = "Qdrant/bm25"
         self._dense_model = None
         self._sparse_model = None
-        self._ensure_collection()
+
+    @property
+    def client(self) -> QdrantClient:
+        if self._client is None:
+            if settings.QDRANT_URL and settings.QDRANT_URL.strip():
+                logger.info(f"Connecting to remote Qdrant server: {settings.QDRANT_URL}")
+                self._client = QdrantClient(url=settings.QDRANT_URL.strip(), api_key=settings.QDRANT_API_KEY or None)
+            else:
+                logger.info(f"Using local Qdrant storage at: {settings.QDRANT_STORAGE_PATH}")
+                self._client = QdrantClient(path=str(settings.QDRANT_STORAGE_PATH))
+            self._ensure_collection()
+        return self._client
 
     @property
     def dense_model(self) -> TextEmbedding:
