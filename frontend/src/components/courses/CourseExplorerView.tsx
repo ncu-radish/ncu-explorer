@@ -75,6 +75,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
   // Detail Modal State
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedSections, setSelectedSections] = useState<any[]>([]);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
   // Roadmap State
@@ -174,9 +175,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
   };
 
   // 5. Open Course Detail Modal
-  const openCourseDetail = async (semester: string, serialNo: string) => {
+  const openCourseDetail = async (semester: string, serialNo: string, sections?: any[]) => {
     setIsLoadingDetail(true);
     setSelectedCourse(null);
+    setSelectedSections(sections || []);
     try {
       const detail = await courseApi.getDetail(semester, serialNo);
       setSelectedCourse(detail);
@@ -1103,24 +1105,40 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                           </div>
                         ) : (
                           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {cList.map((c: any) => (
-                              <div
-                                key={c.id}
-                                onClick={() => openCourseDetail(c.semester, c.serial_no || c.id.split("_")[1])}
-                                className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 hover:bg-white cursor-pointer transition text-xs group"
-                              >
-                                <div className="font-bold text-stone-900 group-hover:text-amber-700 transition-colors truncate">
-                                  {c.course_name}
-                                </div>
-                                <div className="text-[11px] text-stone-500 flex items-center justify-between mt-1">
-                                  <span className="truncate max-w-[110px]">{c.instructor}</span>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-medium">必修</span>
-                                    <span className="text-emerald-600 font-bold">{c.credits} 學分</span>
+                            {cList.map((c: any) => {
+                              const secCount = c.sections?.length || 0;
+                              return (
+                                <div
+                                  key={c.id}
+                                  onClick={() => openCourseDetail(c.semester, c.serial_no || c.id.split("_")[1], c.sections)}
+                                  className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 hover:bg-white cursor-pointer transition text-xs group"
+                                >
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <div className="font-bold text-stone-900 group-hover:text-amber-700 transition-colors truncate">
+                                      {c.course_name}
+                                    </div>
+                                    {secCount > 1 && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-semibold shrink-0">
+                                        {secCount} 師/班可選
+                                      </span>
+                                    )}
                                   </div>
+                                  <div className="text-[11px] text-stone-500 flex items-center justify-between mt-1">
+                                    <span className="truncate max-w-[120px]">{c.instructor}</span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-medium">必修</span>
+                                      <span className="text-emerald-600 font-bold">{c.credits} 學分</span>
+                                    </div>
+                                  </div>
+                                  {c.raw_schedule && c.raw_schedule !== "安排中" && (
+                                    <div className="text-[10px] text-stone-400 font-mono mt-1 flex items-center gap-1 truncate">
+                                      <Clock className="w-2.5 h-2.5 shrink-0 text-stone-400" />
+                                      <span className="truncate">{c.raw_schedule}</span>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1245,6 +1263,44 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
             {/* 彈窗可滾動內容 */}
             <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs text-stone-700">
+              {/* 多班級/多教師群選切換選單 */}
+              {selectedSections && selectedSections.length > 1 && (
+                <div className="bg-amber-50/90 border border-amber-300/80 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-amber-700" />
+                      <span>可選班級 / 授課教師（本系共 {selectedSections.length} 位可選）</span>
+                    </span>
+                    <span className="text-[10px] text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-md font-medium">
+                      {selectedCourse.course_name_zh.includes("服務學習") ? "各班時段略有不同" : "固定同一排課時段"}
+                    </span>
+                  </div>
+
+                  <select
+                    value={selectedCourse.serial_no}
+                    onChange={(e) => {
+                      const targetSec = selectedSections.find((s) => s.serial_no === e.target.value);
+                      if (targetSec) {
+                        openCourseDetail(targetSec.semester, targetSec.serial_no, selectedSections);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs"
+                  >
+                    {selectedSections.map((sec) => (
+                      <option key={sec.serial_no} value={sec.serial_no}>
+                        {sec.course_name} — {sec.instructor || "授課教師"} ({sec.raw_schedule} @ {sec.location_name}) [課號: {sec.course_code}]
+                      </option>
+                    ))}
+                  </select>
+
+                  <p className="text-[11px] text-amber-800/90 mt-2 leading-relaxed">
+                    {selectedCourse.course_name_zh.includes("服務學習")
+                      ? "💡 服務學習課程各班別之時段與合作機構不同，請點選上方選單切換檢視。"
+                      : "💡 本系此課程為全系同步排課時段，所有班級的上課時段皆相同，可自由選擇想修習的教師或主題內容。"}
+                  </p>
+                </div>
+              )}
+
               {/* 基本資訊格網 */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
                 <div>
