@@ -254,21 +254,6 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {meta && (
-              <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                已收錄 {meta.total_courses.toLocaleString()} 門課程
-              </span>
-            )}
-            <Link
-              href="/admin/dashboard"
-              className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 transition flex items-center gap-1.5 shadow-xs"
-            >
-              <Compass className="w-3.5 h-3.5 text-blue-600" />
-              <span>3D 向量宇宙 (後台)</span>
-            </Link>
-          </div>
         </div>
       ) : (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
@@ -310,11 +295,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
       <div className="flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab("exact")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "exact"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeTab === "exact"
               ? "bg-blue-600 text-white shadow-xs"
               : "bg-white hover:bg-stone-100 text-stone-700 border border-stone-200"
-          }`}
+            }`}
         >
           <Search className="w-3.5 h-3.5" />
           <span>精準查詢課程</span>
@@ -322,11 +306,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
         <button
           onClick={() => setActiveTab("fuzzy")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "fuzzy"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeTab === "fuzzy"
               ? "bg-purple-600 text-white shadow-xs"
               : "bg-white hover:bg-stone-100 text-stone-700 border border-stone-200"
-          }`}
+            }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>模糊向量查詢</span>
@@ -334,11 +317,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
         <button
           onClick={() => setActiveTab("recommend")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "recommend"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeTab === "recommend"
               ? "bg-emerald-600 text-white shadow-xs"
               : "bg-white hover:bg-stone-100 text-stone-700 border border-stone-200"
-          }`}
+            }`}
         >
           <GraduationCap className="w-3.5 h-3.5" />
           <span>學系與領域推薦</span>
@@ -346,11 +328,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
         <button
           onClick={() => setActiveTab("roadmap")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "roadmap"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeTab === "roadmap"
               ? "bg-amber-600 text-white shadow-xs"
               : "bg-white hover:bg-stone-100 text-stone-700 border border-stone-200"
-          }`}
+            }`}
         >
           <Layers className="w-3.5 h-3.5" />
           <span>四年學習脈絡</span>
@@ -358,11 +339,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
         <button
           onClick={() => setActiveTab("compare")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "compare"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeTab === "compare"
               ? "bg-indigo-600 text-white shadow-xs"
               : "bg-white hover:bg-stone-100 text-stone-700 border border-stone-200"
-          }`}
+            }`}
         >
           <GitCompare className="w-3.5 h-3.5" />
           <span>課程深度對照</span>
@@ -530,11 +510,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                       <div className="flex items-center justify-between mb-2.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              is1151
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${is1151
                                 ? "bg-blue-50 text-blue-700 border border-blue-200"
                                 : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            }`}
+                              }`}
                           >
                             {is1151 ? "1151 上學期" : "1142 下學期"}
                           </span>
@@ -548,11 +527,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
                         <button
                           onClick={() => toggleSelectCourse(c.id)}
-                          className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer ${
-                            isSelected
+                          className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer ${isSelected
                               ? "bg-blue-600 border-blue-600 text-white"
                               : "bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900 hover:bg-stone-100"
-                          }`}
+                            }`}
                           title="加入對照比較"
                         >
                           <GitCompare className="w-3.5 h-3.5" />
@@ -781,11 +759,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                         {/* 學期與系所 */}
                         <div className="flex items-center gap-1.5 mb-2">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              is1151
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${is1151
                                 ? "bg-blue-50 text-blue-700 border border-blue-200"
                                 : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            }`}
+                              }`}
                           >
                             {is1151 ? "1151 上學期" : "1142 下學期"}
                           </span>
@@ -1074,29 +1051,55 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
               {/* 8 學期展示 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(roadmapData.semesters || {}).map(([semLabel, cList]: [string, any]) => (
-                  <div key={semLabel} className="bg-white border border-stone-200 rounded-2xl p-4 shadow-xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-stone-100 mb-3">
-                      <span className="font-bold text-amber-700 text-xs">{semLabel}</span>
-                      <span className="text-[11px] text-stone-400">{cList.length} 門</span>
-                    </div>
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {cList.map((c: any) => (
-                        <div
-                          key={c.id}
-                          onClick={() => openCourseDetail(c.semester, c.serial_no || c.id.split("_")[1])}
-                          className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 hover:bg-white cursor-pointer transition text-xs"
-                        >
-                          <div className="font-bold text-stone-900 truncate">{c.course_name}</div>
-                          <div className="text-[11px] text-stone-500 flex items-center justify-between mt-1">
-                            <span>{c.instructor}</span>
-                            <span className="text-emerald-600 font-bold">{c.credits} 學分</span>
+                {Object.entries(roadmapData.semesters || {}).map(([semLabel, cList]: [string, any]) => {
+                  const isUpperSem = semLabel.endsWith("上");
+                  const semCode = isUpperSem ? "1151" : "1142";
+                  return (
+                    <div key={semLabel} className="bg-white border border-stone-200 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-2 border-b border-stone-100 mb-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-amber-800 text-xs">{semLabel}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 font-mono">
+                              {semCode}
+                            </span>
                           </div>
+                          <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            {cList.length} 門必修
+                          </span>
                         </div>
-                      ))}
+
+                        {cList.length === 0 ? (
+                          <div className="py-8 text-center text-stone-400 text-xs">
+                            <p>本學期無指定必修</p>
+                            <span className="text-[10px] text-stone-400 mt-1 block">（主要為彈性專業選修與畢業學分）</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {cList.map((c: any) => (
+                              <div
+                                key={c.id}
+                                onClick={() => openCourseDetail(c.semester, c.serial_no || c.id.split("_")[1])}
+                                className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 hover:bg-white cursor-pointer transition text-xs group"
+                              >
+                                <div className="font-bold text-stone-900 group-hover:text-amber-700 transition-colors truncate">
+                                  {c.course_name}
+                                </div>
+                                <div className="text-[11px] text-stone-500 flex items-center justify-between mt-1">
+                                  <span className="truncate max-w-[110px]">{c.instructor}</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 font-medium">必修</span>
+                                    <span className="text-emerald-600 font-bold">{c.credits} 學分</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : null}

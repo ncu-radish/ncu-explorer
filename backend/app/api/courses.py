@@ -181,41 +181,25 @@ async def ai_query_courses_legacy(req: CourseAIQueryRequest, db: Session = Depen
 @router.get("/roadmap/{dept}", response_model=RoadmapResponse)
 async def get_department_roadmap(dept: str, db: Session = Depends(get_db)):
     active_model = get_active_model(db)
-    # 從 SQLite courses 撈取該系所有學期課程
-    res = course_db_service.search_courses(department=dept, page_size=100)
-    dept_courses = res.get("items", [])
+    # 從 SQLite courses 撈取指定系所 1151 (上) 與 1142 (下) 之大一至大四必修學習地圖
+    raw_semesters = course_db_service.get_department_roadmap(dept)
 
-    semesters: dict[str, list[CourseItem]] = {
-        "大一上": [], "大一下": [],
-        "大二上": [], "大二下": [],
-        "大三上": [], "大三下": [],
-        "大四上": [], "大四下": [],
+    semesters: dict[str, list[CourseItem]] = {}
+    courses_by_year_for_ai: dict[str, list[Any]] = {
+        "大一": [], "大二": [], "大三": [], "大四": []
     }
 
-    # 依年級與學期分配至 semesters
-    for idx, c in enumerate(dept_courses):
-        sem_key = "大一上" if idx % 2 == 0 else "大一下"
-        semesters[sem_key].append(CourseItem(
-            id=c["id"],
-            semester=c["semester"],
-            department=c["department"],
-            grade=1,
-            semester_term=1,
-            course_name=c["course_name_zh"],
-            instructor=c["teacher"],
-            category="required" if "必" in (c.get("fields") or "") else "elective",
-            credits=int(c.get("credits") or 3),
-            day_of_week=1,
-            period_slot="morning",
-            raw_schedule=c.get("schedules", [{}])[0].get("time", "一234") if c.get("schedules") else "一234",
-            syllabus_summary=c.get("objectives", "")[:120] if c.get("objectives") else "課程大綱",
-            is_synced_vec=True,
-        ))
+    for sem_key, items in raw_semesters.items():
+        course_items = [CourseItem(**item) for item in items]
+        semesters[sem_key] = course_items
+        year_key = sem_key[:2]
+        if year_key in courses_by_year_for_ai:
+            courses_by_year_for_ai[year_key].extend(course_items)
 
     # 生成 AI 四年學習脈絡
     ai_analysis = await compare_service.generate_roadmap_analysis(
         dept_name=dept,
-        courses_by_year={},
+        courses_by_year=courses_by_year_for_ai,
         active_model=active_model,
     )
 

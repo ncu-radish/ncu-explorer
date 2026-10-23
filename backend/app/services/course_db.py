@@ -7,6 +7,7 @@ NCU Course Database Service
 絕不修改 tmp 目錄。
 """
 
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -277,6 +278,154 @@ class CourseDatabaseService:
 
         conn.close()
         return course_detail
+
+    def get_department_roadmap(self, dept: str) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        取得指定系所的大一至大四必修課程學習脈絡：
+        - 1151 代表上學期（Fall）
+        - 1142 代表下學期（Spring）
+        - 僅篩選必修課程，依年級 (大一/大二/大三/大四) 與學期 (上/下) 正確分配至 8 個學期
+        - 自動去重同名分班課程，整合學分、授課教師與時段資訊
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT DISTINCT c.semester, c.serial_no, c.course_code, c.course_name_zh, c.course_name_en,
+                   c.teacher, c.credits, c.objectives, c.fields, dc.condition
+            FROM courses c
+            LEFT JOIN distribution_conditions dc 
+              ON c.semester = dc.semester AND c.serial_no = dc.serial_no AND dc.priority = 1
+            WHERE (c.department = ? OR (dc.condition IS NOT NULL AND dc.condition LIKE ?))
+              AND c.degree = '學士班'
+              AND c.semester IN ('1151', '1142')
+            ORDER BY c.semester DESC, c.course_code ASC
+        """
+        cursor.execute(query, [dept, f"%限{dept}%"])
+        rows = cursor.fetchall()
+
+        sem_serials = [(r["semester"], r["serial_no"]) for r in rows]
+        schedules_map: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+        for s, sn in sem_serials:
+            cursor.execute(
+                "SELECT time, location FROM schedules WHERE semester = ? AND serial_no = ?",
+                [s, sn],
+            )
+            schedules_map[(s, sn)] = [dict(sr) for sr in cursor.fetchall()]
+
+        conn.close()
+
+        semesters: Dict[str, List[Dict[str, Any]]] = {
+            "大一上": [], "大一下": [],
+            "大二上": [], "大二下": [],
+            "大三上": [], "大三下": [],
+            "大四上": [], "大四下": [],
+        }
+        seen_in_sem = set()
+
+        for r in rows:
+            sem = r["semester"]
+            sn = r["serial_no"]
+            code = r["course_code"]
+            name_clean = (r["course_name_zh"] or "").strip()
+            teacher = r["teacher"] or "授課教師"
+            credits_val = r["credits"]
+            obj = r["objectives"] or ""
+            fields = r["fields"] or ""
+            dc = r["condition"] or ""
+
+            # 排除非學術之全校大一通識（如體育、大一服務學習、經典閱讀群選），保留系所核心與學院專業必修
+            if any(ign in name_clean for ign in ["大一體育", "服務學習", "英文會話", "經典閱讀", "大一英文"]):
+                continue
+            if name_clean.startswith("[A]") or name_clean.startswith("[B]") or name_clean.startswith("[C]"):
+                continue
+
+            # 1. 學期判定：1151 = 上學期, 1142 = 下學期
+            is_fall = (sem == "1151")
+            is_spring = (sem == "1142")
+            if not (is_fall or is_spring):
+                continue
+
+            # 2. 年級判定 (1, 2, 3, 4)
+            grade = None
+            code_match = re.search(r"^[A-Za-z]+([1-4])\d{3}", code)
+            if code_match:
+                grade = int(code_match.group(1))
+            else:
+                if "年級:限一年級" in dc or "限一年級" in dc:
+                    grade = 1
+                elif "年級:限二年級" in dc or "限二年級" in dc:
+                    grade = 2
+                elif "年級:限三年級" in dc or "限三年級" in dc:
+                    grade = 3
+                elif "年級:限四年級" in dc or "限四年級" in dc:
+                    grade = 4
+
+            if not grade:
+                continue
+
+            # 3. 必修課程篩選：
+            grade_str = {1: "一年級", 2: "二年級", 3: "三年級", 4: "四年級"}[grade]
+            has_single_grade_limit = (f"限{grade_str}" in dc) and ("二年級、三年級" not in dc and "三年級、四年級" not in dc)
+            has_section_split = bool(re.search(r"-[A-Z0-9]$", code)) or ("班別:限" in dc) or ("學號:限" in dc)
+            is_core_title = any(k in name_clean for k in [
+                "專題", "實習", "實驗", "導論", "概論", "設計", "微積分", "普通物理", "普通化學",
+                "線性代數", "工程數學", "離散數學", "機率", "統計", "資料結構", "演算法", "作業系統",
+                "計算機組織", "網路", "資料庫", "管理學", "經濟學", "會計學", "財務管理", "商事法",
+                "生產與作業", "行銷學", "系統分析", "組織行為", "企業政策", "管理資訊系統",
+                "靜力", "動力", "材料", "熱力", "流體", "機構", "電路", "電子學", "電磁學"
+            ])
+            is_req_in_obj = "必修" in obj
+
+            is_elective_field = "其他選修課" in fields or "選修" in fields
+
+            is_required = (has_single_grade_limit or has_section_split or is_core_title or is_req_in_obj)
+            if is_elective_field and not (has_single_grade_limit or "專題" in name_clean):
+                is_required = False
+
+            if not is_required:
+                continue
+
+            # 學期分類鍵
+            term_label = "上" if is_fall else "下"
+            grade_label = {1: "大一", 2: "大二", 3: "大三", 4: "大四"}[grade]
+            sem_key = f"{grade_label}{term_label}"
+
+            # 同學期同課名去重（合併 A、B 班分班）
+            unique_key = (sem_key, name_clean)
+            if unique_key in seen_in_sem:
+                continue
+            seen_in_sem.add(unique_key)
+
+            sched_list = schedules_map.get((sem, sn), [])
+            raw_sched = sched_list[0]["time"] if sched_list and sched_list[0].get("time") else "安排中"
+            loc_name = sched_list[0]["location"] if sched_list and sched_list[0].get("location") else "教學館舍"
+
+            try:
+                credit_int = int(float(credits_val or 3))
+            except Exception:
+                credit_int = 3
+
+            semesters[sem_key].append({
+                "id": f"{sem}_{sn}",
+                "semester": sem,
+                "serial_no": sn,
+                "department": dept,
+                "grade": grade,
+                "semester_term": 1 if is_fall else 2,
+                "course_name": name_clean,
+                "instructor": teacher,
+                "category": "required",
+                "credits": credit_int,
+                "day_of_week": 1,
+                "period_slot": "morning",
+                "raw_schedule": raw_sched,
+                "location_name": loc_name,
+                "syllabus_summary": obj[:120] if obj else "核心必修課程大綱",
+                "is_synced_vec": True,
+            })
+
+        return semesters
 
 
 course_db_service = CourseDatabaseService()
