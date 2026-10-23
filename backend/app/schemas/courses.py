@@ -122,6 +122,20 @@ class VectorProjectResponse(BaseModel):
     nearest_courses: list[dict[str, Any]]
 
 
+class CourseSectionItem(BaseModel):
+    id: str
+    semester: str
+    serial_no: str
+    course_code: str
+    course_name: str
+    instructor: str
+    credits: int
+    raw_schedule: str
+    location_name: str
+    condition: str | None = ""
+    syllabus_summary: str | None = ""
+
+
 # Legacy CourseItem for simulator backward compatibility
 class CourseItem(BaseModel):
     id: str
@@ -141,6 +155,9 @@ class CourseItem(BaseModel):
     syllabus_summary: str
     full_syllabus: str | None = None
     is_synced_vec: bool
+    required_or_elective: str | None = "必修"
+    is_common_required: bool | None = False
+    sections: list[CourseSectionItem] | None = None
 
     class Config:
         from_attributes = True

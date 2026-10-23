@@ -289,16 +289,16 @@ class CourseDatabaseService:
         """
         取得指定系所的大一至大四必修課程學習脈絡：
         - 依據資料庫中精確的 required_or_elective 欄位 (限定為 '必修')
-        - 1151 代表上學期（Fall）
-        - 1142 代表下學期（Spring）
-        - 年級優先參考分發條件中的年級限制 (如限一年級、限二年級)，無則參考課號數字
-        - 自動去重同學期同課名分班課程，整合學分、授課教師與時段資訊
+        - 整合 5 大全校共通大一必修：國文、英文、微積分、大一體育、服務學習課程
+        - 對同系相同排課時段之多教師/分班群選（如國文多位教師或經典閱讀各篇章）統一聚合，並內嵌 sections 清單
+        - 1151 代表上學期（Fall），1142 代表下學期（Spring）
+        - 排除僅限輔系/雙主修課程與大二以上體育選修
         """
         conn = self.get_connection()
         cursor = conn.cursor()
 
         query = """
-            SELECT DISTINCT c.semester, c.serial_no, c.course_code, c.course_name_zh, c.course_name_en,
+            SELECT DISTINCT c.semester, c.serial_no, c.course_code, c.department, c.course_name_zh, c.course_name_en,
                    c.teacher, c.credits, c.required_or_elective, c.objectives, c.fields, dc.condition
             FROM courses c
             LEFT JOIN distribution_conditions dc
@@ -309,7 +309,7 @@ class CourseDatabaseService:
               AND c.required_or_elective = '必修'
             ORDER BY c.semester DESC, c.course_code ASC
         """
-        cursor.execute(query, [dept, f"%限{dept}%"])
+        cursor.execute(query, [dept, f"%{dept}%"])
         rows = cursor.fetchall()
 
         sem_serials = [(r["semester"], r["serial_no"]) for r in rows]
@@ -323,13 +323,12 @@ class CourseDatabaseService:
 
         conn.close()
 
-        semesters: dict[str, list[dict[str, Any]]] = {
-            "大一上": [], "大一下": [],
-            "大二上": [], "大二下": [],
-            "大三上": [], "大三下": [],
-            "大四上": [], "大四下": [],
+        semesters_dict: dict[str, dict[str, dict[str, Any]]] = {
+            "大一上": {}, "大一下": {},
+            "大二上": {}, "大二下": {},
+            "大三上": {}, "大三下": {},
+            "大四上": {}, "大四下": {},
         }
-        seen_in_sem = set()
 
         for r in rows:
             sem = r["semester"]
@@ -341,83 +340,154 @@ class CourseDatabaseService:
             obj = r["objectives"] or ""
             dc = r["condition"] or ""
 
-            # 嚴格依據 required_or_elective 欄位篩選必修課程
-            req_type = (r["required_or_elective"] or "").strip()
-            if req_type != "必修":
+            # 0. 排除僅限輔系或雙主修的外部課程
+            if dc and r["department"] != dept:
+                clean_dc = re.sub(r"(輔系|雙主修)-" + re.escape(dept), "", dc)
+                if dept not in clean_dc:
+                    continue
+
+            # 1. 嚴格檢查：修別必須為必修
+            if (r["required_or_elective"] or "").strip() != "必修":
                 continue
 
-            # 排除非學術之全校大一通識（如體育、大一服務學習、經典閱讀群選），保留系所核心與學院專業必修
-            if any(ign in name_clean for ign in ["大一體育", "服務學習", "英文會話", "經典閱讀", "大一英文"]):
+            # 2. 判斷是否為 5 大通用必修課程
+            is_chinese = (
+                name_clean.startswith("國文（A）")
+                or name_clean.startswith("國文(A)")
+                or name_clean.startswith("國文（Ａ）")
+                or name_clean.startswith("國文（B）")
+                or name_clean.startswith("國文(B)")
+                or name_clean.startswith("國文（Ｂ）")
+                or name_clean.startswith("國文")
+            )
+            is_english = name_clean.startswith("大一英文")
+            is_freshman_pe = "大一體育" in name_clean
+            is_service_learning = "服務學習" in name_clean
+            is_calculus = "微積分" in name_clean
+
+            is_common_5 = is_chinese or is_english or is_freshman_pe or is_service_learning or is_calculus
+
+            # 3. 排除其他非大一之體育必修 (如大二體育) 及其他非核心通識
+            if "體育" in name_clean and not is_freshman_pe:
+                continue
+            if any(ign in name_clean for ign in ["英文會話", "經典閱讀群選"]):
                 continue
             if name_clean.startswith("[A]") or name_clean.startswith("[B]") or name_clean.startswith("[C]"):
                 continue
 
-            # 1. 學期判定：1151 = 上學期, 1142 = 下學期
+            # 4. 學期判定：1151 = 上學期, 1142 = 下學期
             is_fall = (sem == "1151")
             is_spring = (sem == "1142")
             if not (is_fall or is_spring):
                 continue
 
-            # 2. 年級判定 (1, 2, 3, 4)：優先參考分發條件中的年級限制，若無則依課號數字判定
+            # 5. 年級判定
             grade = None
-            if dc:
-                if "年級:限一年級" in dc or "限一年級" in dc:
-                    grade = 1
-                elif "年級:限二年級" in dc or "限二年級" in dc:
-                    grade = 2
-                elif "年級:限三年級" in dc or "限三年級" in dc:
-                    grade = 3
-                elif "年級:限四年級" in dc or "限四年級" in dc:
-                    grade = 4
+            if is_chinese or is_english or is_freshman_pe or is_service_learning or (is_calculus and r["department"] != dept):
+                # 5 大全校共同必修皆為大一 (Grade 1)
+                grade = 1
+            else:
+                if dc:
+                    if "年級:限一年級" in dc or "限一年級" in dc:
+                        grade = 1
+                    elif "年級:限二年級" in dc or "限二年級" in dc:
+                        grade = 2
+                    elif "年級:限三年級" in dc or "限三年級" in dc:
+                        grade = 3
+                    elif "年級:限四年級" in dc or "限四年級" in dc:
+                        grade = 4
 
-            if not grade:
-                code_match = re.search(r"^[A-Za-z]+([1-4])\d{3}", code)
-                if code_match:
-                    grade = int(code_match.group(1))
+                if not grade:
+                    code_match = re.search(r"^[A-Za-z]+([1-4])\d{3}", code)
+                    if code_match:
+                        grade = int(code_match.group(1))
 
             if not grade:
                 continue
 
-            # 學期分類鍵
+            # 6. 學期分類鍵與課程群組抬頭 (統一名稱)
             term_label = "上" if is_fall else "下"
             grade_label = {1: "大一", 2: "大二", 3: "大三", 4: "大四"}[grade]
             sem_key = f"{grade_label}{term_label}"
 
-            # 同學期同課名去重（合併 A、B 班分班）
-            unique_key = (sem_key, name_clean)
-            if unique_key in seen_in_sem:
-                continue
-            seen_in_sem.add(unique_key)
+            if is_chinese:
+                group_title = "國文"
+            elif is_english:
+                group_title = "大一英文"
+            elif is_freshman_pe:
+                group_title = "大一體育"
+            elif is_service_learning:
+                group_title = "服務學習課程"
+            elif is_calculus:
+                group_title = "微積分"
+            else:
+                group_title = name_clean
 
             sched_list = schedules_map.get((sem, sn), [])
-            raw_sched = sched_list[0]["time"] if sched_list and sched_list[0].get("time") else "安排中"
-            loc_name = sched_list[0]["location"] if sched_list and sched_list[0].get("location") else "教學館舍"
+            raw_sched = " / ".join([s["time"] for s in sched_list if s.get("time")]) or "安排中"
+            loc_name = " / ".join(list(dict.fromkeys([s["location"] for s in sched_list if s.get("location")]))) or "教學館舍"
 
             try:
                 credit_int = int(float(credits_val or 3))
             except Exception:
                 credit_int = 3
 
-            semesters[sem_key].append({
+            section_item = {
                 "id": f"{sem}_{sn}",
                 "semester": sem,
                 "serial_no": sn,
-                "department": dept,
-                "grade": grade,
-                "semester_term": 1 if is_fall else 2,
+                "course_code": code,
                 "course_name": name_clean,
                 "instructor": teacher,
-                "category": "required",
-                "required_or_elective": "必修",
                 "credits": credit_int,
-                "day_of_week": 1,
-                "period_slot": "morning",
                 "raw_schedule": raw_sched,
                 "location_name": loc_name,
-                "syllabus_summary": obj[:120] if obj else "核心必修課程大綱",
-                "is_synced_vec": True,
-            })
+                "condition": dc,
+                "syllabus_summary": obj[:120] if obj else "",
+            }
 
+            if group_title not in semesters_dict[sem_key]:
+                semesters_dict[sem_key][group_title] = {
+                    "id": f"{sem}_{sn}",
+                    "semester": sem,
+                    "serial_no": sn,
+                    "department": r["department"],
+                    "grade": grade,
+                    "semester_term": 1 if is_fall else 2,
+                    "course_name": group_title,
+                    "instructor": teacher,
+                    "category": "common_required" if is_common_5 else "required",
+                    "required_or_elective": "必修",
+                    "credits": credit_int,
+                    "day_of_week": 1,
+                    "period_slot": "morning",
+                    "raw_schedule": raw_sched,
+                    "location_name": loc_name,
+                    "syllabus_summary": obj[:120] if obj else "核心必修課程大綱",
+                    "is_synced_vec": True,
+                    "is_common_required": is_common_5,
+                    "sections": [section_item],
+                }
+            else:
+                semesters_dict[sem_key][group_title]["sections"].append(section_item)
+                teachers = list(dict.fromkeys([
+                    sec["instructor"]
+                    for sec in semesters_dict[sem_key][group_title]["sections"]
+                    if sec["instructor"] and sec["instructor"] != "未定"
+                ]))
+                if len(teachers) > 1:
+                    semesters_dict[sem_key][group_title]["instructor"] = f"{teachers[0]} 等 {len(teachers)} 位教師"
+                elif teachers:
+                    semesters_dict[sem_key][group_title]["instructor"] = teachers[0]
+
+                # 共通時段更新：若為服務學習等跨班排課時段不同者，給予提示
+                existing_sched = semesters_dict[sem_key][group_title]["raw_schedule"]
+                if existing_sched != raw_sched and is_service_learning:
+                    semesters_dict[sem_key][group_title]["raw_schedule"] = "依各班排定"
+
+        semesters: dict[str, list[dict[str, Any]]] = {
+            k: list(v.values()) for k, v in semesters_dict.items()
+        }
         return semesters
 
 
