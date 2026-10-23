@@ -37,6 +37,16 @@ jobs:
           pip install -r requirements.txt
           pip install ruff mypy pytest httpx
 
+      - name: Setup MyPy and Ruff Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.mypy_cache
+            backend/.ruff_cache
+          key: ${{ runner.os }}-python-cache-${{ hashFiles('backend/requirements.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-python-cache-${{ hashFiles('backend/requirements.txt') }}-
+
       - name: Run Ruff Linter
         run: ruff check .
 
