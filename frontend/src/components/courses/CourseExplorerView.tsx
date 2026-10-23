@@ -43,6 +43,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
   // Exact Search State
   const [exactSemester, setExactSemester] = useState<string>("");
   const [exactDept, setExactDept] = useState<string>("");
+  const [exactReqType, setExactReqType] = useState<string>("");
   const [exactDegree, setExactDegree] = useState<string>("");
   const [exactCredits, setExactCredits] = useState<string>("");
   const [exactDay, setExactDay] = useState<string>("");
@@ -105,6 +106,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
         credits: exactCredits ? parseFloat(exactCredits) : undefined,
         day: exactDay ? parseInt(exactDay) : undefined,
         keyword: exactKeyword.trim() || undefined,
+        required_or_elective: exactReqType || undefined,
         page: pageToFetch,
         pageSize: 24,
       });
@@ -122,7 +124,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
     if (activeTab === "exact") {
       fetchExactCourses(1);
     }
-  }, [exactSemester, exactDept, exactDegree, exactCredits, exactDay, activeTab]);
+  }, [exactSemester, exactDept, exactReqType, exactDegree, exactCredits, exactDay, activeTab]);
 
   const handleExactSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,7 +383,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
               </div>
 
               {/* 篩選條件下拉列 */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* 開課學期 */}
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 mb-1">開課學期</label>
@@ -413,6 +415,20 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                         {d}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                {/* 修別 (必修 / 選修) */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-500 mb-1">修別類別</label>
+                  <select
+                    value={exactReqType}
+                    onChange={(e) => setExactReqType(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-stone-800 text-xs focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">全部修別</option>
+                    <option value="必修">必修</option>
+                    <option value="選修">選修</option>
                   </select>
                 </div>
 
@@ -517,6 +533,17 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                           >
                             {is1151 ? "1151 上學期" : "1142 下學期"}
                           </span>
+                          {c.required_or_elective && (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                c.required_or_elective === "必修"
+                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                  : "bg-stone-100 text-stone-700 border border-stone-200"
+                              }`}
+                            >
+                              {c.required_or_elective}
+                            </span>
+                          )}
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600">
                             {c.degree || "學士班"}
                           </span>
@@ -1176,10 +1203,21 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             {/* 彈窗頂部 */}
             <div className="p-6 border-b border-stone-200 flex items-start justify-between bg-stone-50">
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                     {selectedCourse.semester === "1151" ? "1151 上學期" : "1142 下學期"}
                   </span>
+                  {selectedCourse.required_or_elective && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        selectedCourse.required_or_elective === "必修"
+                          ? "bg-amber-100 text-amber-800 border border-amber-300"
+                          : "bg-stone-100 text-stone-700 border border-stone-300"
+                      }`}
+                    >
+                      {selectedCourse.required_or_elective}
+                    </span>
+                  )}
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-200/80 text-stone-700">
                     {selectedCourse.degree || "學士班"}
                   </span>
@@ -1208,10 +1246,16 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             {/* 彈窗可滾動內容 */}
             <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs text-stone-700">
               {/* 基本資訊格網 */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
                 <div>
                   <div className="text-stone-400 mb-0.5 text-[11px]">開課系所</div>
                   <div className="font-bold text-stone-900 truncate">{selectedCourse.department}</div>
+                </div>
+                <div>
+                  <div className="text-stone-400 mb-0.5 text-[11px]">修別</div>
+                  <div className={`font-bold ${selectedCourse.required_or_elective === "必修" ? "text-amber-800" : "text-stone-800"}`}>
+                    {selectedCourse.required_or_elective || "未定"}
+                  </div>
                 </div>
                 <div>
                   <div className="text-stone-400 mb-0.5 text-[11px]">授課教師</div>

@@ -31,6 +31,7 @@ class FullCourseItem(BaseModel):
     course_name_en: str
     degree: str
     credits: float
+    required_or_elective: Optional[str] = ""
     objectives: Optional[str] = ""
     content: Optional[str] = ""
     textbooks: Optional[str] = ""

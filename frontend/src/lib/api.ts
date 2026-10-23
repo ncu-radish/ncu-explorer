@@ -71,6 +71,7 @@ export const courseApi = {
     credits?: number;
     day?: number;
     keyword?: string;
+    required_or_elective?: string;
     page?: number;
     pageSize?: number;
   }) => {
@@ -82,6 +83,7 @@ export const courseApi = {
     if (params.credits !== undefined && params.credits !== null) query.append("credits", params.credits.toString());
     if (params.day) query.append("day", params.day.toString());
     if (params.keyword) query.append("keyword", params.keyword);
+    if (params.required_or_elective) query.append("required_or_elective", params.required_or_elective);
     if (params.page) query.append("page", params.page.toString());
     if (params.pageSize) query.append("page_size", params.pageSize.toString());
     return fetchApi<{
@@ -104,6 +106,7 @@ export const courseApi = {
       course_name_en: string;
       degree: string;
       credits: number;
+      required_or_elective?: string;
       objectives?: string;
       content?: string;
       textbooks?: string;

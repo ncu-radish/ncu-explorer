@@ -74,7 +74,6 @@ class CourseDatabaseService:
                 "count": count,
             })
 
-        # 3. 學制清單
         cursor.execute(
             "SELECT DISTINCT degree FROM courses WHERE degree IS NOT NULL AND degree != '' ORDER BY degree"
         )
@@ -102,6 +101,7 @@ class CourseDatabaseService:
         credits: Optional[float] = None,
         day: Optional[int] = None,
         keyword: Optional[str] = None,
+        required_or_elective: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
     ) -> Dict[str, Any]:
@@ -123,6 +123,10 @@ class CourseDatabaseService:
         if degree:
             where_clauses.append("c.degree = ?")
             params.append(degree.strip())
+
+        if required_or_elective and required_or_elective.strip():
+            where_clauses.append("c.required_or_elective = ?")
+            params.append(required_or_elective.strip())
 
         if grade is not None and grade > 0:
             # 課號或名稱判斷年級，或分發條件中的年級限制
@@ -172,6 +176,7 @@ class CourseDatabaseService:
         query_sql = f"""
             SELECT c.semester, c.serial_no, c.course_code, c.department, c.teacher,
                    c.course_name_zh, c.course_name_en, c.degree, c.credits,
+                   c.required_or_elective,
                    c.objectives, c.content, c.textbooks, c.fields
             FROM courses c
             {where_sql}
@@ -233,7 +238,7 @@ class CourseDatabaseService:
         }
 
     def get_course_detail(self, semester: str, serial_no: str) -> Optional[Dict[str, Any]]:
-        """取得單一課程的完整課綱、上課教室、核心能力與分發順位限制"""
+        """取得單一課程的完整課綱、上課教室、修別、核心能力與分發順位限制"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -241,6 +246,7 @@ class CourseDatabaseService:
             """
             SELECT semester, serial_no, course_code, department, teacher,
                    course_name_zh, course_name_en, degree, credits,
+                   required_or_elective,
                    objectives, content, textbooks, fields, embedding_text
             FROM courses
             WHERE semester = ? AND serial_no = ?
@@ -264,7 +270,7 @@ class CourseDatabaseService:
 
         # 2. 核心能力指標
         cursor.execute(
-            "SELECT ability, strength, assessment_method FROM core_skills WHERE semester = ? AND serial_no = ? ORDER BY id",
+            "SELECT ability, strength, assessment_method FROM core_skills WHERE semester = ? AND serial_no = ?",
             [semester, serial_no],
         )
         course_detail["core_skills"] = [dict(r) for r in cursor.fetchall()]
@@ -282,23 +288,25 @@ class CourseDatabaseService:
     def get_department_roadmap(self, dept: str) -> Dict[str, List[Dict[str, Any]]]:
         """
         取得指定系所的大一至大四必修課程學習脈絡：
+        - 依據資料庫中精確的 required_or_elective 欄位 (限定為 '必修')
         - 1151 代表上學期（Fall）
         - 1142 代表下學期（Spring）
-        - 僅篩選必修課程，依年級 (大一/大二/大三/大四) 與學期 (上/下) 正確分配至 8 個學期
-        - 自動去重同名分班課程，整合學分、授課教師與時段資訊
+        - 年級優先參考分發條件中的年級限制 (如限一年級、限二年級)，無則參考課號數字
+        - 自動去重同學期同課名分班課程，整合學分、授課教師與時段資訊
         """
         conn = self.get_connection()
         cursor = conn.cursor()
 
         query = """
             SELECT DISTINCT c.semester, c.serial_no, c.course_code, c.course_name_zh, c.course_name_en,
-                   c.teacher, c.credits, c.objectives, c.fields, dc.condition
+                   c.teacher, c.credits, c.required_or_elective, c.objectives, c.fields, dc.condition
             FROM courses c
             LEFT JOIN distribution_conditions dc 
               ON c.semester = dc.semester AND c.serial_no = dc.serial_no AND dc.priority = 1
             WHERE (c.department = ? OR (dc.condition IS NOT NULL AND dc.condition LIKE ?))
               AND c.degree = '學士班'
               AND c.semester IN ('1151', '1142')
+              AND c.required_or_elective = '必修'
             ORDER BY c.semester DESC, c.course_code ASC
         """
         cursor.execute(query, [dept, f"%限{dept}%"])
@@ -334,6 +342,11 @@ class CourseDatabaseService:
             fields = r["fields"] or ""
             dc = r["condition"] or ""
 
+            # 嚴格依據 required_or_elective 欄位篩選必修課程
+            req_type = (r["required_or_elective"] or "").strip()
+            if req_type != "必修":
+                continue
+
             # 排除非學術之全校大一通識（如體育、大一服務學習、經典閱讀群選），保留系所核心與學院專業必修
             if any(ign in name_clean for ign in ["大一體育", "服務學習", "英文會話", "經典閱讀", "大一英文"]):
                 continue
@@ -346,12 +359,9 @@ class CourseDatabaseService:
             if not (is_fall or is_spring):
                 continue
 
-            # 2. 年級判定 (1, 2, 3, 4)
+            # 2. 年級判定 (1, 2, 3, 4)：優先參考分發條件中的年級限制，若無則依課號數字判定
             grade = None
-            code_match = re.search(r"^[A-Za-z]+([1-4])\d{3}", code)
-            if code_match:
-                grade = int(code_match.group(1))
-            else:
+            if dc:
                 if "年級:限一年級" in dc or "限一年級" in dc:
                     grade = 1
                 elif "年級:限二年級" in dc or "限二年級" in dc:
@@ -362,28 +372,11 @@ class CourseDatabaseService:
                     grade = 4
 
             if not grade:
-                continue
+                code_match = re.search(r"^[A-Za-z]+([1-4])\d{3}", code)
+                if code_match:
+                    grade = int(code_match.group(1))
 
-            # 3. 必修課程篩選：
-            grade_str = {1: "一年級", 2: "二年級", 3: "三年級", 4: "四年級"}[grade]
-            has_single_grade_limit = (f"限{grade_str}" in dc) and ("二年級、三年級" not in dc and "三年級、四年級" not in dc)
-            has_section_split = bool(re.search(r"-[A-Z0-9]$", code)) or ("班別:限" in dc) or ("學號:限" in dc)
-            is_core_title = any(k in name_clean for k in [
-                "專題", "實習", "實驗", "導論", "概論", "設計", "微積分", "普通物理", "普通化學",
-                "線性代數", "工程數學", "離散數學", "機率", "統計", "資料結構", "演算法", "作業系統",
-                "計算機組織", "網路", "資料庫", "管理學", "經濟學", "會計學", "財務管理", "商事法",
-                "生產與作業", "行銷學", "系統分析", "組織行為", "企業政策", "管理資訊系統",
-                "靜力", "動力", "材料", "熱力", "流體", "機構", "電路", "電子學", "電磁學"
-            ])
-            is_req_in_obj = "必修" in obj
-
-            is_elective_field = "其他選修課" in fields or "選修" in fields
-
-            is_required = (has_single_grade_limit or has_section_split or is_core_title or is_req_in_obj)
-            if is_elective_field and not (has_single_grade_limit or "專題" in name_clean):
-                is_required = False
-
-            if not is_required:
+            if not grade:
                 continue
 
             # 學期分類鍵
@@ -416,6 +409,7 @@ class CourseDatabaseService:
                 "course_name": name_clean,
                 "instructor": teacher,
                 "category": "required",
+                "required_or_elective": "必修",
                 "credits": credit_int,
                 "day_of_week": 1,
                 "period_slot": "morning",

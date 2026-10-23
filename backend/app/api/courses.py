@@ -55,6 +55,7 @@ def search_courses_endpoint(
     credits: Optional[float] = Query(None, description="學分數"),
     day: Optional[int] = Query(None, description="星期 (1~7)"),
     keyword: Optional[str] = Query(None, description="課程名稱、課號、教師或內容關鍵字"),
+    required_or_elective: Optional[str] = Query(None, description="修別 (必修 / 選修)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
 ):
@@ -68,6 +69,7 @@ def search_courses_endpoint(
             credits=credits,
             day=day,
             keyword=keyword,
+            required_or_elective=required_or_elective,
             page=page,
             page_size=page_size,
         )
