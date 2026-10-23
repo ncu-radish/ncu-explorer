@@ -99,6 +99,7 @@ function MapContent() {
   } = useMapStore();
 
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [allBuildings, setAllBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -107,7 +108,12 @@ function MapContent() {
   const listContainerRef = useRef<HTMLDivElement>(null);
   const activeItemRef = useRef<HTMLDivElement>(null);
 
-  // Fetch buildings from backend API (connected to SQLite RDBMS)
+  // Fetch all buildings once on mount so 3D map always has complete building registry
+  useEffect(() => {
+    exploreApi.getBuildings().then(setAllBuildings).catch(console.error);
+  }, []);
+
+  // Fetch buildings from backend API filtered by query and category for the sidebar list
   const fetchBuildings = async (q?: string, cat?: string) => {
     try {
       setLoading(true);
@@ -142,7 +148,9 @@ function MapContent() {
       return;
     }
 
-    const found = buildings.find((b) => b.id === selectedBuildingId);
+    const found =
+      allBuildings.find((b) => b.id === selectedBuildingId) ||
+      buildings.find((b) => b.id === selectedBuildingId);
     if (found) {
       setSelectedBuildingDetail(found);
     } else {
@@ -150,7 +158,7 @@ function MapContent() {
         .then(setSelectedBuildingDetail)
         .catch(() => setSelectedBuildingDetail(null));
     }
-  }, [selectedBuildingId, buildings]);
+  }, [selectedBuildingId, allBuildings, buildings]);
 
   // Scroll active building card into view in the list
   useEffect(() => {
@@ -452,7 +460,7 @@ function MapContent() {
         {/* 3D Scene Viewport */}
         <div className="w-full h-full">
           <CampusScene
-            buildings={buildings}
+            buildings={allBuildings.length > 0 ? allBuildings : buildings}
             onSelectBuilding={handleSelectBuilding}
           />
         </div>

@@ -20,6 +20,7 @@ interface MapState {
   filterCategory: string | null;
   searchQuery: string;
   resetTrigger: number;
+  focusTrigger: number;
 
   selectBuilding: (id: string | null) => void;
   setHoveredBuilding: (id: string | null) => void;
@@ -43,12 +44,17 @@ export const useMapStore = create<MapState>((set) => ({
   filterCategory: null,
   searchQuery: "",
   resetTrigger: 0,
+  focusTrigger: 0,
 
   selectBuilding: (id) => {
     if (!id) {
       set({ selectedBuildingId: null, isDrawerOpen: false });
     } else {
-      set({ selectedBuildingId: id, isDrawerOpen: true });
+      set((state) => ({
+        selectedBuildingId: id,
+        isDrawerOpen: true,
+        focusTrigger: state.focusTrigger + 1,
+      }));
     }
   },
 

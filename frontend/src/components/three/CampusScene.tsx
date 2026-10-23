@@ -187,10 +187,12 @@ function SelectedBuildingBeacon({
     }
   });
 
-  if (!bounds || !building) return null;
+  if (!building) return null;
+  const posX = bounds?.center.x ?? 0;
+  const posZ = bounds?.center.z ?? 0;
 
   return (
-    <group position={[bounds.center.x, 0, bounds.center.z]}>
+    <group position={[posX, 0, posZ]}>
       <group ref={pinRef}>
         {/* Diamond beacon */}
         <mesh>
@@ -257,37 +259,86 @@ function HoverTooltip({
 function CameraController({
   targetPos,
   targetLookAt,
+  animationKey,
 }: {
-  targetPos: THREE.Vector3 | null;
-  targetLookAt: THREE.Vector3 | null;
+  targetPos: THREE.Vector3;
+  targetLookAt: THREE.Vector3;
+  animationKey: string;
 }) {
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<React.ComponentRef<typeof OrbitControls>>(null);
   const { camera } = useThree();
-  const isFlying = useRef(false);
+
+  const animRef = useRef({
+    startPos: new THREE.Vector3(),
+    endPos: new THREE.Vector3(),
+    startTarget: new THREE.Vector3(),
+    endTarget: new THREE.Vector3(),
+    duration: 0.75,
+    elapsed: 0,
+    active: false,
+  });
+
+  const lastKeyRef = useRef<string>("");
 
   useEffect(() => {
-    if (targetPos && targetLookAt) {
-      isFlying.current = true;
-    }
-  }, [targetPos, targetLookAt]);
+    if (!controlsRef.current) return;
+    const controls = controlsRef.current;
+
+    // Avoid duplicate triggers for the exact same animation key
+    if (animationKey === lastKeyRef.current) return;
+    lastKeyRef.current = animationKey;
+
+    animRef.current = {
+      startPos: camera.position.clone(),
+      endPos: targetPos.clone(),
+      startTarget: controls.target.clone(),
+      endTarget: targetLookAt.clone(),
+      duration: 0.75,
+      elapsed: 0,
+      active: true,
+    };
+  }, [animationKey, targetPos, targetLookAt, camera]);
+
+  // Cancel flight on any user interaction so the user has immediate, full control
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const handleUserInteraction = () => {
+      if (animRef.current.active) {
+        animRef.current.active = false;
+      }
+    };
+
+    controls.addEventListener("start", handleUserInteraction);
+    return () => {
+      controls.removeEventListener("start", handleUserInteraction);
+    };
+  }, []);
 
   useFrame((_, delta) => {
     if (!controlsRef.current) return;
     const controls = controlsRef.current;
+    const anim = animRef.current;
 
-    if (isFlying.current && targetPos && targetLookAt) {
-      const step = Math.min(delta * 4, 0.2);
-      camera.position.lerp(targetPos, step);
-      controls.target.lerp(targetLookAt, step);
-      controls.update();
+    if (anim.active) {
+      anim.elapsed += delta;
+      const t = Math.min(anim.elapsed / anim.duration, 1);
+      // Smooth cubic ease-out
+      const ease = 1 - Math.pow(1 - t, 3);
 
-      if (
-        camera.position.distanceTo(targetPos) < 1.0 &&
-        controls.target.distanceTo(targetLookAt) < 1.0
-      ) {
-        isFlying.current = false;
+      camera.position.lerpVectors(anim.startPos, anim.endPos, ease);
+      controls.target.lerpVectors(anim.startTarget, anim.endTarget, ease);
+
+      if (t >= 1) {
+        camera.position.copy(anim.endPos);
+        controls.target.copy(anim.endTarget);
+        anim.active = false;
       }
     }
+
+    // Always update controls on frame so damping and user gestures work smoothly
+    controls.update();
   });
 
   return (
@@ -314,8 +365,15 @@ export function CampusScene({
   onSelectBuilding,
   focusedLocationId,
 }: CampusSceneProps) {
-  const { selectedBuildingId, selectBuilding, hoveredBuildingId, resetTrigger } = useMapStore();
+  const {
+    selectedBuildingId,
+    selectBuilding,
+    hoveredBuildingId,
+    resetTrigger,
+    focusTrigger,
+  } = useMapStore();
   const [internalBuildings, setInternalBuildings] = useState<Building[]>([]);
+  const [extraBuilding, setExtraBuilding] = useState<Building | null>(null);
   const [boundsMap, setBoundsMap] = useState<Map<string, BuildingBounds>>(new Map());
 
   // If buildings not passed, fetch them automatically
@@ -348,9 +406,20 @@ export function CampusScene({
     return map;
   }, [buildings]);
 
+  // If selected building isn't in buildingMap (e.g. initial load before list loaded), fetch detail
+  useEffect(() => {
+    if (selectedBuildingId && !buildingMap.has(selectedBuildingId)) {
+      exploreApi
+        .getBuildingDetail(selectedBuildingId)
+        .then(setExtraBuilding)
+        .catch(() => setExtraBuilding(null));
+    }
+  }, [selectedBuildingId, buildingMap]);
+
   // Determine desired camera target and position
   const { targetPos, targetLookAt } = useMemo(() => {
     void resetTrigger;
+    void focusTrigger;
     if (!selectedBuildingId || !boundsMap.has(selectedBuildingId)) {
       return {
         targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
@@ -370,9 +439,15 @@ export function CampusScene({
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
     return { targetPos: pos, targetLookAt: lookAt };
-  }, [selectedBuildingId, boundsMap, resetTrigger]);
+  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger]);
 
-  const selectedBuilding = selectedBuildingId ? buildingMap.get(selectedBuildingId) : undefined;
+  const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${
+    boundsMap.size > 0 ? 1 : 0
+  }`;
+
+  const selectedBuilding = selectedBuildingId
+    ? buildingMap.get(selectedBuildingId) || extraBuilding || undefined
+    : undefined;
   const selectedBounds = selectedBuildingId ? boundsMap.get(selectedBuildingId) : undefined;
 
   const hoveredBuilding = hoveredBuildingId ? buildingMap.get(hoveredBuildingId) : undefined;
@@ -393,9 +468,7 @@ export function CampusScene({
       >
         {/* Warm Natural Lighting Setup */}
         <ambientLight intensity={0.75} color="#FFFDF7" />
-        <hemisphereLight
-          args={["#F6F3EE", "#DFDACF", 0.65]}
-        />
+        <hemisphereLight args={["#F6F3EE", "#DFDACF", 0.65]} />
         <directionalLight
           position={[350, 500, 250]}
           intensity={1.4}
@@ -420,10 +493,7 @@ export function CampusScene({
         </mesh>
 
         {/* Subtle grid lines for depth perception */}
-        <gridHelper
-          args={[1400, 70, "#D5CFC5", "#E8E3DA"]}
-          position={[0, -0.02, 0]}
-        />
+        <gridHelper args={[1400, 70, "#D5CFC5", "#E8E3DA"]} position={[0, -0.02, 0]} />
 
         {/* Campus 3D Model */}
         <CampusModel
@@ -442,7 +512,11 @@ export function CampusScene({
         )}
 
         {/* Camera Navigation Rig */}
-        <CameraController targetPos={targetPos} targetLookAt={targetLookAt} />
+        <CameraController
+          targetPos={targetPos}
+          targetLookAt={targetLookAt}
+          animationKey={animationKey}
+        />
       </Canvas>
     </div>
   );
