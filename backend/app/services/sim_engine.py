@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 from typing import Any
 
 from pydantic import BaseModel
@@ -9,8 +10,6 @@ from app.core.llm_client import call_ollama_structured
 from app.models.tables import (
     CampusLifeInfo,
     CampusLocation,
-    ClubAndActivity,
-    Course,
     GameSession,
     RandomEvent,
 )
@@ -20,135 +19,470 @@ from app.schemas.llm import (
     TurnGenerationSchema,
 )
 from app.schemas.sim import ScheduleSlot
+from app.services.course_db import course_db_service
 from app.services.prompts import (
     ONBOARDING_PROMPT_TEMPLATE,
     TURN_NARRATIVE_PROMPT_TEMPLATE,
     WEEK_SUMMARY_PROMPT_TEMPLATE,
 )
-from app.services.rag_service import course_rag_service
 
 logger = logging.getLogger(__name__)
 
-DAY_NAMES = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
-SLOT_NAMES = {"morning": "上午 (早八/早十)", "afternoon": "下午 (午後)", "evening": "晚間 (社課/夜間)"}
+DAY_NAMES = ["週一", "週二", "週三", "週四", "週五"]
+
+SLOT_CONFIG = [
+    ("slot_1", "晨光早課 (08:00~10:00 第1-2節)", ["1", "2"]),
+    ("slot_2", "上午主修 (10:00~12:00 第3-4節)", ["3", "4"]),
+    ("slot_3", "午膳漫步 (12:00~13:00 午間Z節)", ["Z"]),
+    ("slot_4", "午後專修 (13:00~15:00 第5-6節)", ["5", "6"]),
+    ("slot_5", "下晝研討 (15:00~17:00 第7-8節)", ["7", "8"]),
+    ("slot_6", "晚間校園 (18:00~21:00 社團夜色)", ["9", "A", "B", "C"]),
+]
+SLOT_NAMES = {cfg[0]: cfg[1] for cfg in SLOT_CONFIG}
+
+DAY_MAP = {
+    "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5,
+    "一": 1, "二": 2, "三": 3, "四": 4, "五": 5
+}
+
+def parse_schedule_periods(time_str: str | None) -> list[tuple[int, list[str]]]:
+    """解析課程時間字串，如 '三34'、'Mon234'、'一78 / 四1'"""
+    if not time_str or time_str in ("安排中", "依各班排定"):
+        return []
+    res = []
+    for part in re.split(r"[/,; ]+", time_str.strip()):
+        m = re.match(r"^(Mon|Tue|Wed|Thu|Fri|[一二三四五])([0-9A-Za-z]+)$", part)
+        if m:
+            d = DAY_MAP.get(m.group(1))
+            if d:
+                res.append((d, list(m.group(2))))
+    return res
+
+def map_campus_location(location_name: str | None, course_name: str | None = None, dept: str | None = None) -> tuple[str, str]:
+    loc_str = (location_name or "") + (course_name or "") + (dept or "")
+    if any(k in loc_str for k in ["I1", "I2", "管二", "管理", "資管", "企管", "財金"]):
+        return "loc_mgt2", location_name or "管理二館"
+    if any(k in loc_str for k in ["E6", "工五", "資工", "資訊工程"]):
+        return "loc_eng5", location_name or "工程五館"
+    if any(k in loc_str for k in ["理", "科五", "S4", "物理", "化學", "數學"]):
+        return "loc_sci5", location_name or "科學五館 / 理學院"
+    if any(k in loc_str for k in ["體育", "依仁", "排球", "籃球", "羽球", "網球", "壘球", "游泳", "瑜珈", "體"]):
+        return "loc_yiren", location_name or "依仁堂體育館"
+    if any(k in loc_str for k in ["圖", "閱覽", "自修"]):
+        return "loc_lib", location_name or "總圖書館"
+    if any(k in loc_str for k in ["TR", "教研", "綜教", "文學", "文學院", "法文", "中文", "英文"]):
+        return "loc_teaching", location_name or "綜合教學大樓"
+    return "loc_teaching", location_name or "教學大樓"
 
 class SimEngine:
-    async def parse_onboarding(self, user_input: str, model_name: str) -> OnboardingParseSchema:
-        prompt = ONBOARDING_PROMPT_TEMPLATE.format(user_input=user_input)
+    async def parse_onboarding(
+        self,
+        user_input: str,
+        model_name: str,
+        dept_hint: str | None = None,
+        grade_hint: int | None = None
+    ) -> OnboardingParseSchema:
+        # 1. 啟發式/正則快速萃取學系與年級，作為穩健基底
+        dept = dept_hint or "資訊管理學系"
+        grade = grade_hint or 1
+
+        if not dept_hint:
+            dept_keywords = {
+                "資訊管理": "資訊管理學系", "資管": "資訊管理學系",
+                "資訊工程": "資訊工程學系", "資工": "資訊工程學系",
+                "電機工程": "電機工程學系", "電機": "電機工程學系",
+                "通訊工程": "通訊工程學系", "通訊": "通訊工程學系",
+                "企業管理": "企業管理學系", "企管": "企業管理學系",
+                "財務金融": "財務金融學系", "財金": "財務金融學系",
+                "經濟": "經濟學系", "機械": "機械工程學系",
+                "土木": "土木工程學系", "化材": "化學工程與材料工程學系",
+                "數學": "數學系", "物理": "物理學系", "化學": "化學學系",
+                "生科": "生命科學系", "中文": "中國文學系", "英文": "英美語文學系", "法文": "法國語文學系"
+            }
+            for kw, target in dept_keywords.items():
+                if kw in user_input:
+                    dept = target
+                    break
+
+        if not grade_hint:
+            if "大一" in user_input or "一年級" in user_input:
+                grade = 1
+            elif "大二" in user_input or "二年級" in user_input:
+                grade = 2
+            elif "大三" in user_input or "三年級" in user_input:
+                grade = 3
+            elif "大四" in user_input or "四年級" in user_input:
+                grade = 4
+
         fallback = OnboardingParseSchema(
-            department="資訊管理學系",
-            grade=1,
+            department=dept,
+            grade=grade,
             semester_term=1,
-            clubs=["熱舞社", "資管系學會"],
-            interest_query="人工智慧"
+            clubs=["熱舞社", "系學會"],
+            interest_query="校園生活"
         )
+
+        prompt = ONBOARDING_PROMPT_TEMPLATE.format(user_input=user_input)
         try:
-            return await call_ollama_structured(
+            parsed = await call_ollama_structured(
                 user_prompt=prompt,
                 response_schema=OnboardingParseSchema,
                 model_name=model_name,
                 fallback_instance=fallback,
                 timeout=25.0
             )
+            if dept_hint:
+                parsed.department = dept_hint
+            if grade_hint:
+                parsed.grade = grade_hint
+            return parsed
         except Exception as e:
             logger.warning(f"Onboarding parse failed, using fallback: {e}")
             return fallback
 
     def build_weekly_schedule(
         self,
-        db: Session,
-        profile: OnboardingParseSchema
+        db: Session | None = None,
+        profile: OnboardingParseSchema | None = None,
     ) -> list[ScheduleSlot]:
         """
-        排定週一至週日共 21 個時段 (7天 x 3時段)
-        1. 撈出所屬系所大一上必修課排入對應時段
-        2. 撈出所選社團排入對應 evening 時段
-        3. 若有興趣 query，以 FastEmbed 混合檢索不衝堂課程填入
-        4. 其餘時段標記為「校園自由時間」
+        為週一至週五排定完整一日時間軸 (5天 x 6時段 = 30回合)
+        1. 根據所選學系與年級撈取 courses.db 準確必修課 (大一含國文、英文、微積分、體育、服學)
+        2. 空堂填補 (至多加選2堂，優先順序：通識(CC/GS) -> 體育(大二以上零學分非校隊) -> 語言選修(LN) -> 系選修)
+        3. 學分規範：大一至大三 16~25 學分；大四 9~16 學分
+        4. 映射到週一至週五整天時段 (08:00~21:00)
         """
-        schedule: list[ScheduleSlot] = []
+        if profile is None:
+            profile = OnboardingParseSchema()
+        dept = profile.department or "資訊管理學系"
+        grade = profile.grade if profile.grade in (1, 2, 3, 4) else 1
 
-        # 預先填滿 21 個空時段
-        slot_keys = ["morning", "afternoon", "evening"]
-        for day in range(1, 8):
-            for slot in slot_keys:
-                schedule.append(ScheduleSlot(
-                    day=day,
-                    slot=slot,
-                    title="自由探索時間",
-                    type="free",
-                    location_id="loc_park_creek" if day <= 5 else "loc_night_street",
-                    location_name="百花川步道" if day <= 5 else "中大宵夜街"
-                ))
+        min_credits = 9.0 if grade == 4 else 16.0
+        max_credits = 16.0 if grade == 4 else 25.0
 
-        # 1. 排入必修課
-        req_courses = db.query(Course).filter(
-            Course.department == profile.department,
-            Course.grade == profile.grade,
-            Course.semester_term == profile.semester_term,
-            Course.category == "required"
-        ).all()
+        # 1. 撈取必修課基本盤
+        roadmap = course_db_service.get_department_roadmap(dept)
+        grade_map = {1: "大一上", 2: "大二上", 3: "大三上", 4: "大四上"}
+        sem_key = grade_map.get(grade, "大一上")
+        req_courses = roadmap.get(sem_key, [])
+
+        enrolled_courses: list[dict[str, Any]] = []
+        occupied_periods: set[tuple[int, str]] = set()
+        total_credits = 0.0
 
         for c in req_courses:
-            day_idx = c.day_of_week - 1
-            if 0 <= day_idx < 7:
-                slot_idx = slot_keys.index(c.period_slot) if c.period_slot in slot_keys else 0
-                target_idx = day_idx * 3 + slot_idx
-                if 0 <= target_idx < 21:
-                    schedule[target_idx] = ScheduleSlot(
-                        day=c.day_of_week,
-                        slot=c.period_slot,
-                        title=f"{c.course_name} (必修)",
-                        type="course",
-                        course_id=c.id,
-                        location_id=c.location_id,
-                        location_name=c.location.name if c.location else "教學大樓"
-                    )
+            c_time = c.get("raw_schedule") or ""
+            parsed = parse_schedule_periods(c_time)
 
-        # 2. 排入社團
-        for club_name in profile.clubs:
-            club = db.query(ClubAndActivity).filter(
-                ClubAndActivity.name.ilike(f"%{club_name.strip()}%")
-            ).first()
-            if club:
-                day_idx = club.day_of_week - 1
-                slot_idx = slot_keys.index(club.period_slot) if club.period_slot in slot_keys else 2
-                target_idx = day_idx * 3 + slot_idx
-                if 0 <= target_idx < 21 and schedule[target_idx].type == "free":
-                    schedule[target_idx] = ScheduleSlot(
-                        day=club.day_of_week,
-                        slot=club.period_slot,
-                        title=f"{club.name} (社團活動)",
-                        type="club",
-                        club_id=club.id,
-                        location_id=club.location_id,
-                        location_name=club.location.name if club.location else "活動中心"
-                    )
+            # 若主課程時間未定 (如 未123) 且有分班，挑選不衝突的分班時間
+            if not parsed and c.get("sections"):
+                for sec in c["sections"]:
+                    sec_time = sec.get("raw_schedule") or ""
+                    sec_parsed = parse_schedule_periods(sec_time)
+                    if sec_parsed:
+                        sec_conflict = False
+                        for d, pers in sec_parsed:
+                            for p in pers:
+                                if (d, p) in occupied_periods:
+                                    sec_conflict = True
+                                    break
+                            if sec_conflict:
+                                break
+                        if not sec_conflict:
+                            c_time = sec_time
+                            parsed = sec_parsed
+                            if sec.get("location_name"):
+                                c["location_name"] = sec["location_name"]
+                            if sec.get("instructor"):
+                                c["instructor"] = sec["instructor"]
+                            break
 
-        # 3. FastEmbed 檢索興趣選修課排入空堂
-        if profile.interest_query:
-            matched_courses = course_rag_service.hybrid_search_courses(
-                query=profile.interest_query,
-                limit=3
-            )
-            for mc in matched_courses:
-                day_idx = mc["day_of_week"] - 1
-                slot = mc["period_slot"]
-                if 0 <= day_idx < 7 and slot in slot_keys:
-                    slot_idx = slot_keys.index(slot)
-                    target_idx = day_idx * 3 + slot_idx
-                    if 0 <= target_idx < 21 and schedule[target_idx].type == "free":
-                        loc = db.query(CampusLocation).filter(CampusLocation.id == mc.get("location_id")).first()
-                        schedule[target_idx] = ScheduleSlot(
-                            day=mc["day_of_week"],
-                            slot=slot,
-                            title=f"{mc['course_name']} (選修)",
-                            type="course",
-                            course_id=mc["course_id"],
-                            location_id=mc.get("location_id"),
-                            location_name=loc.name if loc else "綜合館舍"
-                        )
+            if not parsed:
+                continue
+
+            conflicts = False
+            for d, pers in parsed:
+                for p in pers:
+                    if (d, p) in occupied_periods:
+                        conflicts = True
                         break
+                if conflicts:
+                    break
+
+            if not conflicts:
+                for d, pers in parsed:
+                    for p in pers:
+                        occupied_periods.add((d, p))
+                cr = float(c.get("credits") or 0.0)
+                total_credits += cr
+                enrolled_courses.append({
+                    "name": c["course_name"],
+                    "credits": cr,
+                    "category": "必修",
+                    "time": c_time,
+                    "code": c.get("course_code") or "",
+                    "teacher": c.get("instructor") or "",
+                    "location": c.get("location_name") or "教學館舍",
+                    "parsed_periods": parsed
+                })
+
+        # 2. 空堂填補與加選邏輯 (至多加選兩堂)
+        added_count = 0
+        conn = course_db_service.get_connection()
+        cur = conn.cursor()
+
+        def try_add_course(
+            query: str,
+            params: tuple,
+            cat_name: str,
+            must_have_credits: bool = False,
+            ignore_max_count: bool = False,
+        ):
+            nonlocal added_count, total_credits
+            if not ignore_max_count and added_count >= 2:
+                return
+            cur.execute(query, params)
+            rows = cur.fetchall()
+            for r in rows:
+                if not ignore_max_count and added_count >= 2:
+                    break
+                code = r["course_code"] or ""
+                name = r["course_name_zh"] or ""
+                cr = float(r["credits"] or 0.0)
+                t_str = r["time"] or ""
+                loc = r["location"] or "綜合教學大樓"
+                teacher = r["teacher"] or ""
+
+                # Avoid duplicate courses
+                if any(ec["name"] == name or ec["code"] == code for ec in enrolled_courses):
+                    continue
+
+                if must_have_credits and cr <= 0:
+                    continue
+                if total_credits + cr > max_credits:
+                    continue
+
+                parsed = parse_schedule_periods(t_str)
+                if not parsed:
+                    continue
+                has_conflict = False
+                for d, pers in parsed:
+                    for p in pers:
+                        if (d, p) in occupied_periods:
+                            has_conflict = True
+                            break
+                    if has_conflict:
+                        break
+                if not has_conflict:
+                    for d, pers in parsed:
+                        for p in pers:
+                            occupied_periods.add((d, p))
+                    total_credits += cr
+                    added_count += 1
+                    enrolled_courses.append({
+                        "name": name,
+                        "credits": cr,
+                        "category": cat_name,
+                        "time": t_str,
+                        "code": code,
+                        "teacher": teacher,
+                        "location": loc,
+                        "parsed_periods": parsed
+                    })
+                    break
+
+        # Priority 1: 通識課程 (最優先) (課號 CC、GS 開頭) - 至多先加1堂
+        if added_count < 2:
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND (c.course_code LIKE 'CC%' OR c.course_code LIKE 'GS%')
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (), "通識")
+
+        # Priority 2: 體育課 (大二以上、選擇零學分、且非校隊) - 至多先加1堂
+        if grade >= 2 and added_count < 2:
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND (c.course_code LIKE 'PE%' OR c.department='體育室')
+                  AND c.credits = 0
+                  AND c.course_name_zh NOT LIKE '%男子%'
+                  AND c.course_name_zh NOT LIKE '%女子%'
+                  AND c.course_name_zh NOT LIKE '%代表隊%'
+                  AND c.course_name_zh NOT LIKE '%校隊%'
+                  AND c.course_name_zh NOT LIKE '%大一體育%'
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (), "體育")
+
+        # Priority 3: 語言選修 (課號 LN 開頭) - 若未達2堂可加選
+        if added_count < 2:
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND c.course_code LIKE 'LN%'
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (), "語言選修")
+
+        # 關鍵規則：假設該學系該年級必修極少，可以考慮新增該系該年級選修課
+        # 總共學分數不要低於 16、不要大於 25，大四不要低於 9、不要大於 16
+        if total_credits < min_credits:
+            # 優先搜尋該系該年級選修課 (課號含年級代碼)
+            grade_char = str(grade)
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND (c.department = ? OR c.department LIKE ?)
+                  AND c.required_or_elective = '選修'
+                  AND c.course_code LIKE ?
+                  AND c.credits > 0
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (dept, f"%{dept}%", f"%{grade_char}%"), "系選修", must_have_credits=True, ignore_max_count=True)
+
+        # 若仍低於門檻，搜尋該系其他年級選修課
+        while total_credits < min_credits:
+            prev_credits = total_credits
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND (c.department = ? OR c.department LIKE ?)
+                  AND c.required_or_elective = '選修'
+                  AND c.credits > 0
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (dept, f"%{dept}%"), "系選修", must_have_credits=True, ignore_max_count=True)
+            if total_credits == prev_credits:
+                # 該系選修已用盡或衝突，嘗試有學分的通識課補足
+                break
+
+        # 若仍低於門檻，嘗試有學分的通識課程補足
+        while total_credits < min_credits:
+            prev_credits = total_credits
+            try_add_course("""
+                SELECT c.course_code, c.course_name_zh, c.credits, c.teacher, s.time, s.location
+                FROM courses c
+                JOIN schedules s ON c.semester = s.semester AND c.serial_no = s.serial_no
+                WHERE c.semester='1151' AND (c.course_code LIKE 'CC%' OR c.course_code LIKE 'GS%')
+                  AND c.credits > 0
+                  AND s.time IS NOT NULL AND s.time != ''
+                ORDER BY RANDOM()
+            """, (), "通識", must_have_credits=True, ignore_max_count=True)
+            if total_credits == prev_credits:
+                break
+
+        # 3. 鋪設週一到週五完整時間軸 (5天 x 6時段 = 30時段)
+        schedule: list[ScheduleSlot] = []
+
+        dining_spots = [
+            ("loc_pine_restaurant", "松苑學生餐廳"),
+            ("loc_dorm_boy9", "男九舍學生學餐"),
+            ("loc_backgate", "中央後門商圈"),
+            ("loc_night_street", "中大宵夜街美食")
+        ]
+
+        free_spots = [
+            ("loc_lib", "總圖書館自習室"),
+            ("loc_park_creek", "百花川林蔭步道"),
+            ("loc_cathay_tree", "國泰樹大草坪"),
+            ("loc_teaching", "綜合教學大樓研討室")
+        ]
+
+        for day in range(1, 6):
+            day_name = DAY_NAMES[day - 1]
+            for slot_key, slot_label, target_pers in SLOT_CONFIG:
+                # 尋找是否有開課排在該天該節次
+                matched_course = None
+                for c in enrolled_courses:
+                    for cd, pers in c["parsed_periods"]:
+                        if cd == day and any(p in target_pers for p in pers):
+                            matched_course = c
+                            break
+                    if matched_course:
+                        break
+
+                if matched_course:
+                    loc_id, loc_name = map_campus_location(
+                        matched_course.get("location"),
+                        matched_course.get("name"),
+                        dept
+                    )
+                    schedule.append(ScheduleSlot(
+                        day=day,
+                        slot=slot_key,
+                        title=f"{matched_course['name']} ({matched_course['category']})",
+                        type="course",
+                        location_id=loc_id,
+                        location_name=loc_name,
+                        course_id=matched_course.get("code") or matched_course["name"],
+                        course_code=matched_course.get("code"),
+                        course_category=matched_course["category"],
+                        credits=matched_course["credits"],
+                        instructor=matched_course.get("teacher"),
+                        raw_schedule=matched_course.get("time"),
+                        time_label=f"{day_name} {slot_label}",
+                        periods=target_pers
+                    ))
+                elif slot_key == "slot_3":
+                    # 中午午休時段
+                    spot = dining_spots[(day - 1) % len(dining_spots)]
+                    schedule.append(ScheduleSlot(
+                        day=day,
+                        slot=slot_key,
+                        title="校園午膳與漫步休憩",
+                        type="lunch",
+                        location_id=spot[0],
+                        location_name=spot[1],
+                        time_label=f"{day_name} {slot_label}",
+                        periods=target_pers
+                    ))
+                elif slot_key == "slot_6":
+                    # 晚間時段 (社團或夜間生活)
+                    club_name = profile.clubs[(day - 1) % len(profile.clubs)] if profile.clubs else None
+                    if club_name and day in (2, 4):  # 常態週二、週四社課
+                        schedule.append(ScheduleSlot(
+                            day=day,
+                            slot=slot_key,
+                            title=f"{club_name} (社團課堂與交流)",
+                            type="club",
+                            location_id="loc_teaching",
+                            location_name="學生活動中心 / 綜教館",
+                            time_label=f"{day_name} {slot_label}",
+                            periods=target_pers
+                        ))
+                    else:
+                        spot = free_spots[day % len(free_spots)]
+                        schedule.append(ScheduleSlot(
+                            day=day,
+                            slot=slot_key,
+                            title="夜間自習與校園生活",
+                            type="free",
+                            location_id=spot[0],
+                            location_name=spot[1],
+                            time_label=f"{day_name} {slot_label}",
+                            periods=target_pers
+                        ))
+                else:
+                    # 日間空堂
+                    spot = free_spots[(day + len(schedule)) % len(free_spots)]
+                    schedule.append(ScheduleSlot(
+                        day=day,
+                        slot=slot_key,
+                        title="空堂自主學習與探索",
+                        type="free",
+                        location_id=spot[0],
+                        location_name=spot[1],
+                        time_label=f"{day_name} {slot_label}",
+                        periods=target_pers
+                    ))
 
         return schedule
 
@@ -170,8 +504,8 @@ class SimEngine:
         slot_info = session.weekly_schedule[turn]
         day_num = slot_info.get("day", 1)
         slot_name = slot_info.get("slot", "morning")
-        day_str = DAY_NAMES[(day_num - 1) % 7]
-        slot_str = SLOT_NAMES.get(slot_name, "上午")
+        day_str = DAY_NAMES[(day_num - 1) % len(DAY_NAMES)]
+        slot_str = SLOT_NAMES.get(slot_name, slot_info.get("time_label", "校園時段"))
 
         loc_id = slot_info.get("location_id") or "loc_park_creek"
         loc = db.query(CampusLocation).filter(CampusLocation.id == loc_id).first()

@@ -7,15 +7,24 @@ from app.schemas.llm import TurnGenerationSchema
 
 class SimStartRequest(BaseModel):
     user_input: str
+    department: str | None = None
+    grade: int | None = None
 
 class ScheduleSlot(BaseModel):
-    day: int  # 1~7
-    slot: str  # morning, afternoon, evening
+    day: int  # 1~5 (週一至週五)
+    slot: str  # slot_1 ~ slot_6
     title: str
-    type: str  # course, club, free
+    type: str  # course, club, lunch, free
     location_id: str | None = None
     location_name: str | None = None
     course_id: str | None = None
+    course_code: str | None = None
+    course_category: str | None = None  # 必修, 選修, 通識, 體育, 語言選修
+    credits: float | None = None
+    instructor: str | None = None
+    raw_schedule: str | None = None
+    time_label: str | None = None
+    periods: list[str] | None = None
     club_id: str | None = None
 
 class SimStartResponse(BaseModel):
@@ -52,3 +61,4 @@ class SimSummaryResponse(BaseModel):
     final_stats: dict[str, int]
     visited_locations: list[dict[str, Any]]
     enrolled_courses: list[dict[str, Any]]
+    total_credits: float | None = None

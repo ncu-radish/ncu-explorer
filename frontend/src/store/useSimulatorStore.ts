@@ -3,12 +3,19 @@ import { simApi } from "@/lib/api";
 
 export interface ScheduleSlot {
   day: number;
-  slot: "morning" | "afternoon" | "evening";
+  slot: string;
   title: string;
-  type: "course" | "club" | "free";
+  type: "course" | "club" | "lunch" | "free";
   location_id?: string;
   location_name?: string;
   course_id?: string;
+  course_code?: string;
+  course_category?: string;
+  credits?: number;
+  instructor?: string;
+  raw_schedule?: string;
+  time_label?: string;
+  periods?: string[];
   club_id?: string;
 }
 
@@ -44,7 +51,7 @@ interface SimulatorState {
   historyLogs: string[];
   error: string | null;
 
-  startSimulation: (userInput: string) => Promise<void>;
+  startSimulation: (userInput: string, department?: string, grade?: number) => Promise<void>;
   chooseOption: (optionKey: string) => Promise<void>;
   fetchSummary: () => Promise<void>;
   resetSimulation: () => void;
@@ -65,10 +72,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   historyLogs: [],
   error: null,
 
-  startSimulation: async (userInput: string) => {
+  startSimulation: async (userInput: string, department?: string, grade?: number) => {
     set({ isLoading: true, error: null });
     try {
-      const data = await simApi.start(userInput);
+      const data = await simApi.start(userInput, department, grade);
       set({
         sessionId: data.session_id,
         playerProfile: data.player_profile,

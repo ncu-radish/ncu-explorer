@@ -36,10 +36,14 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
 // Simulator API
 export const simApi = {
-  start: (userInput: string) =>
+  start: (userInput: string, department?: string, grade?: number) =>
     fetchApi<any>("/sim/start", {
       method: "POST",
-      body: JSON.stringify({ user_input: userInput }),
+      body: JSON.stringify({
+        user_input: userInput,
+        department: department || undefined,
+        grade: grade || undefined,
+      }),
     }),
   nextTurn: (sessionId: string, optionKey: string) =>
     fetchApi<any>("/sim/next-turn", {

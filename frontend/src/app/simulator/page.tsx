@@ -24,11 +24,17 @@ const CampusScene = dynamic(
   }
 );
 
-const DAYS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 const SLOTS_MAP: Record<string, string> = {
-  morning: "上午 (早八/早十)",
-  afternoon: "下午 (午後課程)",
-  evening: "晚間 (社團與夜衝)",
+  slot_1: "晨光早課 (08:00~10:00)",
+  slot_2: "上午主修 (10:00~12:00)",
+  slot_3: "午膳漫步 (12:00~13:00)",
+  slot_4: "午後專修 (13:00~15:00)",
+  slot_5: "下晝研討 (15:00~17:00)",
+  slot_6: "晚間校園 (18:00~21:00)",
+  morning: "上午時段",
+  afternoon: "下午時段",
+  evening: "晚間時段",
 };
 
 export default function SimulatorPage() {
@@ -55,8 +61,8 @@ export default function SimulatorPage() {
   }, [currentLocationId]);
 
   const currentSlotInfo = weeklySchedule[currentTurn] || {};
-  const dayName = DAYS[((currentSlotInfo.day || 1) - 1) % 7];
-  const slotName = SLOTS_MAP[currentSlotInfo.slot || "morning"] || "上午時段";
+  const dayName = DAYS[Math.max(0, Math.min(4, (currentSlotInfo.day || 1) - 1))];
+  const slotName = SLOTS_MAP[currentSlotInfo.slot || "slot_1"] || currentSlotInfo.time_label || "當前時段";
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-5">
@@ -84,7 +90,7 @@ export default function SimulatorPage() {
             <h1 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               中央大學一週生活模擬器
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Turn {Math.min(21, currentTurn + 1)} / 21
+                Turn {Math.min(30, currentTurn + 1)} / 30
               </span>
             </h1>
             <p className="text-xs text-stone-500">
@@ -155,6 +161,7 @@ export default function SimulatorPage() {
             dayName={dayName}
             slotName={slotName}
             locationName={currentLocationName || "中大校園"}
+            slot={currentSlotInfo}
             isLoading={isLoading}
             onChoose={(key) => chooseOption(key)}
             onFocusLocation={() => {
