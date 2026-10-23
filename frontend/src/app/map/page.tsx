@@ -208,8 +208,8 @@ function MapContent() {
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-stone-900 leading-tight">NCU 3D 校園地圖</h1>
-              <p className="text-[11px] text-stone-500">中央大學互動式館舍與系所導覽</p>
+              <h1 className="text-base font-bold text-stone-900 leading-tight">NCU 3D 校園地圖與館舍設施</h1>
+              <p className="text-[11px] text-stone-500">中央大學 3D 立體互動式館舍與建築設施導覽</p>
             </div>
           </div>
 
