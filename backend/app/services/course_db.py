@@ -7,8 +7,10 @@ NCU Course Database Service
 絕不修改 tmp 目錄。
 """
 
+import os
 import re
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +20,17 @@ TMP_DATA_DIR = PROJECT_ROOT / "tmp" / "data"
 
 
 def resolve_courses_db_path() -> Path | None:
-    """優先尋找 backend/data/courses.db，若無則回退至 tmp/data/courses.db"""
+    """優先尋找 backend/data/courses.db，若無則回退至 tmp/data/courses.db；CI 或測試環境自動生成輕量測試庫"""
     backend_db = BACKEND_DATA_DIR / "courses.db"
     if backend_db.exists():
         return backend_db
     tmp_db = TMP_DATA_DIR / "courses.db"
     if tmp_db.exists():
         return tmp_db
+    if os.environ.get("ENVIRONMENT") == "test" or "pytest" in sys.modules:
+        from app.services.mock_course_db import ensure_mock_courses_db
+
+        return ensure_mock_courses_db(backend_db)
     return None
 
 

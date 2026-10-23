@@ -6,12 +6,11 @@ def test_build_weekly_schedule_default():
     """Test default schedule when no department or grade is given (default Freshman 1151)"""
     profile = OnboardingParseSchema()
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 25
+    assert len(schedule) >= 3
 
-    # Check days, time fields and dorm activities
-    days = set(s.day for s in schedule)
-    assert days == {1, 2, 3, 4, 5}
-    assert any(s.type == "dorm" for s in schedule)
+    # Ensure ONLY courses and clubs exist; dorm, free, and lunch must be removed
+    assert all(s.type in ("course", "club") for s in schedule)
+    assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     unique_courses = {}
@@ -33,13 +32,12 @@ def test_build_weekly_schedule_freshman_im():
         club="熱音社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 25
+    assert len(schedule) >= 3
 
-    # Check 5 days, start_time/end_time presence
-    days = set(s.day for s in schedule)
-    assert days == {1, 2, 3, 4, 5}
-    assert all(s.start_time and s.end_time for s in schedule)
-    assert any(s.type == "dorm" for s in schedule)
+    # Ensure ONLY courses and clubs exist
+    assert all(s.type in ("course", "club") for s in schedule)
+    assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
+    assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     # Calculate total unique credits
     unique_courses = {}
@@ -61,7 +59,12 @@ def test_build_weekly_schedule_sophomore():
         club="系學會",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 25
+    assert len(schedule) >= 3
+
+    # Ensure ONLY courses and clubs exist
+    assert all(s.type in ("course", "club") for s in schedule)
+    assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
+    assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     unique_courses = {}
     for s in schedule:
@@ -82,7 +85,12 @@ def test_build_weekly_schedule_junior():
         club="吉他社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 25
+    assert len(schedule) >= 3
+
+    # Ensure ONLY courses and clubs exist
+    assert all(s.type in ("course", "club") for s in schedule)
+    assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
+    assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     unique_courses = {}
     for s in schedule:
@@ -103,7 +111,12 @@ def test_build_weekly_schedule_senior():
         club="吉他社",
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 25
+    assert len(schedule) >= 3
+
+    # Ensure ONLY courses and clubs exist
+    assert all(s.type in ("course", "club") for s in schedule)
+    assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
+    assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
     unique_courses = {}
     for s in schedule:
@@ -113,3 +126,4 @@ def test_build_weekly_schedule_senior():
 
     total_credits = sum(unique_courses.values())
     assert 9 <= total_credits <= 16, f"Credits for Senior should be 9~16, got {total_credits}"
+
