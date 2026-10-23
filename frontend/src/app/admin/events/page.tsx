@@ -4,11 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Sparkles,
-  Plus,
-  Trash2,
-  Edit2,
-  Sliders,
-  Send,
   ArrowLeft,
   CheckCircle2,
   Zap,
@@ -33,6 +28,17 @@ function EventsContent() {
   const [isSandboxTesting, setIsSandboxTesting] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  const selectForEdit = (ev: any) => {
+    setSelectedEvent(ev);
+    setTitle(ev.title);
+    setWeight(ev.weight);
+    setEventPrompt(ev.event_prompt);
+    setOptionAHint(ev.preset_options?.[0]?.intent_hint || "");
+    setOptionBHint(ev.preset_options?.[1]?.intent_hint || "");
+    setOptionCHint(ev.preset_options?.[2]?.intent_hint || "");
+    setSandboxStory(null);
+  };
+
   const loadEvents = async () => {
     try {
       const data = await adminApi.getEvents();
@@ -48,17 +54,6 @@ function EventsContent() {
   useEffect(() => {
     loadEvents();
   }, []);
-
-  const selectForEdit = (ev: any) => {
-    setSelectedEvent(ev);
-    setTitle(ev.title);
-    setWeight(ev.weight);
-    setEventPrompt(ev.event_prompt);
-    setOptionAHint(ev.preset_options?.[0]?.intent_hint || "");
-    setOptionBHint(ev.preset_options?.[1]?.intent_hint || "");
-    setOptionCHint(ev.preset_options?.[2]?.intent_hint || "");
-    setSandboxStory(null);
-  };
 
   const handleTestSandbox = async () => {
     setIsSandboxTesting(true);

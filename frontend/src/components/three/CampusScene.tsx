@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Html, Float } from "@react-three/drei";
+import { OrbitControls, useGLTF, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useMapStore, DEFAULT_CAMERA_POS, DEFAULT_CAMERA_TARGET } from "@/store/useMapStore";
 import { Building, exploreApi } from "@/lib/api";
@@ -313,7 +313,6 @@ export function CampusScene({
   buildings: propBuildings,
   onSelectBuilding,
   focusedLocationId,
-  interactive = true,
 }: CampusSceneProps) {
   const { selectedBuildingId, selectBuilding, hoveredBuildingId, resetTrigger } = useMapStore();
   const [internalBuildings, setInternalBuildings] = useState<Building[]>([]);
@@ -321,9 +320,7 @@ export function CampusScene({
 
   // If buildings not passed, fetch them automatically
   useEffect(() => {
-    if (propBuildings && propBuildings.length > 0) {
-      setInternalBuildings(propBuildings);
-    } else {
+    if (!propBuildings || propBuildings.length === 0) {
       exploreApi.getBuildings().then(setInternalBuildings).catch(console.error);
     }
   }, [propBuildings]);
@@ -353,6 +350,7 @@ export function CampusScene({
 
   // Determine desired camera target and position
   const { targetPos, targetLookAt } = useMemo(() => {
+    void resetTrigger;
     if (!selectedBuildingId || !boundsMap.has(selectedBuildingId)) {
       return {
         targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),

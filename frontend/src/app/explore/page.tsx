@@ -17,10 +17,7 @@ import {
   Search,
   Bike,
   Car,
-  Filter,
-  ExternalLink,
   ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { exploreApi, courseApi } from "@/lib/api";
 
@@ -28,7 +25,7 @@ type CategoryId = "courses" | "map" | "transport" | "food" | "dorm" | "clubs";
 
 export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
-  const [lifeInfos, setLifeInfos] = useState<any[]>([]);
+  const [_lifeInfos, setLifeInfos] = useState<any[]>([]);
   const [clubs, setClubs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [sampleCourses, setSampleCourses] = useState<any[]>([]);

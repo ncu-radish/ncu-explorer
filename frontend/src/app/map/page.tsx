@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useMemo, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -9,7 +9,6 @@ import {
   X,
   MapPin,
   Building2,
-  Compass,
   RotateCcw,
   ArrowLeft,
   ChevronRight,

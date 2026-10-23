@@ -9,12 +9,8 @@ import {
   MapPin,
   Clock,
   User,
-  Layers,
-  ArrowRight,
   ArrowLeft,
   GitCompare,
-  CheckCircle2,
-  Filter,
 } from "lucide-react";
 import { courseApi } from "@/lib/api";
 
@@ -51,13 +47,6 @@ export default function CoursesPage() {
   // Selected course detail modal
   const [modalCourse, setModalCourse] = useState<any | null>(null);
 
-  // Load courses for SQL tab
-  useEffect(() => {
-    if (activeTab === "search") {
-      fetchCourses();
-    }
-  }, [dept, grade, category, day, activeTab]);
-
   const fetchCourses = async () => {
     setIsSearching(true);
     try {
@@ -78,6 +67,13 @@ export default function CoursesPage() {
       setIsSearching(false);
     }
   };
+
+  // Load courses for SQL tab
+  useEffect(() => {
+    if (activeTab === "search") {
+      fetchCourses();
+    }
+  }, [dept, grade, category, day, activeTab]);
 
   const handleRagSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

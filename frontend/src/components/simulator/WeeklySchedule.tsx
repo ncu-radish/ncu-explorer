@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];

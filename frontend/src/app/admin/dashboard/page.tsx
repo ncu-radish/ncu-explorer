@@ -5,12 +5,9 @@ import Link from "next/link";
 import {
   ShieldCheck,
   Cpu,
-  BarChart3,
   Sliders,
-  Sparkles,
   Database,
   RefreshCw,
-  Layers,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,

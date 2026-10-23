@@ -3,14 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Shield,
   Lock,
   User,
   Eye,
   EyeOff,
   LogOut,
   AlertCircle,
-  CheckCircle2,
   ArrowLeft,
   KeyRound,
 } from "lucide-react";
