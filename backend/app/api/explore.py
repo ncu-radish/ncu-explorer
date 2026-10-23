@@ -1,12 +1,12 @@
-from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy import or_, cast, String
-from sqlalchemy.orm import Session
-from pathlib import Path
 import json
-from app.core.database import get_db, engine, Base
-from app.models.tables import CampusLocation, CampusLifeInfo, ClubAndActivity, Course, Building
-from app.schemas.explore import LocationResponse, LocationDetailResponse, CampusLifeItem, BuildingResponse
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import Base, engine, get_db
+from app.models.tables import Building, CampusLifeInfo, CampusLocation, ClubAndActivity
+from app.schemas.explore import BuildingResponse, CampusLifeItem, LocationDetailResponse, LocationResponse
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
@@ -16,7 +16,7 @@ def ensure_buildings_seeded(db: Session):
     if count == 0:
         buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
         if buildings_file.exists():
-            with open(buildings_file, "r", encoding="utf-8") as f:
+            with open(buildings_file, encoding="utf-8") as f:
                 bldgs = json.load(f)
             for b in bldgs:
                 db.add(Building(
@@ -55,10 +55,10 @@ COMMON_ACRONYMS = {
 }
 
 
-@router.get("/buildings", response_model=List[BuildingResponse])
+@router.get("/buildings", response_model=list[BuildingResponse])
 def get_buildings(
-    q: Optional[str] = Query(None, description="搜尋關鍵字 (id, name_zh, name_en, classroom_code, alias, departments)"),
-    category: Optional[str] = Query(None, description="建築物分類篩選"),
+    q: str | None = Query(None, description="搜尋關鍵字 (id, name_zh, name_en, classroom_code, alias, departments)"),
+    category: str | None = Query(None, description="建築物分類篩選"),
     db: Session = Depends(get_db)
 ):
     ensure_buildings_seeded(db)
@@ -113,9 +113,9 @@ def get_building_detail(building_id: str, db: Session = Depends(get_db)):
     return bldg
 
 
-@router.get("/locations", response_model=List[LocationResponse])
+@router.get("/locations", response_model=list[LocationResponse])
 def get_all_locations(
-    category: Optional[str] = Query(None, description="場域類別"),
+    category: str | None = Query(None, description="場域類別"),
     db: Session = Depends(get_db)
 ):
     query = db.query(CampusLocation)
@@ -182,10 +182,10 @@ def get_location_detail(loc_id: str, db: Session = Depends(get_db)):
     detail.activity_count = len(activities)
     return detail
 
-@router.get("/life-info", response_model=List[CampusLifeItem])
+@router.get("/life-info", response_model=list[CampusLifeItem])
 def get_campus_life_info(
-    info_type: Optional[str] = Query(None, description="類別：food, dorm_detail, transport"),
-    tag: Optional[str] = Query(None, description="標籤篩選"),
+    info_type: str | None = Query(None, description="類別：food, dorm_detail, transport"),
+    tag: str | None = Query(None, description="標籤篩選"),
     db: Session = Depends(get_db)
 ):
     query = db.query(CampusLifeInfo)
@@ -205,7 +205,7 @@ def get_campus_life_info(
 
 @router.get("/clubs")
 def get_all_clubs(
-    club_type: Optional[str] = Query(None, description="社團類型"),
+    club_type: str | None = Query(None, description="社團類型"),
     db: Session = Depends(get_db)
 ):
     query = db.query(ClubAndActivity)

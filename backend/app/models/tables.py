@@ -1,7 +1,10 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, JSON, DateTime, ForeignKey
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
+
 
 class CampusLocation(Base):
     __tablename__ = "campus_locations"

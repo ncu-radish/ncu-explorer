@@ -1,6 +1,9 @@
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 from app.schemas.llm import TurnGenerationSchema
+
 
 class SimStartRequest(BaseModel):
     user_input: str
@@ -10,20 +13,20 @@ class ScheduleSlot(BaseModel):
     slot: str  # morning, afternoon, evening
     title: str
     type: str  # course, club, free
-    location_id: Optional[str] = None
-    location_name: Optional[str] = None
-    course_id: Optional[str] = None
-    club_id: Optional[str] = None
+    location_id: str | None = None
+    location_name: str | None = None
+    course_id: str | None = None
+    club_id: str | None = None
 
 class SimStartResponse(BaseModel):
     session_id: str
-    player_profile: Dict[str, Any]
-    weekly_schedule: List[ScheduleSlot]
+    player_profile: dict[str, Any]
+    weekly_schedule: list[ScheduleSlot]
     current_turn: int
-    stats: Dict[str, int]
+    stats: dict[str, int]
     current_story: TurnGenerationSchema
-    current_location_id: Optional[str] = None
-    current_location_name: Optional[str] = None
+    current_location_id: str | None = None
+    current_location_name: str | None = None
 
 class SimNextTurnRequest(BaseModel):
     session_id: str
@@ -33,11 +36,11 @@ class SimNextTurnResponse(BaseModel):
     session_id: str
     current_turn: int
     is_game_over: bool
-    stats: Dict[str, int]
-    delta_stats: Dict[str, int]
-    story: Optional[TurnGenerationSchema] = None
-    current_location_id: Optional[str] = None
-    current_location_name: Optional[str] = None
+    stats: dict[str, int]
+    delta_stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
+    current_location_id: str | None = None
+    current_location_name: str | None = None
 
 class SimSummaryRequest(BaseModel):
     session_id: str
@@ -46,6 +49,6 @@ class SimSummaryResponse(BaseModel):
     session_id: str
     title: str
     summary_diary: str
-    final_stats: Dict[str, int]
-    visited_locations: List[Dict[str, Any]]
-    enrolled_courses: List[Dict[str, Any]]
+    final_stats: dict[str, int]
+    visited_locations: list[dict[str, Any]]
+    enrolled_courses: list[dict[str, Any]]

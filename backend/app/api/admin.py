@@ -1,36 +1,36 @@
-from typing import List, Dict, Any, Optional
-from pathlib import Path
 import shutil
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
-from app.core.database import get_db, Base, engine
+from app.core.database import Base, engine, get_db
+from app.core.llm_client import call_ollama_structured
+from app.core.security import create_access_token, get_current_admin, get_password_hash, verify_password
 from app.models.tables import (
     AdminUser,
-    SystemConfig,
-    RandomEvent,
     CampusLocation,
     Course,
     GameSession,
-    ClubAndActivity,
-    CampusLifeInfo,
+    RandomEvent,
+    SystemConfig,
 )
 from app.schemas.admin import (
-    LoginRequest,
-    TokenResponse,
     DashboardMetricsResponse,
-    SystemConfigDTO,
-    SystemConfigUpdate,
-    RandomEventDTO,
+    LoginRequest,
     RandomEventCreate,
+    RandomEventDTO,
     RandomEventUpdate,
     SandboxTestRequest,
     SandboxTestResponse,
+    SystemConfigDTO,
+    SystemConfigUpdate,
+    TokenResponse,
 )
-from app.schemas.llm import TurnGenerationSchema, OptionItem
-from app.core.security import verify_password, create_access_token, get_current_admin, get_password_hash
-from app.core.llm_client import call_ollama_structured
+from app.schemas.llm import OptionItem, TurnGenerationSchema
 from app.services.prompts import TURN_NARRATIVE_PROMPT_TEMPLATE
 from app.services.rag_service import course_rag_service
 
@@ -165,7 +165,7 @@ def update_config(
         system_prompt_override=conf.system_prompt_override
     )
 
-@router.get("/events", response_model=List[RandomEventDTO])
+@router.get("/events", response_model=list[RandomEventDTO])
 def list_random_events(
     current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -289,7 +289,7 @@ async def live_sandbox_test(
 @router.put("/locations/{loc_id}")
 def update_location_node(
     loc_id: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):

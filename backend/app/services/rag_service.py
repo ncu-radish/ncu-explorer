@@ -1,7 +1,9 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
+
+from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
-from fastembed import TextEmbedding, SparseTextEmbedding
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ class CourseRAGService:
             )
             logger.info(f"Created Qdrant hybrid collection: {self.collection_name}")
 
-    def build_document_text(self, course_dict: Dict[str, Any]) -> str:
+    def build_document_text(self, course_dict: dict[str, Any]) -> str:
         return (
             f"passage: 【開課系所】{course_dict.get('department', '')} "
             f"【課程名稱】{course_dict.get('course_name', '')} "
@@ -60,7 +62,7 @@ class CourseRAGService:
             f"【課程大綱与目標】{course_dict.get('syllabus_summary', '')}"
         )
 
-    def sync_courses_to_qdrant(self, courses: List[Dict[str, Any]]) -> int:
+    def sync_courses_to_qdrant(self, courses: list[dict[str, Any]]) -> int:
         if not courses:
             return 0
 
@@ -112,9 +114,9 @@ class CourseRAGService:
         self,
         query: str,
         limit: int = 6,
-        dept_filter: Optional[str] = None,
-        grade_filter: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        dept_filter: str | None = None,
+        grade_filter: int | None = None
+    ) -> list[dict[str, Any]]:
         # Format query for e5
         query_text = f"query: {query.strip()}"
 

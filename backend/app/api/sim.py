@@ -1,13 +1,15 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
-from app.models.tables import GameSession, SystemConfig, Course, CampusLocation
+from app.models.tables import CampusLocation, Course, GameSession, SystemConfig
 from app.schemas.sim import (
-    SimStartRequest,
-    SimStartResponse,
     SimNextTurnRequest,
     SimNextTurnResponse,
+    SimStartRequest,
+    SimStartResponse,
     SimSummaryRequest,
     SimSummaryResponse,
 )
@@ -139,8 +141,8 @@ async def get_summary(req: SimSummaryRequest, db: Session = Depends(get_db)):
     # 造訪過的館舍卡片資料
     visited_loc_objs = db.query(CampusLocation).filter(CampusLocation.id.in_(session.visited_locs or [])).all()
     visited_data = [
-        {"id": l.id, "name": l.name, "category": l.category, "short_desc": l.short_desc}
-        for l in visited_loc_objs
+        {"id": loc.id, "name": loc.name, "category": loc.category, "short_desc": loc.short_desc}
+        for loc in visited_loc_objs
     ]
 
     # 修課清單

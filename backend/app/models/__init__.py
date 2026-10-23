@@ -1,11 +1,11 @@
 from app.models.tables import (
-    CampusLocation,
-    Course,
-    ClubAndActivity,
-    CampusLifeInfo,
-    RandomEvent,
-    GameSession,
     AdminUser,
+    CampusLifeInfo,
+    CampusLocation,
+    ClubAndActivity,
+    Course,
+    GameSession,
+    RandomEvent,
     SystemConfig,
 )
 

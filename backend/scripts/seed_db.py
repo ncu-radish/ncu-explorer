@@ -6,19 +6,20 @@ from pathlib import Path
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.core.database import engine, SessionLocal, Base
+from app.core.config import settings
+from app.core.database import Base, SessionLocal, engine
+from app.core.security import get_password_hash
 from app.models.tables import (
-    CampusLocation,
-    Course,
-    ClubAndActivity,
-    CampusLifeInfo,
-    RandomEvent,
     AdminUser,
+    CampusLifeInfo,
+    CampusLocation,
+    ClubAndActivity,
+    Course,
+    RandomEvent,
     SystemConfig,
 )
-from app.core.config import settings
-from app.core.security import get_password_hash
 from app.services.rag_service import course_rag_service
+
 
 def seed_database():
     print("--- 正在初始化 SQLite 資料庫表格 ---")
@@ -29,7 +30,7 @@ def seed_database():
         print(f"錯誤：找不到種子資料檔案 {seed_file}")
         return
 
-    with open(seed_file, "r", encoding="utf-8") as f:
+    with open(seed_file, encoding="utf-8") as f:
         data = json.load(f)
 
     db = SessionLocal()

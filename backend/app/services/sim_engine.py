@@ -1,24 +1,25 @@
-import uuid
-import random
 import logging
-from typing import List, Dict, Any, Optional
+import random
+from typing import Any
+
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+from app.core.llm_client import call_ollama_structured
 from app.models.tables import (
-    Course,
-    ClubAndActivity,
-    CampusLocation,
     CampusLifeInfo,
-    RandomEvent,
+    CampusLocation,
+    ClubAndActivity,
+    Course,
     GameSession,
-    SystemConfig,
+    RandomEvent,
 )
 from app.schemas.llm import (
-    TurnGenerationSchema,
-    OptionItem,
     OnboardingParseSchema,
+    OptionItem,
+    TurnGenerationSchema,
 )
 from app.schemas.sim import ScheduleSlot
-from app.core.llm_client import call_ollama_structured
 from app.services.prompts import (
     ONBOARDING_PROMPT_TEMPLATE,
     TURN_NARRATIVE_PROMPT_TEMPLATE,
@@ -57,7 +58,7 @@ class SimEngine:
         self,
         db: Session,
         profile: OnboardingParseSchema
-    ) -> List[ScheduleSlot]:
+    ) -> list[ScheduleSlot]:
         """
         排定週一至週日共 21 個時段 (7天 x 3時段)
         1. 撈出所屬系所大一上必修課排入對應時段
@@ -65,7 +66,7 @@ class SimEngine:
         3. 若有興趣 query，以 FastEmbed 混合檢索不衝堂課程填入
         4. 其餘時段標記為「校園自由時間」
         """
-        schedule: List[ScheduleSlot] = []
+        schedule: list[ScheduleSlot] = []
 
         # 預先填滿 21 個空時段
         slot_keys = ["morning", "afternoon", "evening"]
@@ -157,7 +158,7 @@ class SimEngine:
         session: GameSession,
         active_model: str,
         trigger_prob: float
-    ) -> tuple[TurnGenerationSchema, Dict[str, Any], Optional[str], Optional[str]]:
+    ) -> tuple[TurnGenerationSchema, dict[str, Any], str | None, str | None]:
         """
         為當前 turn 生成情境與三個選項：
         1. 確定時段與館舍 Grounding
@@ -273,9 +274,9 @@ class SimEngine:
     def apply_choice_effects(
         self,
         session: GameSession,
-        effects_map: Dict[str, Dict[str, int]],
+        effects_map: dict[str, dict[str, int]],
         choice_key: str
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         eff = effects_map.get(choice_key, {"stamina": 0, "study": 0, "social": 0, "money": 0})
         stats = session.stats.copy()
 

@@ -1,0 +1,51 @@
+[project]
+name = "ncu-explorer-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+# 啟用主流檢查，包含語法錯誤 (F)、樣式錯誤 (E, W)、引入整理 (I)、現代 Python 語法 (UP)、潛在問題 (B)
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",   # 行過長 (由 formatter 處理)
+    "B008",   # FastAPI Depends() 函式作為參數預設值
+    "B023",   # 迴圈變數在閉包中使用
+    "BLE001", # 捕捉泛型 Exception
+    "TRY002",
+    "TRY201",
+    "DTZ003",
+    "ASYNC230",
+    "RUF012",
+    "RUF015",
+    "RUF059",
+    "E712",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"scripts/*" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+explicit_package_bases = true
+# 忽略 SQLAlchemy 2.0 Column[T] 與 Pydantic/Python 原生型別在 mypy 下的假性衝突
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "union-attr",
+    "misc",
+    "call-overload",
+    "var-annotated",
+    "index",
+    "return-value",
+    "import-untyped",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

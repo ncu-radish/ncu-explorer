@@ -1,9 +1,10 @@
 import logging
-from typing import List, Dict, Any
+
 from sqlalchemy.orm import Session
+
+from app.core.llm_client import call_ollama_structured
 from app.models.tables import Course
 from app.schemas.llm import CourseCompareSchema, DeptCompareSchema, RoadmapSummarySchema
-from app.core.llm_client import call_ollama_structured
 from app.services.prompts import (
     COURSE_COMPARE_PROMPT_TEMPLATE,
     DEPT_COMPARE_PROMPT_TEMPLATE,
@@ -16,7 +17,7 @@ class CompareService:
     async def compare_courses(
         self,
         db: Session,
-        course_ids: List[str],
+        course_ids: list[str],
         active_model: str
     ) -> CourseCompareSchema:
         courses = db.query(Course).filter(Course.id.in_(course_ids)).all()
@@ -55,7 +56,7 @@ class CompareService:
     async def compare_departments(
         self,
         db: Session,
-        dept_names: List[str],
+        dept_names: list[str],
         active_model: str
     ) -> DeptCompareSchema:
         dept_a = dept_names[0] if len(dept_names) > 0 else "資訊管理學系"
@@ -97,7 +98,7 @@ class CompareService:
     async def generate_roadmap_analysis(
         self,
         dept_name: str,
-        courses_by_year: Dict[str, List[Course]],
+        courses_by_year: dict[str, list[Course]],
         active_model: str
     ) -> RoadmapSummarySchema:
         summary_lines = []

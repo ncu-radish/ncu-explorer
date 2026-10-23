@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = f"sqlite:///{SQLITE_DB_PATH.as_posix()}"
 
     # Qdrant Vector DB
-    QDRANT_URL: Optional[str] = None
-    QDRANT_API_KEY: Optional[str] = None
+    QDRANT_URL: str | None = None
+    QDRANT_API_KEY: str | None = None
     QDRANT_STORAGE_PATH: Path = DATA_DIR / "qdrant_storage"
     QDRANT_COLLECTION_NAME: str = "ncu_courses_hybrid"
 

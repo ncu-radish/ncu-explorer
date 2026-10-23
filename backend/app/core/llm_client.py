@@ -1,7 +1,9 @@
 import logging
+from typing import TypeVar
+
 import httpx
-from typing import Type, TypeVar, Optional, Any
 from pydantic import BaseModel
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -17,11 +19,11 @@ NCU_SYSTEM_PROMPT = """你是一個專屬於「國立中央大學（NCU）」的
 
 async def call_ollama_structured(
     user_prompt: str,
-    response_schema: Type[T],
-    model_name: Optional[str] = None,
-    system_prompt: Optional[str] = None,
+    response_schema: type[T],
+    model_name: str | None = None,
+    system_prompt: str | None = None,
     timeout: float = 30.0,
-    fallback_instance: Optional[T] = None,
+    fallback_instance: T | None = None,
 ) -> T:
     """
     呼叫本地 Ollama API，利用 format JSON Schema 強制輸出結構化資料。

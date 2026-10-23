@@ -1,25 +1,26 @@
-from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
+from app.core.llm_client import call_ollama_structured
 from app.models.tables import Course, SystemConfig
 from app.schemas.courses import (
-    CourseItem,
-    CourseSearchResponse,
     CourseAIQueryRequest,
     CourseAIQueryResponse,
-    RoadmapResponse,
     CourseCompareRequest,
     CourseCompareResponse,
+    CourseItem,
+    CourseSearchResponse,
     DeptCompareRequest,
     DeptCompareResponse,
+    RoadmapResponse,
 )
-from app.services.rag_service import course_rag_service
 from app.services.compare_service import compare_service
-from app.core.llm_client import call_ollama_structured
 from app.services.prompts import COURSE_RECOMMEND_PROMPT_TEMPLATE
-from pydantic import BaseModel
+from app.services.rag_service import course_rag_service
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -29,11 +30,11 @@ def get_active_model(db: Session) -> str:
 
 @router.get("/search", response_model=CourseSearchResponse)
 def search_courses(
-    dept: Optional[str] = Query(None, description="系所名稱"),
-    grade: Optional[int] = Query(None, description="年級"),
-    category: Optional[str] = Query(None, description="必選修類別 (required, elective, general)"),
-    day: Optional[int] = Query(None, description="星期 (1~5)"),
-    keyword: Optional[str] = Query(None, description="課名或大綱關鍵字"),
+    dept: str | None = Query(None, description="系所名稱"),
+    grade: int | None = Query(None, description="年級"),
+    category: str | None = Query(None, description="必選修類別 (required, elective, general)"),
+    day: int | None = Query(None, description="星期 (1~5)"),
+    keyword: str | None = Query(None, description="課名或大綱關鍵字"),
     page: int = Query(1, ge=1),
     page_size: int = Query(12, ge=1, le=50),
     db: Session = Depends(get_db)
@@ -138,13 +139,13 @@ async def get_department_roadmap(dept: str, db: Session = Depends(get_db)):
     courses = db.query(Course).filter(Course.department == dept).order_by(Course.grade, Course.semester_term).all()
 
     # 8 個學期分組
-    semesters: dict[str, List[CourseItem]] = {
+    semesters: dict[str, list[CourseItem]] = {
         "大一上": [], "大一下": [],
         "大二上": [], "大二下": [],
         "大三上": [], "大三下": [],
         "大四上": [], "大四下": []
     }
-    courses_by_year: dict[str, List[Course]] = {
+    courses_by_year: dict[str, list[Course]] = {
         "大一": [], "大二": [], "大三": [], "大四": []
     }
 

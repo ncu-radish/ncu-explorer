@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
-from typing import Optional
+
 import bcrypt
-from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.tables import AdminUser
@@ -23,7 +24,7 @@ def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -44,8 +45,8 @@ def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+    except JWTError as err:
+        raise credentials_exception from err
 
     user = db.query(AdminUser).filter(AdminUser.username == username).first()
     if user is None:

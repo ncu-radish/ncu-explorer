@@ -1,6 +1,7 @@
-from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+
 from app.schemas.llm import CourseCompareSchema, DeptCompareSchema, RoadmapSummarySchema
+
 
 class CourseItem(BaseModel):
     id: str
@@ -15,10 +16,10 @@ class CourseItem(BaseModel):
     day_of_week: int
     period_slot: str
     raw_schedule: str
-    location_id: Optional[str] = None
-    location_name: Optional[str] = None
+    location_id: str | None = None
+    location_name: str | None = None
     syllabus_summary: str
-    full_syllabus: Optional[str] = None
+    full_syllabus: str | None = None
     is_synced_vec: bool
 
     class Config:
@@ -28,35 +29,35 @@ class CourseSearchResponse(BaseModel):
     total: int
     page: int
     page_size: int
-    items: List[CourseItem]
+    items: list[CourseItem]
 
 class CourseAIQueryRequest(BaseModel):
     query: str
-    grade_filter: Optional[int] = None
-    dept_filter: Optional[str] = None
+    grade_filter: int | None = None
+    dept_filter: str | None = None
 
 class CourseAIQueryResponse(BaseModel):
     consultant_advice: str
-    recommended_courses: List[CourseItem]
+    recommended_courses: list[CourseItem]
 
 class RoadmapResponse(BaseModel):
     department: str
-    semesters: Dict[str, List[CourseItem]]
+    semesters: dict[str, list[CourseItem]]
     ai_analysis: RoadmapSummarySchema
 
 class CourseCompareRequest(BaseModel):
-    course_ids: List[str]
+    course_ids: list[str]
 
 class CourseCompareResponse(BaseModel):
     comparison: CourseCompareSchema
-    courses: List[CourseItem]
+    courses: list[CourseItem]
 
 class DeptCompareRequest(BaseModel):
-    dept_names: List[str]
+    dept_names: list[str]
 
 class DeptCompareResponse(BaseModel):
     comparison: DeptCompareSchema
     dept_a_name: str
     dept_b_name: str
-    dept_a_sample_courses: List[str]
-    dept_b_sample_courses: List[str]
+    dept_a_sample_courses: list[str]
+    dept_b_sample_courses: list[str]

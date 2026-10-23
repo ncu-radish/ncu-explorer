@@ -1,15 +1,17 @@
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 
 class LocationResponse(BaseModel):
     id: str
     name: str
     category: str
-    three_mesh_name: Optional[str] = None
-    camera_pos: Optional[Dict[str, Any]] = None
+    three_mesh_name: str | None = None
+    camera_pos: dict[str, Any] | None = None
     short_desc: str
     full_content: str
-    image_url: Optional[str] = None
+    image_url: str | None = None
     course_count: int = 0
     activity_count: int = 0
 
@@ -17,17 +19,17 @@ class LocationResponse(BaseModel):
         from_attributes = True
 
 class LocationDetailResponse(LocationResponse):
-    courses: List[Dict[str, Any]] = []
-    activities: List[Dict[str, Any]] = []
-    life_infos: List[Dict[str, Any]] = []
+    courses: list[dict[str, Any]] = []
+    activities: list[dict[str, Any]] = []
+    life_infos: list[dict[str, Any]] = []
 
 class CampusLifeItem(BaseModel):
     id: int
     info_type: str
     title: str
-    location_id: Optional[str] = None
-    location_name: Optional[str] = None
-    tags: List[str]
+    location_id: str | None = None
+    location_name: str | None = None
+    tags: list[str]
     game_snippet: str
     content_md: str
 
@@ -38,12 +40,12 @@ class CampusLifeItem(BaseModel):
 class BuildingResponse(BaseModel):
     id: str
     name_zh: str
-    name_en: Optional[str] = None
-    category: Optional[str] = None
-    classroom_code: Optional[str] = None
-    departments: Optional[List[str]] = []
-    alias: Optional[str] = None
-    description: Optional[str] = None
+    name_en: str | None = None
+    category: str | None = None
+    classroom_code: str | None = None
+    departments: list[str] | None = []
+    alias: str | None = None
+    description: str | None = None
 
     class Config:
         from_attributes = True

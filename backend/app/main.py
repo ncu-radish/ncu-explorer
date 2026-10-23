@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.api.sim import router as sim_router
+
+from app.api.admin import router as admin_router
 from app.api.courses import router as courses_router
 from app.api.explore import router as explore_router
-from app.api.admin import router as admin_router
+from app.api.sim import router as sim_router
+from app.core.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
