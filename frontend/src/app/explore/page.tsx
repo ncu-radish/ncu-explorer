@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   ArrowRight,
   MapPin,
-  Search,
   Bike,
   Car,
   ChevronRight,
@@ -22,18 +21,15 @@ import {
 import { exploreApi } from "@/lib/api";
 import { CourseExplorerView } from "@/components/courses/CourseExplorerView";
 
-type CategoryId = "courses" | "map" | "transport" | "food" | "dorm" | "clubs";
+type CategoryId = "courses" | "transport" | "food" | "dorm" | "clubs";
 
 export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [_lifeInfos, setLifeInfos] = useState<any[]>([]);
   const [clubs, setClubs] = useState<any[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
   const [detailModal, setDetailModal] = useState<any | null>(null);
 
   // Search & Filter inside detailed views
-  const [locationCat, setLocationCat] = useState<string | null>(null);
-  const [locationKeyword, setLocationKeyword] = useState("");
   const [clubType, setClubType] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,20 +37,23 @@ export default function ExplorePage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const cat = params.get("cat") || params.get("category");
-      if (cat && ["courses", "map", "transport", "food", "dorm", "clubs"].includes(cat)) {
+      if (cat === "map") {
+        window.location.replace("/map");
+        return;
+      }
+      if (cat && ["courses", "transport", "food", "dorm", "clubs"].includes(cat)) {
         setSelectedCategory(cat as CategoryId);
       }
     }
 
     exploreApi.getLifeInfo().then(setLifeInfos).catch(console.error);
     exploreApi.getClubs().then(setClubs).catch(console.error);
-    exploreApi.getLocations().then(setLocations).catch(console.error);
   }, []);
 
   // Main Category Cards Configuration
   const categoryCards = [
     {
-      id: "courses" as CategoryId,
+      id: "courses",
       title: "課程資訊與檢索",
       icon: BookOpen,
       iconColor: "text-blue-600",
@@ -65,18 +64,19 @@ export default function ExplorePage() {
       highlights: ["全校課程檢索", "系所修業地圖", "AI 智慧顧問推薦"],
     },
     {
-      id: "map" as CategoryId,
-      title: "校園地圖與館舍",
+      id: "map",
+      title: "3D 校園地圖與館舍設施",
       icon: Map,
       iconColor: "text-emerald-600",
       bgColor: "bg-emerald-50",
       borderColor: "border-emerald-200",
-      badge: "空間導覽",
-      description: "瀏覽中央大學各大教學大樓、行政處室、學生宿舍與運動場館分佈及開課資訊。",
-      highlights: ["立體空間地圖", "各館舍開課一覽", "活動地點定位"],
+      badge: "3D 空間導覽",
+      description: "瀏覽中央大學各大教學大樓、行政處室、學生宿舍與運動場館分佈，提供全視角 3D 立體導覽與館舍定位。",
+      highlights: ["立體空間 3D 地圖", "館舍系所檢索", "教室位置定位"],
+      href: "/map",
     },
     {
-      id: "transport" as CategoryId,
+      id: "transport",
       title: "交通方式與指引",
       icon: Bus,
       iconColor: "text-indigo-600",
@@ -200,18 +200,6 @@ export default function ExplorePage() {
     },
   ];
 
-  const filteredLocations = locations.filter((loc) => {
-    if (locationCat && loc.category !== locationCat) return false;
-    if (locationKeyword) {
-      const q = locationKeyword.toLowerCase();
-      return (
-        loc.name?.toLowerCase().includes(q) ||
-        loc.short_desc?.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
   const filteredClubs = clubs.filter((c) => {
     if (clubType && c.type !== clubType) return false;
     return true;
@@ -305,10 +293,56 @@ export default function ExplorePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {categoryCards.map((card) => {
               const Icon = card.icon;
+              if (card.href) {
+                return (
+                  <Link
+                    key={card.id}
+                    href={card.href}
+                    className="bg-white p-6 rounded-2xl border border-stone-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`w-11 h-11 rounded-xl ${card.bgColor} ${card.iconColor} flex items-center justify-center border ${card.borderColor}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                          {card.badge}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-emerald-700 transition-colors">
+                        {card.title}
+                      </h3>
+
+                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                        {card.description}
+                      </p>
+
+                      {/* Feature highlights */}
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {card.highlights.map((h, i) => (
+                          <span
+                            key={i}
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600"
+                          >
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-emerald-600 group-hover:text-emerald-700">
+                      <span>開啟 3D 校園地圖</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+                );
+              }
+
               return (
                 <div
                   key={card.id}
-                  onClick={() => setSelectedCategory(card.id)}
+                  onClick={() => setSelectedCategory(card.id as CategoryId)}
                   className="bg-white p-6 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
                 >
                   <div>
@@ -411,158 +445,40 @@ export default function ExplorePage() {
 
             {/* Quick Switch Tabs */}
             <div className="flex flex-wrap items-center gap-1">
-              {categoryCards.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    selectedCategory === c.id
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-stone-600 hover:bg-stone-100"
-                  }`}
-                >
-                  {c.title}
-                </button>
-              ))}
+              {categoryCards.map((c) => {
+                if (c.href) {
+                  return (
+                    <Link
+                      key={c.id}
+                      href={c.href}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-100 flex items-center gap-1.5 transition-colors"
+                    >
+                      <Map className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{c.title}</span>
+                    </Link>
+                  );
+                }
+
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCategory(c.id as CategoryId)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      selectedCategory === c.id
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-stone-600 hover:bg-stone-100"
+                    }`}
+                  >
+                    {c.title}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* DETAIL 1: 課程資訊 (Courses) */}
           {selectedCategory === "courses" && (
             <CourseExplorerView isEmbedded={true} />
-          )}
-
-          {/* DETAIL 2: 校園地圖 (Map) */}
-          {selectedCategory === "map" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                    <Map className="w-6 h-6 text-emerald-600" />
-                    校園地圖與館舍設施
-                  </h2>
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    查看教學大樓、學生宿舍、餐飲與休閒空間，支援 3D 地圖導覽
-                  </p>
-                </div>
-
-                <Link
-                  href="/map"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 w-fit shadow-xs"
-                >
-                  <span>開啟 3D 校園地圖</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-
-              {/* Map Filter & Search */}
-              <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    onClick={() => setLocationCat(null)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      locationCat === null
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    全部館舍
-                  </button>
-                  <button
-                    onClick={() => setLocationCat("academic")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      locationCat === "academic"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    教學館舍
-                  </button>
-                  <button
-                    onClick={() => setLocationCat("dorm")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      locationCat === "dorm"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    學生宿舍
-                  </button>
-                  <button
-                    onClick={() => setLocationCat("dining")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      locationCat === "dining"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    生活餐飲
-                  </button>
-                  <button
-                    onClick={() => setLocationCat("transport")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      locationCat === "transport"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    交通樞紐
-                  </button>
-                </div>
-
-                <div className="relative w-full sm:w-60">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="搜尋館舍名稱..."
-                    value={locationKeyword}
-                    onChange={(e) => setLocationKeyword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 text-xs placeholder-stone-400 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Location Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredLocations.map((loc) => (
-                  <div
-                    key={loc.id}
-                    className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
-                          {loc.category === "academic"
-                            ? "教學館舍"
-                            : loc.category === "dorm"
-                            ? "學生宿舍"
-                            : loc.category === "dining"
-                            ? "生活餐飲"
-                            : loc.category === "transport"
-                            ? "交通樞紐"
-                            : "運動休閒"}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-stone-900 mb-1">
-                        {loc.name}
-                      </h3>
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                        {loc.short_desc}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
-                      <Link
-                        href={`/map?loc=${loc.id}`}
-                        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                      >
-                        <MapPin className="w-3.5 h-3.5" /> 在 3D 地圖中定位
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
 
           {/* DETAIL 3: 交通方式 (Transportation) */}
