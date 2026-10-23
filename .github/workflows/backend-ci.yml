@@ -8,8 +8,6 @@ on:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
   push:
-    branches-ignore:
-      - master  # 避免 push 到 master 時重複執行（master 通常走 CD 部署）
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'

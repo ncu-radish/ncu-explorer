@@ -8,10 +8,9 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
   push:
-    branches-ignore:
-      - master # 避免 master 重複觸發，一般開發分支皆會執行驗證
     paths:
       - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
 
 jobs:
   check:
