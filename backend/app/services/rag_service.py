@@ -168,7 +168,7 @@ class CourseRAGService:
         except Exception as e:
             logger.warning(f"RRF query failed, falling back to dense vector search: {e}")
             # Fallback to pure dense search
-            results = self.client.search(
+            results = self.client.search(  # type: ignore[attr-defined]
                 collection_name=self.collection_name,
                 query_vector=("dense", query_dense),
                 query_filter=query_filter,

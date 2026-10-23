@@ -1,12 +1,10 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.llm_client import call_ollama_structured
-from app.models.tables import Course, SystemConfig
+from app.models.tables import SystemConfig
 from app.schemas.courses import (
     CourseAIQueryRequest,
     CourseAIQueryResponse,
@@ -15,10 +13,10 @@ from app.schemas.courses import (
     CourseExactSearchResponse,
     CourseItem,
     CourseMetaResponse,
-    DeptCompareRequest,
-    DeptCompareResponse,
     DepartmentRecommendRequest,
     DepartmentRecommendResponse,
+    DeptCompareRequest,
+    DeptCompareResponse,
     RoadmapResponse,
     SemanticSearchRequest,
     SemanticSearchResponse,
@@ -26,7 +24,6 @@ from app.schemas.courses import (
 from app.services.compare_service import compare_service
 from app.services.course_db import course_db_service
 from app.services.course_vector_service import course_vector_service
-from app.services.prompts import COURSE_RECOMMEND_PROMPT_TEMPLATE
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -43,19 +40,19 @@ def get_courses_metadata():
         meta = course_db_service.get_meta()
         return CourseMetaResponse(**meta)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"讀取課程中繼資料失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"讀取課程中繼資料失敗: {str(e)}") from e
 
 
 @router.get("/search", response_model=CourseExactSearchResponse)
 def search_courses_endpoint(
-    semester: Optional[str] = Query(None, description="開課學期 (1151 或 1142)"),
-    dept: Optional[str] = Query(None, description="開課系所名稱"),
-    degree: Optional[str] = Query(None, description="學制 (學士班, 碩士班等)"),
-    grade: Optional[int] = Query(None, description="年級 (1~4)"),
-    credits: Optional[float] = Query(None, description="學分數"),
-    day: Optional[int] = Query(None, description="星期 (1~7)"),
-    keyword: Optional[str] = Query(None, description="課程名稱、課號、教師或內容關鍵字"),
-    required_or_elective: Optional[str] = Query(None, description="修別 (必修 / 選修)"),
+    semester: str | None = Query(None, description="開課學期 (1151 或 1142)"),
+    dept: str | None = Query(None, description="開課系所名稱"),
+    degree: str | None = Query(None, description="學制 (學士班, 碩士班等)"),
+    grade: int | None = Query(None, description="年級 (1~4)"),
+    credits: float | None = Query(None, description="學分數"),
+    day: int | None = Query(None, description="星期 (1~7)"),
+    keyword: str | None = Query(None, description="課程名稱、課號、教師或內容關鍵字"),
+    required_or_elective: str | None = Query(None, description="修別 (必修 / 選修)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
 ):
@@ -75,7 +72,7 @@ def search_courses_endpoint(
         )
         return CourseExactSearchResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜尋課程時發生錯誤: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"搜尋課程時發生錯誤: {str(e)}") from e
 
 
 @router.get("/detail/{semester}/{serial_no}")
@@ -107,7 +104,7 @@ def semantic_search_courses(req: SemanticSearchRequest):
             items=matches,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"向量資料庫語意檢索失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"向量資料庫語意檢索失敗: {str(e)}") from e
 
 
 @router.post("/department-recommend", response_model=DepartmentRecommendResponse)
@@ -128,7 +125,7 @@ async def recommend_department_courses(
         )
         return DepartmentRecommendResponse(**rec_data)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"學系推薦計算失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"學系推薦計算失敗: {str(e)}") from e
 
 
 # -------------------------------------------------------------------------
@@ -137,7 +134,6 @@ async def recommend_department_courses(
 @router.post("/ai-query", response_model=CourseAIQueryResponse)
 async def ai_query_courses_legacy(req: CourseAIQueryRequest, db: Session = Depends(get_db)):
     """支援舊版模擬器與簡易探索之問答端點"""
-    active_model = get_active_model(db)
     # 優先使用向量庫檢索
     try:
         matched = course_vector_service.semantic_search(query=req.query, department=req.dept_filter, top_k=6)

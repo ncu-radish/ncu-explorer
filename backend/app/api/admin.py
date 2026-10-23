@@ -474,7 +474,7 @@ def get_vector_space_data(current_admin: AdminUser = Depends(get_current_admin))
         data = course_vector_service.get_3d_universe_data()
         return VectorUniverseResponse(**data)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"讀取 3D 向量資料失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"讀取 3D 向量資料失敗: {str(e)}") from e
 
 
 @router.post("/vector-space/project", response_model=VectorProjectResponse)
@@ -492,7 +492,7 @@ def project_query_in_vector_space(
         )
         return VectorProjectResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"即時向量投影計算失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"即時向量投影計算失敗: {str(e)}") from e
 
 
 @router.get("/vector-space/stats")

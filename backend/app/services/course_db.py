@@ -10,14 +10,14 @@ NCU Course Database Service
 import re
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 BACKEND_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 TMP_DATA_DIR = PROJECT_ROOT / "tmp" / "data"
 
 
-def resolve_courses_db_path() -> Optional[Path]:
+def resolve_courses_db_path() -> Path | None:
     """優先尋找 backend/data/courses.db，若無則回退至 tmp/data/courses.db"""
     backend_db = BACKEND_DATA_DIR / "courses.db"
     if backend_db.exists():
@@ -30,7 +30,7 @@ def resolve_courses_db_path() -> Optional[Path]:
 
 class CourseDatabaseService:
     def __init__(self):
-        self._cached_meta: Optional[Dict[str, Any]] = None
+        self._cached_meta: dict[str, Any] | None = None
 
     def get_connection(self) -> sqlite3.Connection:
         db_path = resolve_courses_db_path()
@@ -43,7 +43,7 @@ class CourseDatabaseService:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def get_meta(self) -> Dict[str, Any]:
+    def get_meta(self) -> dict[str, Any]:
         """取得系所清單、學期清單、學制清單與總課數"""
         if self._cached_meta is not None:
             return self._cached_meta
@@ -94,23 +94,23 @@ class CourseDatabaseService:
 
     def search_courses(
         self,
-        semester: Optional[str] = None,
-        department: Optional[str] = None,
-        degree: Optional[str] = None,
-        grade: Optional[int] = None,
-        credits: Optional[float] = None,
-        day: Optional[int] = None,
-        keyword: Optional[str] = None,
-        required_or_elective: Optional[str] = None,
+        semester: str | None = None,
+        department: str | None = None,
+        degree: str | None = None,
+        grade: int | None = None,
+        credits: float | None = None,
+        day: int | None = None,
+        keyword: str | None = None,
+        required_or_elective: str | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """精準關鍵字與多維度欄位篩選搜尋"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        where_clauses: List[str] = []
-        params: List[Any] = []
+        where_clauses: list[str] = []
+        params: list[Any] = []
 
         if semester:
             where_clauses.append("c.semester = ?")
@@ -187,12 +187,12 @@ class CourseDatabaseService:
         rows = cursor.fetchall()
 
         # 批次取得上課時間與地點
-        course_items: List[Dict[str, Any]] = []
+        course_items: list[dict[str, Any]] = []
         if rows:
             sem_serials = [(r["semester"], r["serial_no"]) for r in rows]
             # 抓取對應 schedules
             placeholders = ",".join(["(?, ?)"] * len(sem_serials))
-            flat_params: List[Any] = []
+            flat_params: list[Any] = []
             for s, sn in sem_serials:
                 flat_params.extend([s, sn])
 
@@ -214,7 +214,7 @@ class CourseDatabaseService:
                     )
                     sched_rows.extend(cursor.fetchall())
 
-            schedules_map: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+            schedules_map: dict[tuple[str, str], list[dict[str, str]]] = {}
             for sr in sched_rows:
                 key = (sr["semester"], sr["serial_no"])
                 if key not in schedules_map:
@@ -237,7 +237,7 @@ class CourseDatabaseService:
             "items": course_items,
         }
 
-    def get_course_detail(self, semester: str, serial_no: str) -> Optional[Dict[str, Any]]:
+    def get_course_detail(self, semester: str, serial_no: str) -> dict[str, Any] | None:
         """取得單一課程的完整課綱、上課教室、修別、核心能力與分發順位限制"""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -285,7 +285,7 @@ class CourseDatabaseService:
         conn.close()
         return course_detail
 
-    def get_department_roadmap(self, dept: str) -> Dict[str, List[Dict[str, Any]]]:
+    def get_department_roadmap(self, dept: str) -> dict[str, list[dict[str, Any]]]:
         """
         取得指定系所的大一至大四必修課程學習脈絡：
         - 依據資料庫中精確的 required_or_elective 欄位 (限定為 '必修')
@@ -301,7 +301,7 @@ class CourseDatabaseService:
             SELECT DISTINCT c.semester, c.serial_no, c.course_code, c.course_name_zh, c.course_name_en,
                    c.teacher, c.credits, c.required_or_elective, c.objectives, c.fields, dc.condition
             FROM courses c
-            LEFT JOIN distribution_conditions dc 
+            LEFT JOIN distribution_conditions dc
               ON c.semester = dc.semester AND c.serial_no = dc.serial_no AND dc.priority = 1
             WHERE (c.department = ? OR (dc.condition IS NOT NULL AND dc.condition LIKE ?))
               AND c.degree = '學士班'
@@ -313,7 +313,7 @@ class CourseDatabaseService:
         rows = cursor.fetchall()
 
         sem_serials = [(r["semester"], r["serial_no"]) for r in rows]
-        schedules_map: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+        schedules_map: dict[tuple[str, str], list[dict[str, str]]] = {}
         for s, sn in sem_serials:
             cursor.execute(
                 "SELECT time, location FROM schedules WHERE semester = ? AND serial_no = ?",
@@ -323,7 +323,7 @@ class CourseDatabaseService:
 
         conn.close()
 
-        semesters: Dict[str, List[Dict[str, Any]]] = {
+        semesters: dict[str, list[dict[str, Any]]] = {
             "大一上": [], "大一下": [],
             "大二上": [], "大二下": [],
             "大三上": [], "大三下": [],
@@ -339,7 +339,6 @@ class CourseDatabaseService:
             teacher = r["teacher"] or "授課教師"
             credits_val = r["credits"]
             obj = r["objectives"] or ""
-            fields = r["fields"] or ""
             dc = r["condition"] or ""
 
             # 嚴格依據 required_or_elective 欄位篩選必修課程

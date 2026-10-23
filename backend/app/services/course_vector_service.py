@@ -8,12 +8,11 @@ NCU Course Vector & Recommendation Service
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
-from app.core.llm_client import call_ollama_structured
-from app.services.course_db import course_db_service, resolve_courses_db_path
+from app.services.course_db import course_db_service
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ BACKEND_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 TMP_DATA_DIR = PROJECT_ROOT / "tmp" / "data"
 
 
-def resolve_chroma_path() -> Optional[Path]:
+def resolve_chroma_path() -> Path | None:
     backend_p = BACKEND_DATA_DIR / "chroma_db"
     if backend_p.exists():
         return backend_p
@@ -32,7 +31,7 @@ def resolve_chroma_path() -> Optional[Path]:
     return None
 
 
-def resolve_umap_cache_path() -> Optional[Path]:
+def resolve_umap_cache_path() -> Path | None:
     backend_p = BACKEND_DATA_DIR / "umap_3d_cache.json"
     if backend_p.exists():
         return backend_p
@@ -42,7 +41,7 @@ def resolve_umap_cache_path() -> Optional[Path]:
     return None
 
 
-def resolve_umap_model_path() -> Optional[Path]:
+def resolve_umap_model_path() -> Path | None:
     backend_p = BACKEND_DATA_DIR / "umap_3d_model.joblib"
     if backend_p.exists():
         return backend_p
@@ -79,7 +78,7 @@ class CourseVectorService:
             self._collection = self._client.get_collection("ncu_courses")
         return self._collection
 
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         """計算查詢字串之向量"""
         vectors = list(self.embedder.embed([text.strip()]))
         return vectors[0].tolist()
@@ -87,11 +86,11 @@ class CourseVectorService:
     def semantic_search(
         self,
         query: str,
-        semester: Optional[str] = None,
-        department: Optional[str] = None,
-        degree: Optional[str] = None,
+        semester: str | None = None,
+        department: str | None = None,
+        degree: str | None = None,
         top_k: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         模糊語意檢索：透過向量資料庫查詢語意關聯度最高之課程。
         回傳計算出的匹配度百分比 (Match %) 與詳細課綱、時段教室。
@@ -110,7 +109,7 @@ class CourseVectorService:
         if degree and degree.strip():
             where_conds.append({"degree": {"$eq": degree.strip()}})
 
-        where_filter = None
+        where_filter: Any = None
         if len(where_conds) == 1:
             where_filter = where_conds[0]
         elif len(where_conds) > 1:
@@ -124,7 +123,7 @@ class CourseVectorService:
             include=["metadatas", "documents", "distances"],
         )
 
-        matched_items: List[Dict[str, Any]] = []
+        matched_items: list[dict[str, Any]] = []
         if not results or not results["ids"] or len(results["ids"][0]) == 0:
             return []
 
@@ -198,10 +197,10 @@ class CourseVectorService:
     async def recommend_departments(
         self,
         interest_query: str,
-        semester: Optional[str] = None,
+        semester: str | None = None,
         top_departments_count: int = 5,
         courses_per_dept: int = 4,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         學系推薦：輸入有興趣的領域或是課程，
         由向量庫全域檢索後，聚類推薦契合度最高之學系與核心課程，
@@ -222,7 +221,7 @@ class CourseVectorService:
             }
 
         # 依系所分組並計算關聯分數
-        dept_groups: Dict[str, List[Dict[str, Any]]] = {}
+        dept_groups: dict[str, list[dict[str, Any]]] = {}
         for c in raw_matches:
             d = c.get("department") or "其他單位"
             if d not in dept_groups:
@@ -251,12 +250,6 @@ class CourseVectorService:
         all_top_courses = raw_matches[:12]
 
         # 生成顧問導讀
-        dept_bullets = []
-        for d in top_depts:
-            cnames = [f"《{c['course_name_zh']}》" for c in d["featured_courses"][:3]]
-            dept_bullets.append(f"- 【{d['department']}】（契合度 {d['match_score']}%）：包含 {', '.join(cnames)}")
-
-        dept_summary_text = "\n".join(dept_bullets)
         fallback_advice = (
             f"根據你對「{interest_query}」的學習興趣，中央大學最推薦探索的系所為："
             f"{'、'.join([d['department'] for d in top_depts[:3]])}。\n\n"
@@ -271,7 +264,7 @@ class CourseVectorService:
             "consultant_advice": fallback_advice,
         }
 
-    def get_3d_universe_data(self) -> Dict[str, Any]:
+    def get_3d_universe_data(self) -> dict[str, Any]:
         """取得管理介面 3D 向量星系投影之所有課程座標與全域統計"""
         if self._cached_3d_data is not None:
             return self._cached_3d_data
@@ -279,7 +272,7 @@ class CourseVectorService:
         cache_path = resolve_umap_cache_path()
         if cache_path and cache_path.exists():
             try:
-                with open(cache_path, "r", encoding="utf-8") as f:
+                with open(cache_path, encoding="utf-8") as f:
                     data = json.load(f)
                 points = data.get("points", [])
                 self._cached_3d_data = {
@@ -306,9 +299,9 @@ class CourseVectorService:
         self,
         query: str,
         top_k: int = 5,
-        semester: Optional[str] = None,
-        department: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        semester: str | None = None,
+        department: str | None = None,
+    ) -> dict[str, Any]:
         """
         將即時查詢字串投影至 3D 空間，並尋找鄰近連線課程。
         若有 umap_3d_model.joblib 則使用 UMAP transform，
@@ -329,7 +322,7 @@ class CourseVectorService:
 
         points_map = {p["id"]: p for p in points}
 
-        nearest_courses: List[Dict[str, Any]] = []
+        nearest_courses: list[dict[str, Any]] = []
         for m in matches:
             cid = m["id"]
             if cid in points_map:
@@ -365,9 +358,9 @@ class CourseVectorService:
         if query_coord is None and nearest_courses:
             weights = [max(0.01, 100.0 - c["distance"] * 100.0) for c in nearest_courses]
             total_w = sum(weights) or 1.0
-            wx = sum(c["x"] * w for c, w in zip(nearest_courses, weights)) / total_w
-            wy = sum(c["y"] * w for c, w in zip(nearest_courses, weights)) / total_w
-            wz = sum(c["z"] * w for c, w in zip(nearest_courses, weights)) / total_w
+            wx = sum(c["x"] * w for c, w in zip(nearest_courses, weights, strict=True)) / total_w
+            wy = sum(c["y"] * w for c, w in zip(nearest_courses, weights, strict=True)) / total_w
+            wz = sum(c["z"] * w for c, w in zip(nearest_courses, weights, strict=True)) / total_w
             query_coord = [round(float(wx), 4), round(float(wy), 4), round(float(wz), 4)]
         elif query_coord is None:
             query_coord = [0.0, 0.0, 0.0]
