@@ -55,25 +55,123 @@ export const simApi = {
 
 // Course Explorer API
 export const courseApi = {
+  getMeta: () =>
+    fetchApi<{
+      departments: string[];
+      semesters: Array<{ id: string; name: string; short: string; count: number }>;
+      degrees: string[];
+      total_courses: number;
+    }>("/courses/meta"),
+
   search: (params: {
+    semester?: string;
     dept?: string;
+    degree?: string;
     grade?: number;
-    category?: string;
+    credits?: number;
     day?: number;
     keyword?: string;
+    required_or_elective?: string;
     page?: number;
     pageSize?: number;
   }) => {
     const query = new URLSearchParams();
+    if (params.semester) query.append("semester", params.semester);
     if (params.dept) query.append("dept", params.dept);
+    if (params.degree) query.append("degree", params.degree);
     if (params.grade !== undefined && params.grade !== null) query.append("grade", params.grade.toString());
-    if (params.category) query.append("category", params.category);
+    if (params.credits !== undefined && params.credits !== null) query.append("credits", params.credits.toString());
     if (params.day) query.append("day", params.day.toString());
     if (params.keyword) query.append("keyword", params.keyword);
+    if (params.required_or_elective) query.append("required_or_elective", params.required_or_elective);
     if (params.page) query.append("page", params.page.toString());
     if (params.pageSize) query.append("page_size", params.pageSize.toString());
-    return fetchApi<any>(`/courses/search?${query.toString()}`);
+    return fetchApi<{
+      total: number;
+      page: number;
+      page_size: number;
+      items: any[];
+    }>(`/courses/search?${query.toString()}`);
   },
+
+  getDetail: (semester: string, serialNo: string) =>
+    fetchApi<{
+      id: string;
+      semester: string;
+      serial_no: string;
+      course_code: string;
+      department: string;
+      teacher: string;
+      course_name_zh: string;
+      course_name_en: string;
+      degree: string;
+      credits: number;
+      required_or_elective?: string;
+      objectives?: string;
+      content?: string;
+      textbooks?: string;
+      fields?: string;
+      schedules: Array<{ time: string; location: string }>;
+      core_skills: Array<{ ability: string; strength: string; assessment_method: string }>;
+      distribution_conditions: Array<{ priority: number; condition: string }>;
+    }>(`/courses/detail/${encodeURIComponent(semester)}/${encodeURIComponent(serialNo)}`),
+
+  semanticSearch: (data: {
+    query: string;
+    semester?: string;
+    department?: string;
+    degree?: string;
+    top_k?: number;
+  }) =>
+    fetchApi<{
+      query: string;
+      total: number;
+      items: Array<{
+        id: string;
+        semester: string;
+        serial_no: string;
+        course_code: string;
+        course_name_zh: string;
+        course_name_en: string;
+        department: string;
+        teacher: string;
+        credits: number;
+        degree: string;
+        similarity: number;
+        distance: number;
+        preview: string;
+        schedules: Array<{ time: string; location: string }>;
+        objectives?: string;
+        content?: string;
+        fields?: string;
+      }>;
+    }>("/courses/semantic-search", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  recommendDepartments: (data: {
+    interest_query: string;
+    semester?: string;
+    top_departments_count?: number;
+    courses_per_dept?: number;
+  }) =>
+    fetchApi<{
+      query: string;
+      departments: Array<{
+        department: string;
+        match_score: number;
+        avg_score: number;
+        course_count: number;
+        featured_courses: any[];
+      }>;
+      top_courses: any[];
+      consultant_advice: string;
+    }>("/courses/department-recommend", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   aiQuery: (query: string, deptFilter?: string, gradeFilter?: number) =>
     fetchApi<any>("/courses/ai-query", {
       method: "POST",
@@ -214,4 +312,30 @@ export const adminApi = {
       body: formData,
     });
   },
+  getVectorSpaceStats: () => fetchApi<any>("/admin/vector-space/stats"),
+  getVectorSpaceData: () => fetchApi<any>("/admin/vector-space/data"),
+  projectVectorQuery: (data: {
+    query: string;
+    top_k?: number;
+    semester?: string;
+    department?: string;
+  }) =>
+    fetchApi<{
+      query: string;
+      coord: [number, number, number];
+      nearest_courses: Array<{
+        id: string;
+        name: string;
+        dept: string;
+        teacher: string;
+        similarity: number;
+        distance: number;
+        x: number;
+        y: number;
+        z: number;
+      }>;
+    }>("/admin/vector-space/project", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

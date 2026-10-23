@@ -19,7 +19,8 @@ import {
   Car,
   ChevronRight,
 } from "lucide-react";
-import { exploreApi, courseApi } from "@/lib/api";
+import { exploreApi } from "@/lib/api";
+import { CourseExplorerView } from "@/components/courses/CourseExplorerView";
 
 type CategoryId = "courses" | "map" | "transport" | "food" | "dorm" | "clubs";
 
@@ -28,40 +29,27 @@ export default function ExplorePage() {
   const [_lifeInfos, setLifeInfos] = useState<any[]>([]);
   const [clubs, setClubs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
-  const [sampleCourses, setSampleCourses] = useState<any[]>([]);
   const [detailModal, setDetailModal] = useState<any | null>(null);
 
   // Search & Filter inside detailed views
-  const [courseKeyword, setCourseKeyword] = useState("");
-  const [courseDept, setCourseDept] = useState("");
   const [locationCat, setLocationCat] = useState<string | null>(null);
   const [locationKeyword, setLocationKeyword] = useState("");
   const [clubType, setClubType] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check URL parameters for initial category selection (e.g. /explore?cat=courses)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const cat = params.get("cat") || params.get("category");
+      if (cat && ["courses", "map", "transport", "food", "dorm", "clubs"].includes(cat)) {
+        setSelectedCategory(cat as CategoryId);
+      }
+    }
+
     exploreApi.getLifeInfo().then(setLifeInfos).catch(console.error);
     exploreApi.getClubs().then(setClubs).catch(console.error);
     exploreApi.getLocations().then(setLocations).catch(console.error);
-    courseApi
-      .search({ pageSize: 12 })
-      .then((data) => {
-        if (data && data.items) setSampleCourses(data.items);
-      })
-      .catch(console.error);
   }, []);
-
-  const handleSearchCourses = async () => {
-    try {
-      const data = await courseApi.search({
-        keyword: courseKeyword || undefined,
-        dept: courseDept || undefined,
-        pageSize: 15,
-      });
-      if (data && data.items) setSampleCourses(data.items);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // Main Category Cards Configuration
   const categoryCards = [
@@ -441,100 +429,7 @@ export default function ExplorePage() {
 
           {/* DETAIL 1: 課程資訊 (Courses) */}
           {selectedCategory === "courses" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                    <BookOpen className="w-6 h-6 text-blue-600" />
-                    課程資訊與篩選檢索
-                  </h2>
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    支援關鍵字、系所篩選，並可進入完整課程中心使用 AI 選課顧問
-                  </p>
-                </div>
-
-                <Link
-                  href="/courses"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 w-fit shadow-xs"
-                >
-                  <span>前往完整課程中心</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-
-              {/* Course Search Box */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="搜尋課程名稱、教授或關鍵字（例：演算法、微積分、Python）..."
-                    value={courseKeyword}
-                    onChange={(e) => setCourseKeyword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearchCourses()}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 text-xs focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <select
-                  value={courseDept}
-                  onChange={(e) => setCourseDept(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-800 text-xs focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">所有系所</option>
-                  <option value="資訊管理學系">資訊管理學系</option>
-                  <option value="資訊工程學系">資訊工程學系</option>
-                  <option value="數學系">數學系</option>
-                  <option value="共同通識">共同通識</option>
-                </select>
-                <button
-                  onClick={handleSearchCourses}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  立即搜尋
-                </button>
-              </div>
-
-              {/* Course Result Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sampleCourses.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                          {c.category === "required" ? "必修" : "選修"} • {c.credits} 學分
-                        </span>
-                        <span className="text-xs text-stone-500">{c.department}</span>
-                      </div>
-                      <h3 className="text-base font-bold text-stone-900 mb-1">
-                        {c.course_name}
-                      </h3>
-                      <p className="text-xs text-stone-500 mb-3">
-                        授課教師：{c.instructor || "授課教師"} • 時段：{c.raw_schedule || "待定"}
-                      </p>
-                      <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed mb-4">
-                        {c.syllabus_summary || "暫無課程大綱描述"}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                      <span className="text-stone-500 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                        {c.location_name || "教學館舍"}
-                      </span>
-                      <Link
-                        href={`/courses?keyword=${encodeURIComponent(c.course_name)}`}
-                        className="text-blue-600 font-medium hover:underline"
-                      >
-                        詳情
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CourseExplorerView isEmbedded={true} />
           )}
 
           {/* DETAIL 2: 校園地圖 (Map) */}
