@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.llm_client import call_ollama_structured
 from app.models.tables import (
+    Building,
     CampusLifeInfo,
     CampusLocation,
     GameSession,
@@ -80,21 +81,129 @@ def parse_schedule_periods(time_str: str | None) -> list[tuple[int, list[str]]]:
                 res.append((d, list(m.group(2))))
     return res
 
-def map_campus_location(location_name: str | None, course_name: str | None = None, dept: str | None = None) -> tuple[str, str]:
-    loc_str = (location_name or "") + (course_name or "") + (dept or "")
-    if any(k in loc_str for k in ["I1", "I2", "管二", "管理", "資管", "企管", "財金"]):
-        return "loc_mgt2", location_name or "管理二館"
-    if any(k in loc_str for k in ["E6", "工五", "資工", "資訊工程"]):
-        return "loc_eng5", location_name or "工程五館"
-    if any(k in loc_str for k in ["理", "科五", "S4", "物理", "化學", "數學"]):
-        return "loc_sci5", location_name or "科學五館 / 理學院"
-    if any(k in loc_str for k in ["體育", "依仁", "排球", "籃球", "羽球", "網球", "壘球", "游泳", "瑜珈", "體"]):
-        return "loc_yiren", location_name or "依仁堂體育館"
-    if any(k in loc_str for k in ["圖", "閱覽", "自修"]):
-        return "loc_lib", location_name or "總圖書館"
-    if any(k in loc_str for k in ["TR", "教研", "綜教", "文學", "文學院", "法文", "中文", "英文"]):
-        return "loc_teaching", location_name or "綜合教學大樓"
-    return "loc_teaching", location_name or "教學大樓"
+# 優先根據教室代碼/建築物代號 (如 I1, E6, O, TR, S4, M, YH 等) 或中文名稱精準映射至 3D 建築物 ID
+BUILDING_MATCH_RULES: list[tuple[str, str, str]] = [
+    # (Regex/Pattern, Building ID, Canonical Name)
+    # --- 管理學院 ---
+    (r"\bI1\b|^I1[-_\s]|管理二館|管二", "bldg_mgmt_2", "管理二館"),
+    (r"\bI\b|^I[-_\s]|志希館|管理一館|管一", "bldg_mgmt_1", "志希館/管一"),
+
+    # --- 資訊電機與工學院 ---
+    (r"\bE6\b|^E6[-_\s]|工程五館|工五", "bldg_eng_5", "工程五館"),
+    (r"\bE1\b|^E1[-_\s]|工程二館|工二", "bldg_eng_2", "工程二館"),
+    (r"\bE2\b|^E2[-_\s]|機械館", "bldg_eng_m", "機械館"),
+    (r"\bE3\b|^E3[-_\s]|環工化工館|環工|化工", "bldg_eng_env", "環工化工館"),
+    (r"\bE4\b|^E4[-_\s]|機電實驗室", "bldg_eng_ml", "機電實驗室"),
+    (r"\bE5\b|^E5[-_\s]|大型力學實驗室", "bldg_eng_ecce", "大型力學實驗室"),
+    (r"\bE\b|^E[-_\s]|工程一館|工一", "bldg_eng_1", "工程一館"),
+
+    # --- 通識教育中心、語言中心、教研綜合 ---
+    (r"\bO\b|^O[-_\s]|綜教館|綜合教學大樓|綜教", "bldg_general_edu", "綜教館"),
+    (r"\bTR\b|^TR[-_\s]|教學研究綜合大樓|教學研究大樓|教研大樓|教研", "bldg_tr", "教研大樓"),
+
+    # --- 理學院與科學大樓 ---
+    (r"\bM\b|^M[-_\s]|鴻經館|鴻經", "bldg_hong_jing", "鴻經館"),
+    (r"\bS4\b|^S4[-_\s]|健雄館|科四館|科四", "bldg_science_4", "健雄館/科四"),
+    (r"\bS5\b|^S5[-_\s]|科學五館|科五", "bldg_science_5", "科學五館"),
+    (r"\bS1\b|^S1[-_\s]|科學二館|科二", "bldg_science_2", "科學二館"),
+    (r"\bS2\b|^S2[-_\s]|科學三館|科三", "bldg_science_3", "科學三館"),
+    (r"\bS\b|^S[-_\s]|科學一館|科一", "bldg_science_1", "科學一館"),
+    (r"\bH2\b|^H2[-_\s]|理學院教學館", "bldg_science_0", "理學院教學館"),
+    (r"\bIL\b|^IL[-_\s]|國鼎光電大樓|光電大樓", "bldg_optics", "國鼎光電大樓"),
+
+    # --- 文學院 ---
+    (r"\bA\b|^A[-_\s]|文學一館|文學⼀館|文一館|文一", "bldg_art_1", "文學一館"),
+    (r"\bC2\b|^C2[-_\s]|文學二館|文二館|文二", "bldg_art_2", "文學二館"),
+    (r"\bLS\b|^LS[-_\s]|人文社會科學大樓|人社大樓|文三", "bldg_art_3", "人文社會科學大樓"),
+
+    # --- 客家學院 ---
+    (r"\bHK\b|^HK[-_\s]|客家學院大樓|客家大樓|客院", "bldg_hk", "客家學院大樓"),
+
+    # --- 體育設施 ---
+    (r"\bYH\b|^YH[-_\s]|依仁堂|體育館|羽球|桌球|籃球|排球|游泳池|網球", "bldg_yireng", "依仁堂體育館"),
+
+    # --- 圖書館、大講堂、大禮堂、行政 ---
+    (r"\bL2\b|^L2[-_\s]|總圖書館|總圖", "bldg_lib_main", "總圖書館"),
+    (r"\bL\b|^L[-_\s]|中正圖書館|舊圖", "bldg_lib_old", "中正圖書館"),
+    (r"\bLH\b|^LH[-_\s]|大講堂", "bldg_grand_lecture", "大講堂"),
+    (r"\bMA\b|^MA[-_\s]|大禮堂", "bldg_auditorium", "大禮堂"),
+    (r"\bA1\b|^A1[-_\s]|行政大樓", "bldg_admin", "行政大樓"),
+]
+
+# 學系與所屬系館映射 (當課表地點為空、未定、或僅填教室號碼時的強力系館回退機制)
+DEPT_HOME_BUILDING_MAP: dict[str, tuple[str, str]] = {
+    "資訊管理學系": ("bldg_mgmt_2", "管理二館"),
+    "企業管理學系": ("bldg_mgmt_2", "管理二館"),
+    "財務金融學系": ("bldg_mgmt_2", "管理二館"),
+    "經濟學系": ("bldg_mgmt_2", "管理二館"),
+    "資訊工程學系": ("bldg_eng_5", "工程五館"),
+    "電機工程學系": ("bldg_eng_2", "工程二館"),
+    "通訊工程學系": ("bldg_eng_2", "工程二館"),
+    "機械工程學系": ("bldg_eng_m", "機械館"),
+    "化學工程與材料工程學系": ("bldg_eng_env", "環工化工館"),
+    "土木工程學系": ("bldg_eng_1", "工程一館"),
+    "數學系": ("bldg_hong_jing", "鴻經館"),
+    "物理學系": ("bldg_science_4", "健雄館(科四館)"),
+    "化學學系": ("bldg_science_5", "科學五館"),
+    "生命科學系": ("bldg_science_2", "科學二館"),
+    "生醫科學與工程學系": ("bldg_science_2", "科學二館"),
+    "光電科學與工程學系": ("bldg_optics", "國鼎光電大樓"),
+    "中國文學系": ("bldg_art_1", "文學一館"),
+    "英美語文學系": ("bldg_art_2", "文學二館"),
+    "法國語文學系": ("bldg_art_2", "文學二館"),
+    "地球科學學系": ("bldg_science_1", "科學一館"),
+    "大氣科學學系": ("bldg_science_4", "健雄館(科四館)"),
+    "客家語文暨社會科學學系": ("bldg_hk", "客家學院大樓"),
+    "體育室": ("bldg_yireng", "依仁堂體育館"),
+    "通識教育中心": ("bldg_general_edu", "綜教館"),
+    "語言中心": ("bldg_general_edu", "綜教館"),
+}
+
+def map_campus_location(
+    location_name: str | None,
+    course_name: str | None = None,
+    dept: str | None = None
+) -> tuple[str, str]:
+    """
+    精準映射課程地點至 3D 地圖建築物 ID (bldg_*) 與可讀中文名稱。
+    相容支援兩學期不同標記風格：大樓代號 (如 I1-105, E6-A204, O-214, TR-A001) 與完整中文名稱 (如 管理二館-017, 工程五館)。
+    若未標明地點，自動依據開課系所回退至系館，確保地圖自動聚焦於所屬系館。
+    """
+    loc_raw = (location_name or "").strip()
+    c_name = (course_name or "").strip()
+    d_name = (dept or "").strip()
+
+    # 1. 優先由地點代碼/名稱匹配
+    if loc_raw and loc_raw not in ("未定", "安排中"):
+        for pattern, bldg_id, canon_name in BUILDING_MATCH_RULES:
+            if re.search(pattern, loc_raw, re.IGNORECASE):
+                if loc_raw == canon_name:
+                    display_name = canon_name
+                elif canon_name in loc_raw:
+                    display_name = loc_raw
+                else:
+                    display_name = f"{canon_name} ({loc_raw})"
+                return bldg_id, display_name
+
+    # 2. 次依課程名稱特徵判斷
+    if any(k in c_name for k in ["體育", "羽球", "網球", "保齡球", "桌球", "籃球", "排球", "游泳", "體能"]):
+        return "bldg_yireng", "依仁堂體育館"
+    if any(k in c_name for k in ["大一英文", "日語", "德語", "法語", "西班牙語", "英語"]):
+        return "bldg_general_edu", "綜教館 (語言中心)"
+    if any(k in c_name for k in ["國文", "經典閱讀"]):
+        return "bldg_general_edu", "綜教館"
+
+    # 3. 依據開課系所回退至系館
+    if d_name:
+        for known_dept, (bldg_id, canon_name) in DEPT_HOME_BUILDING_MAP.items():
+            if known_dept == d_name or known_dept in d_name or d_name in known_dept:
+                if loc_raw and loc_raw not in ("未定", "安排中"):
+                    return bldg_id, f"{canon_name} ({loc_raw})"
+                return bldg_id, canon_name
+
+    # 4. 全校通用回退 (綜教館)
+    return "bldg_general_edu", loc_raw or "綜合教學大樓"
+
 
 class SimEngine:
     async def parse_onboarding(
@@ -289,9 +398,11 @@ class SimEngine:
                     "time": c_time,
                     "code": c.get("course_code") or "",
                     "teacher": c.get("instructor") or "",
-                    "location": c.get("location_name") or "教學館舍",
+                    "location": c.get("location_name") or "",
+                    "dept": dept,
                     "parsed_periods": parsed
                 })
+
 
         # 1.5 雙主修 / 輔系功能 (適用於大二以上，優先排目標系所必修課程)
         sec_dept = getattr(profile, "secondary_department", None)
@@ -349,9 +460,11 @@ class SimEngine:
                             "time": sc_time,
                             "code": sc_code,
                             "teacher": sc.get("instructor") or "",
-                            "location": sc.get("location_name") or "綜合教學大樓",
+                            "location": sc.get("location_name") or "",
+                            "dept": sec_dept,
                             "parsed_periods": sc_parsed
                         })
+
 
         # 2. 空堂填補與加選邏輯 (至多加選兩堂，隨機挑選通識與體育)
         added_count = 0
@@ -416,8 +529,10 @@ class SimEngine:
                         "code": code,
                         "teacher": teacher,
                         "location": loc,
+                        "dept": dept,
                         "parsed_periods": parsed
                     })
+
                     break
 
         # Priority 1: 通識課程 (最優先) (課號 CC、GS 開頭) - 至多先加1堂
@@ -523,7 +638,7 @@ class SimEngine:
                         loc_id, loc_name = map_campus_location(
                             c.get("location"),
                             c.get("name"),
-                            dept
+                            c.get("dept") or dept
                         )
                         day_events.append(ScheduleSlot(
                             day=day,
@@ -553,8 +668,8 @@ class SimEngine:
                     slot="18:30",
                     title=f"{club_name} (社團課堂與團體練習)",
                     type="club",
-                    location_id="loc_teaching",
-                    location_name="學生活動中心 / 綜教館",
+                    location_id="bldg_general_edu",
+                    location_name="綜教館 (學生活動中心)",
                     start_time="18:30",
                     end_time="20:30",
                     display_time="18:30 ~ 20:30",
@@ -589,10 +704,16 @@ class SimEngine:
         slot_name = slot_info.get("slot") or "morning"
         slot_str = slot_info.get("time_label") or slot_info.get("display_time") or "校園時段"
 
-        loc_id = slot_info.get("location_id") or "loc_park_creek"
-        loc = db.query(CampusLocation).filter(CampusLocation.id == loc_id).first()
-        loc_name = loc.name if loc else "中大校園"
-        loc_desc = loc.short_desc if loc else "綠意盎然的中央大學校園"
+        loc_id = slot_info.get("location_id") or "bldg_general_edu"
+        bldg = db.query(Building).filter(Building.id == loc_id).first()
+        if bldg:
+            loc_name = bldg.name_zh
+            loc_desc = bldg.description or f"中央大學{bldg.name_zh}"
+        else:
+            loc = db.query(CampusLocation).filter(CampusLocation.id == loc_id).first()
+            loc_name = loc.name if loc else (slot_info.get("location_name") or "中大校園")
+            loc_desc = loc.short_desc if loc else "綠意盎然的中央大學校園"
+
 
         # 撈取該館舍生活背景碎片
         life_info = db.query(CampusLifeInfo).filter(CampusLifeInfo.location_id == loc_id).first()

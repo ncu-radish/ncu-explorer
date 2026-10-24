@@ -53,18 +53,20 @@ export default function SimulatorPage() {
     resetSimulation,
   } = useSimulatorStore();
 
-  const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (currentLocationId) {
-      setFocusedLoc(currentLocationId);
-    }
-  }, [currentLocationId]);
-
   const currentSlotInfo = weeklySchedule[currentTurn] || {};
   const dayName = DAYS[Math.max(0, Math.min(4, (currentSlotInfo.day || 1) - 1))];
   const slotName = currentSlotInfo.display_time || currentSlotInfo.time_label || SLOTS_MAP[currentSlotInfo.slot || "slot_1"] || "當前時段";
   const totalTurns = weeklySchedule.length || 30;
+
+  const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const locId = currentLocationId || currentSlotInfo?.location_id;
+    if (locId) {
+      setFocusedLoc(locId);
+    }
+  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
+
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-4 sm:gap-5">

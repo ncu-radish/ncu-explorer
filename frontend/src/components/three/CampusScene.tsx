@@ -385,12 +385,43 @@ export function CampusScene({
 
   const buildings = propBuildings && propBuildings.length > 0 ? propBuildings : internalBuildings;
 
+const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
+  loc_mgt2: "bldg_mgmt_2",
+  loc_eng5: "bldg_eng_5",
+  loc_sci5: "bldg_science_5",
+  loc_teaching: "bldg_general_edu",
+  loc_lib: "bldg_lib_main",
+  loc_yiren: "bldg_yireng",
+  loc_dorm_boy9: "bldg_dorm_b9",
+  I1: "bldg_mgmt_2",
+  I: "bldg_mgmt_1",
+  E6: "bldg_eng_5",
+  E1: "bldg_eng_2",
+  E2: "bldg_eng_m",
+  E3: "bldg_eng_env",
+  E: "bldg_eng_1",
+  O: "bldg_general_edu",
+  TR: "bldg_tr",
+  M: "bldg_hong_jing",
+  S4: "bldg_science_4",
+  S5: "bldg_science_5",
+  S1: "bldg_science_2",
+  S: "bldg_science_1",
+  A: "bldg_art_1",
+  C2: "bldg_art_2",
+  LS: "bldg_art_3",
+  HK: "bldg_hk",
+  YH: "bldg_yireng",
+};
+
   // Sync focusedLocationId if provided by external caller (e.g. simulator)
   useEffect(() => {
     if (focusedLocationId !== undefined) {
-      selectBuilding(focusedLocationId);
+      const resolved = (focusedLocationId && LEGACY_OR_CODE_TO_BLDG[focusedLocationId]) || focusedLocationId;
+      selectBuilding(resolved);
     }
   }, [focusedLocationId, selectBuilding]);
+
 
   const handleSelect = (id: string) => {
     selectBuilding(id);

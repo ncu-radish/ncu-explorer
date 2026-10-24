@@ -178,3 +178,53 @@ def test_build_weekly_schedule_double_major():
     assert 16 <= total_credits <= 25, f"Credits with double major should be 16~25, got {total_credits}"
 
 
+def test_map_campus_location_codes_and_names():
+    """驗證兩學期大樓代碼 (I1, E6, O, TR 等) 與中文全稱 (管理二館, 工程五館 等) 及系館回退機制皆正確對應 3D 建築 ID"""
+    from app.services.sim_engine import map_campus_location
+
+    # 1. 第一學期風格：大樓教室代碼
+    bldg_id, name = map_campus_location("I1-105", "會計學", "資訊管理學系")
+    assert bldg_id == "bldg_mgmt_2"
+    assert "管理二館" in name
+
+    bldg_id, name = map_campus_location("E6-A204", "資料結構", "資訊工程學系")
+    assert bldg_id == "bldg_eng_5"
+    assert "工程五館" in name
+
+    bldg_id, name = map_campus_location("O-214", "通識課程", "通識教育中心")
+    assert bldg_id == "bldg_general_edu"
+
+    bldg_id, name = map_campus_location("TR-A001", "教研專題", "資訊管理學系")
+    assert bldg_id == "bldg_tr"
+
+    bldg_id, name = map_campus_location("YH-YH-1", "大一體育", "體育室")
+    assert bldg_id == "bldg_yireng"
+
+    bldg_id, name = map_campus_location("M-101", "微積分", "數學系")
+    assert bldg_id == "bldg_hong_jing"
+
+    # 2. 第二學期風格：中文館舍全名
+    bldg_id, name = map_campus_location("管理二館-017", "資訊管理導論", "資訊管理學系")
+    assert bldg_id == "bldg_mgmt_2"
+
+    bldg_id, name = map_campus_location("工程五館", "計算機概論", "資訊工程學系")
+    assert bldg_id == "bldg_eng_5"
+
+    bldg_id, name = map_campus_location("綜合教學大樓", "國文經典閱讀", "通識教育中心")
+    assert bldg_id == "bldg_general_edu"
+
+    # 3. 無指定地點時，精準回退至所屬系館
+    bldg_id, name = map_campus_location("", "演算法", "資訊工程學系")
+    assert bldg_id == "bldg_eng_5"
+    assert name == "工程五館"
+
+    bldg_id, name = map_campus_location("", "程式設計", "資訊管理學系")
+    assert bldg_id == "bldg_mgmt_2"
+    assert name == "管理二館"
+
+    bldg_id, name = map_campus_location("", "詞選", "中國文學系")
+    assert bldg_id == "bldg_art_1"
+    assert name == "文學一館"
+
+
+
