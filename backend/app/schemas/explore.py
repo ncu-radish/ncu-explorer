@@ -49,3 +49,30 @@ class BuildingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ClubResponse(BaseModel):
+    id: str
+    name: str
+    english_name: str | None = None
+    type: str
+    category: str | None = None
+    day_of_week: int = 2
+    period_slot: str = "evening"
+    location_id: str | None = None
+    location_name: str | None = None
+    location_text: str | None = None
+    website_url: str | None = None
+    image_url: str | None = None
+    prompt_context: str | None = None
+    full_intro: str
+    english_intro: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class ClubCategorySummary(BaseModel):
+    category: str
+    count: int
+

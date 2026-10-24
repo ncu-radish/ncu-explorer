@@ -209,6 +209,29 @@ export interface Building {
   description?: string | null;
 }
 
+export interface ClubItem {
+  id: string;
+  name: string;
+  english_name?: string | null;
+  type: string;
+  category?: string | null;
+  day_of_week: number;
+  period_slot: string;
+  location_id?: string | null;
+  location_name?: string | null;
+  location_text?: string | null;
+  website_url?: string | null;
+  image_url?: string | null;
+  prompt_context?: string | null;
+  full_intro: string;
+  english_intro?: string | null;
+}
+
+export interface ClubCategorySummary {
+  category: string;
+  count: number;
+}
+
 // Explore & 3D Map API
 export const exploreApi = {
   getBuildings: (params?: { q?: string; category?: string }) => {
@@ -230,10 +253,20 @@ export const exploreApi = {
     if (tag) query.append("tag", tag);
     return fetchApi<any[]>(`/explore/life-info?${query.toString()}`);
   },
-  getClubs: (clubType?: string) => {
-    const query = clubType ? `?club_type=${clubType}` : "";
-    return fetchApi<any[]>(`/explore/clubs${query}`);
+  getClubs: (params?: { category?: string; clubType?: string; keyword?: string } | string) => {
+    if (typeof params === "string") {
+      const query = params ? `?club_type=${encodeURIComponent(params)}` : "";
+      return fetchApi<ClubItem[]>(`/explore/clubs${query}`);
+    }
+    const query = new URLSearchParams();
+    if (params?.category) query.append("category", params.category);
+    if (params?.clubType) query.append("club_type", params.clubType);
+    if (params?.keyword) query.append("keyword", params.keyword);
+    const qs = query.toString();
+    return fetchApi<ClubItem[]>(`/explore/clubs${qs ? `?${qs}` : ""}`);
   },
+  getClubCategories: () => fetchApi<ClubCategorySummary[]>("/explore/clubs/categories"),
+  getClubDetail: (id: string) => fetchApi<ClubItem>(`/explore/clubs/${encodeURIComponent(id)}`),
 };
 
 // Admin API

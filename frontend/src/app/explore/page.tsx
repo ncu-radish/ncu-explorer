@@ -20,17 +20,14 @@ import {
 } from "lucide-react";
 import { exploreApi } from "@/lib/api";
 import { CourseExplorerView } from "@/components/courses/CourseExplorerView";
+import { ClubExplorerView } from "@/components/clubs/ClubExplorerView";
 
 type CategoryId = "courses" | "transport" | "food" | "dorm" | "clubs";
 
 export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [_lifeInfos, setLifeInfos] = useState<any[]>([]);
-  const [clubs, setClubs] = useState<any[]>([]);
   const [detailModal, setDetailModal] = useState<any | null>(null);
-
-  // Search & Filter inside detailed views
-  const [clubType, setClubType] = useState<string | null>(null);
 
   useEffect(() => {
     // Check URL parameters for initial category selection (e.g. /explore?cat=courses)
@@ -47,7 +44,6 @@ export default function ExplorePage() {
     }
 
     exploreApi.getLifeInfo().then(setLifeInfos).catch(console.error);
-    exploreApi.getClubs().then(setClubs).catch(console.error);
   }, []);
 
   // Main Category Cards Configuration
@@ -199,11 +195,6 @@ export default function ExplorePage() {
       tag: "生活規範",
     },
   ];
-
-  const filteredClubs = clubs.filter((c) => {
-    if (clubType && c.type !== clubType) return false;
-    return true;
-  });
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 md:p-8 flex flex-col gap-6 bg-[#FAF8F5]">
@@ -618,91 +609,7 @@ export default function ExplorePage() {
 
           {/* DETAIL 6: 社團活動 (Clubs) */}
           {selectedCategory === "clubs" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                    <Users className="w-6 h-6 text-rose-600" />
-                    學生社團與活動名錄
-                  </h2>
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    探索中央大學學術、文藝、康樂及自治社團組織
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setClubType(null)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      clubType === null
-                        ? "bg-rose-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    全部社團
-                  </button>
-                  <button
-                    onClick={() => setClubType("academic_club")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      clubType === "academic_club"
-                        ? "bg-rose-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    學術社團
-                  </button>
-                  <button
-                    onClick={() => setClubType("recreation_club")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer ${
-                      clubType === "recreation_club"
-                        ? "bg-rose-600 text-white"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                    }`}
-                  >
-                    康樂藝文
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredClubs.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-rose-300 hover:shadow-xs transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-50 text-rose-800 border border-rose-200">
-                          {c.type === "academic_club" ? "學術研究" : "康樂藝文"}
-                        </span>
-                        <span className="text-xs text-stone-500">
-                          週{["一", "二", "三", "四", "五", "六", "日"][c.day_of_week - 1]}常態活動
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-stone-900 mb-1.5">
-                        {c.name}
-                      </h3>
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4 line-clamp-3">
-                        {c.full_intro}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-rose-600" />
-                        {c.location_name || "活動場地"}
-                      </span>
-                      <button
-                        onClick={() => setDetailModal(c)}
-                        className="text-rose-700 font-semibold hover:underline cursor-pointer"
-                      >
-                        詳細招新
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ClubExplorerView isEmbedded={true} />
           )}
         </div>
       )}

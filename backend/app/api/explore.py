@@ -1,12 +1,21 @@
 import json
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import Base, engine, get_db
 from app.models.tables import Building, CampusLifeInfo, CampusLocation, ClubAndActivity
-from app.schemas.explore import BuildingResponse, CampusLifeItem, LocationDetailResponse, LocationResponse
+from app.schemas.explore import (
+    BuildingResponse,
+    CampusLifeItem,
+    ClubCategorySummary,
+    ClubResponse,
+    LocationDetailResponse,
+    LocationResponse,
+)
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
@@ -203,26 +212,185 @@ def get_campus_life_info(
         results.append(ci)
     return results
 
-@router.get("/clubs")
+def ensure_clubs_seeded(db: Session):
+    Base.metadata.create_all(bind=engine)
+    try:
+        count = db.query(ClubAndActivity).count()
+    except Exception:
+        db.rollback()
+        ClubAndActivity.__table__.drop(bind=engine, checkfirst=True)
+        ClubAndActivity.__table__.create(bind=engine, checkfirst=True)
+        count = 0
+
+    if count < 100:
+        clubs_file = Path(__file__).resolve().parent.parent.parent / "data" / "ncu_clubs.json"
+        if not clubs_file.exists():
+            return
+        with open(clubs_file, encoding="utf-8") as f:
+            raw_clubs = json.load(f)
+
+        if count > 0:
+            db.query(ClubAndActivity).delete()
+            db.commit()
+
+        type_mapping = {
+            "學術性": "academic_club",
+            "康樂性": "recreation_club",
+            "體育性": "sports_club",
+            "服務性": "service_club",
+            "聯誼性": "social_club",
+            "系學會": "student_org",
+        }
+
+        for idx, item in enumerate(raw_clubs, 1):
+            img = item.get("圖片網址") or ""
+            m = re.search(r'/([^/]+)\.(?:png|jpg|jpeg|gif)', img, re.I)
+            code = m.group(1).lower() if m else ""
+            eng = re.sub(r'[^a-zA-Z0-9_]', '', (item.get("英文名稱或縮寫") or "").strip().lower())
+            if code:
+                cid = f"club_{code}"
+            elif eng and len(eng) >= 3:
+                cid = f"club_{eng[:30]}"
+            else:
+                cid = f"club_{idx:03d}"
+
+            cat = item.get("社團分類") or "其它"
+            mapped_type = type_mapping.get(cat, "recreation_club")
+            name = item.get("中文名稱", "").strip()
+            intro = item.get("中文簡介", "").strip()
+            english_name = item.get("英文名稱或縮寫", "").strip() or None
+            english_intro = item.get("英文簡介", "").strip() or None
+            loc_text = item.get("社辦地點", "").strip() or None
+            web_url = item.get("社團網站", "").strip() or None
+            img_url = item.get("圖片網址", "").strip() or None
+            p_ctx = f"在中大參與{name}（{cat}社團）活動，{intro[:100]}" if intro else f"在中大參加{name}社團日常活動與交流"
+
+            db.add(ClubAndActivity(
+                id=cid,
+                name=name,
+                english_name=english_name,
+                type=mapped_type,
+                category=cat,
+                day_of_week=(idx % 5) + 1,
+                period_slot="evening",
+                location_id=None,
+                location_text=loc_text,
+                website_url=web_url,
+                image_url=img_url,
+                prompt_context=p_ctx,
+                full_intro=intro or f"{name}是中央大學活躍的{cat}學生組織。",
+                english_intro=english_intro,
+            ))
+        db.commit()
+
+
+@router.get("/clubs", response_model=list[ClubResponse])
 def get_all_clubs(
-    club_type: str | None = Query(None, description="社團類型"),
+    club_type: str | None = Query(None, description="社團類型或分類"),
+    category: str | None = Query(None, description="社團分類篩選 (聯誼性/學術性/康樂性/系學會/體育性/服務性)"),
+    keyword: str | None = Query(None, description="關鍵字搜尋 (名稱/簡介/社辦)"),
     db: Session = Depends(get_db)
 ):
+    ensure_clubs_seeded(db)
     query = db.query(ClubAndActivity)
-    if club_type:
-        query = query.filter(ClubAndActivity.type == club_type)
-    clubs = query.all()
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "type": c.type,
-            "day_of_week": c.day_of_week,
-            "period_slot": c.period_slot,
-            "location_id": c.location_id,
-            "location_name": c.location.name if c.location else None,
-            "prompt_context": c.prompt_context,
-            "full_intro": c.full_intro,
+
+    target_filter = category or club_type
+    if target_filter:
+        type_mapping = {
+            "academic_club": "學術性",
+            "recreation_club": "康樂性",
+            "sports_club": "體育性",
+            "service_club": "服務性",
+            "social_club": "聯誼性",
+            "student_org": "系學會",
         }
-        for c in clubs
-    ]
+        chinese_cat = type_mapping.get(target_filter, target_filter)
+        query = query.filter(
+            or_(
+                ClubAndActivity.category == chinese_cat,
+                ClubAndActivity.type == target_filter,
+                ClubAndActivity.category == target_filter
+            )
+        )
+
+    if keyword:
+        kw = f"%{keyword.strip()}%"
+        query = query.filter(
+            or_(
+                ClubAndActivity.name.ilike(kw),
+                ClubAndActivity.english_name.ilike(kw),
+                ClubAndActivity.full_intro.ilike(kw),
+                ClubAndActivity.location_text.ilike(kw)
+            )
+        )
+
+    clubs = query.order_by(ClubAndActivity.category, ClubAndActivity.name).all()
+    results = []
+    for c in clubs:
+        results.append(
+            ClubResponse(
+                id=c.id,
+                name=c.name,
+                english_name=c.english_name,
+                type=c.type,
+                category=c.category or c.type,
+                day_of_week=c.day_of_week,
+                period_slot=c.period_slot,
+                location_id=c.location_id,
+                location_name=c.location.name if c.location else (c.location_text or "活動場地"),
+                location_text=c.location_text,
+                website_url=c.website_url,
+                image_url=c.image_url,
+                prompt_context=c.prompt_context,
+                full_intro=c.full_intro,
+                english_intro=c.english_intro,
+            )
+        )
+    return results
+
+
+@router.get("/clubs/categories", response_model=list[ClubCategorySummary])
+def get_club_categories(db: Session = Depends(get_db)):
+    ensure_clubs_seeded(db)
+    clubs = db.query(ClubAndActivity).all()
+    from collections import Counter
+    counts = Counter(c.category or c.type for c in clubs)
+
+    order = ["學術性", "康樂性", "體育性", "服務性", "聯誼性", "系學會"]
+    res = []
+    for cat in order:
+        if cat in counts:
+            res.append(ClubCategorySummary(category=cat, count=counts[cat]))
+    for cat, cnt in counts.items():
+        if cat not in order:
+            res.append(ClubCategorySummary(category=cat, count=cnt))
+    return res
+
+
+@router.get("/clubs/{club_id}", response_model=ClubResponse)
+def get_club_detail(club_id: str, db: Session = Depends(get_db)):
+    ensure_clubs_seeded(db)
+    club = db.query(ClubAndActivity).filter(ClubAndActivity.id == club_id).first()
+    if not club:
+        club = db.query(ClubAndActivity).filter(ClubAndActivity.name == club_id).first()
+    if not club:
+        raise HTTPException(status_code=404, detail="找不到指定社團")
+
+    return ClubResponse(
+        id=club.id,
+        name=club.name,
+        english_name=club.english_name,
+        type=club.type,
+        category=club.category or club.type,
+        day_of_week=club.day_of_week,
+        period_slot=club.period_slot,
+        location_id=club.location_id,
+        location_name=club.location.name if club.location else (club.location_text or "活動場地"),
+        location_text=club.location_text,
+        website_url=club.website_url,
+        image_url=club.image_url,
+        prompt_context=club.prompt_context,
+        full_intro=club.full_intro,
+        english_intro=club.english_intro,
+    )
+

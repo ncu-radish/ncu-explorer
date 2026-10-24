@@ -265,5 +265,59 @@ def test_parse_onboarding_grade_retention(monkeypatch):
     asyncio.run(run_checks())
 
 
+def test_club_schedule_classification_and_matching():
+    """驗證社團模糊比對、天數 (1~3天) 與夜間時段 (18:00~22:00) 正確排程"""
+    all_clubs = sim_engine.load_all_clubs()
+    assert len(all_clubs) >= 100
+
+    # 1. 測試教學性/讀書會社團 (1天，18:30~20:30)
+    matched_acad = sim_engine.match_nearest_club("中央資安讀書會", all_clubs)
+    assert "網安讀書會" in matched_acad["name"] or "資安" in matched_acad["name"]
+    prof_acad = sim_engine.classify_club_activity(matched_acad)
+    assert prof_acad["days_count"] == 1
+    assert prof_acad["start_time"] == "18:30"
+    assert prof_acad["end_time"] == "20:30"
+
+    # 2. 測試服務性社團 (2天，18:30~21:00)
+    matched_serv = sim_engine.match_nearest_club("汪汪社", all_clubs)
+    assert "汪汪社" in matched_serv["name"]
+    prof_serv = sim_engine.classify_club_activity(matched_serv)
+    assert prof_serv["days_count"] == 2
+    assert prof_serv["start_time"] == "18:30"
+    assert prof_serv["end_time"] == "21:00"
+
+    # 3. 測試表演性社團 (3天，18:30~21:30)
+    matched_perf = sim_engine.match_nearest_club("火舞藝術研究社", all_clubs)
+    assert "火舞" in matched_perf["name"]
+    prof_perf = sim_engine.classify_club_activity(matched_perf)
+    assert prof_perf["days_count"] == 3
+    assert prof_perf["start_time"] == "18:30"
+    assert prof_perf["end_time"] == "21:30"
+
+
+def test_multi_club_scheduling_no_conflicts():
+    """驗證多個社團同時參加時，活動日智慧分配且各時段無衝突"""
+    profile = OnboardingParseSchema(
+        department="資訊管理學系",
+        grade=1,
+        clubs=["火舞藝術研究社", "資訊管理學系系學會"]
+    )
+    schedule = sim_engine.build_weekly_schedule(None, profile)
+    club_slots = [s for s in schedule if s.type == "club"]
+
+    # 火舞社 3 天 + 系學會 1 天 = 總計 4 個社團行程
+    assert len(club_slots) == 4
+
+    # 確保所有社團時段都在 18:00 ~ 22:00 之間
+    for s in club_slots:
+        assert s.start_time >= "18:00"
+        assert s.end_time <= "22:00"
+
+    # 確保同一天晚上不撞期 (每天最多一個社團活動)
+    days_with_clubs = [s.day for s in club_slots]
+    assert len(days_with_clubs) == len(set(days_with_clubs)), "同一天晚上不應重複排定多個社團"
+
+
+
 
 

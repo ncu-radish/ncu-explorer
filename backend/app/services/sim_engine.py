@@ -1,6 +1,9 @@
+import difflib
+import json
 import logging
 import random
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -11,6 +14,7 @@ from app.models.tables import (
     Building,
     CampusLifeInfo,
     CampusLocation,
+    ClubAndActivity,
     GameSession,
     RandomEvent,
 )
@@ -30,6 +34,32 @@ from app.services.prompts import (
 logger = logging.getLogger(__name__)
 
 DAY_NAMES = ["週一", "週二", "週三", "週四", "週五"]
+
+COMMON_CLUB_ALIASES: dict[str, str] = {
+    "熱舞": "熱門舞蹈社", "熱舞社": "熱門舞蹈社",
+    "熱音": "熱門音樂社", "熱音社": "熱門音樂社",
+    "資安": "網安讀書會", "資安讀書會": "網安讀書會", "中央資安讀書會": "網安讀書會",
+    "汪汪": "中大汪汪社", "汪汪社": "中大汪汪社",
+    "基服": "基層文化服務社", "基服社": "基層文化服務社",
+    "圍棋": "棋藝社", "圍棋社": "棋藝社",
+    "吉他": "吉他社",
+    "火舞": "火舞藝術研究社", "火舞社": "火舞藝術研究社",
+    "鋼琴": "鋼琴社",
+    "系學會": "資訊管理學系系學會",
+    "資管系學會": "資訊管理學系系學會", "資管系會": "資訊管理學系系學會",
+    "資工系學會": "資訊工程學系系學會", "資工系會": "資訊工程學系系學會",
+    "電機系學會": "電機工程學系系學會",
+    "企管系學會": "企業管理學系系學會",
+    "財金系學會": "財務金融學系系學會",
+    "新竹友會": "新竹校友會", "竹友會": "新竹校友會",
+    "雄友": "雄友會", "雄友會": "雄友會",
+    "彰友": "彰化校友會", "彰友會": "彰化校友會",
+    "雲嘉": "雲嘉會", "雲嘉會": "雲嘉會",
+    "管樂": "管樂社", "管樂社": "管樂社",
+    "弦樂": "弦樂社", "弦樂社": "弦樂社",
+    "合唱": "合唱團", "合唱團": "合唱團",
+    "攝影": "攝影社", "攝影社": "攝影社",
+}
 
 NCU_PERIOD_TIME: dict[str, tuple[str, str]] = {
     "1": ("08:00", "08:50"),
@@ -206,6 +236,263 @@ def map_campus_location(
 
 
 class SimEngine:
+    @staticmethod
+    def load_all_clubs(db: Session | None = None) -> list[dict[str, Any]]:
+        """載入全校所有立案社團清單 (優先自 SQLite 讀取，回退自 ncu_clubs.json)"""
+        if db:
+            try:
+                db_clubs = db.query(ClubAndActivity).all()
+                if db_clubs and len(db_clubs) >= 10:
+                    return [
+                        {
+                            "id": c.id,
+                            "name": c.name,
+                            "english_name": c.english_name,
+                            "category": c.category or c.type,
+                            "location_text": c.location_text,
+                            "location_id": c.location_id,
+                            "full_intro": c.full_intro,
+                        }
+                        for c in db_clubs
+                    ]
+            except Exception as e:
+                logger.warning(f"Failed to query ClubAndActivity from db: {e}")
+
+        clubs_file = Path(__file__).resolve().parent.parent.parent / "data" / "ncu_clubs.json"
+        if clubs_file.exists():
+            with open(clubs_file, encoding="utf-8") as f:
+                raw = json.load(f)
+            return [
+                {
+                    "id": f"club_{i:03d}",
+                    "name": d.get("中文名稱", ""),
+                    "english_name": d.get("英文名稱或縮寫"),
+                    "category": d.get("社團分類", "其它"),
+                    "location_text": d.get("社辦地點"),
+                    "location_id": None,
+                    "full_intro": d.get("中文簡介", ""),
+                }
+                for i, d in enumerate(raw, 1)
+            ]
+        return []
+
+    def match_nearest_club(
+        self,
+        query: str,
+        all_clubs: list[dict[str, Any]],
+        dept_hint: str | None = None
+    ) -> dict[str, Any]:
+        """從全校社團清單中找出最接近目標的社團 (支援精確匹配、別名對照、子字串與 SequenceMatcher 相似度)"""
+        q = (query or "").strip()
+        if not q or not all_clubs:
+            for c in all_clubs:
+                if c["name"] == "熱門舞蹈社":
+                    return c
+            return all_clubs[0] if all_clubs else {"id": "club_default", "name": "熱門舞蹈社", "category": "康樂性"}
+
+        if q in ("系學會", "系會") and dept_hint:
+            for c in all_clubs:
+                if dept_hint in c["name"] and "系學會" in c["name"]:
+                    return c
+
+        if q in COMMON_CLUB_ALIASES:
+            target_name = COMMON_CLUB_ALIASES[q]
+            for c in all_clubs:
+                if c["name"] == target_name:
+                    return c
+
+        for c in all_clubs:
+            if c["name"] == q:
+                return c
+            if c.get("english_name") and c["english_name"].lower() == q.lower():
+                return c
+
+        substring_matches = [
+            c for c in all_clubs
+            if (q in c["name"] or c["name"] in q) or (c.get("english_name") and q.lower() in c["english_name"].lower())
+        ]
+        if substring_matches:
+            return max(substring_matches, key=lambda c: len(set(q) & set(c["name"])))
+
+        best_club = all_clubs[0]
+        best_score = -1.0
+        for c in all_clubs:
+            c_name = c["name"]
+            sim_ratio = difflib.SequenceMatcher(None, q, c_name).ratio()
+            char_overlap = len(set(q) & set(c_name))
+            score = sim_ratio * 2.0 + char_overlap
+            if score > best_score:
+                best_score = score
+                best_club = c
+        return best_club
+
+    def classify_club_activity(self, club: dict[str, Any]) -> dict[str, Any]:
+        """
+        AI 與專家規則研判社團活動排程：
+        1. 教學性社團 (中央資安讀書會、XX研究社、XX系學會、XX友會)：多半每週 1 天課程，時長約 2 小時 (18:30~20:30)
+        2. 服務性、體育性、興趣休閒型 (中大汪汪社、基服社、圍棋社、鋼琴社、球隊等)：為 1~2 天社課，時長約 2.5 小時 (18:30~21:00)
+        3. 表演性社團 (火舞藝術研究社、熱門舞蹈社、熱門音樂社、吉他社等)：為 3 天社課，時長約 3 小時 (18:30~21:30)
+        """
+        name = club.get("name", "")
+        cat = club.get("category", "")
+        loc_text = club.get("location_text") or ""
+
+        perf_keywords = [
+            "火舞", "舞蹈", "熱舞", "熱音", "音樂", "樂團", "吉他", "管樂", "弦樂",
+            "國樂", "合唱", "阿卡貝拉", "戲劇", "話劇", "搖滾", "表演", "成發"
+        ]
+        sports_keywords = [
+            "球", "隊", "體育", "道", "拳", "滑輪", "溜冰", "射箭", "登山", "攀岩",
+            "單車", "自行車", "桌球", "羽球", "網球", "排球", "籃球", "棒球", "壘球",
+            "足球", "武術", "太極", "瑜珈", "健身", "游泳", "潛水", "飛盤"
+        ]
+        service_keywords = [
+            "服務", "汪汪", "志工", "慈青", "童軍", "扶輪", "春暉", "救護", "紅十字"
+        ]
+        hobby_keywords = [
+            "棋", "圍棋", "鋼琴", "攝影", "動漫", "桌遊", "咖啡", "烘焙", "手作",
+            "繪畫", "美術", "手語", "生存遊戲", "調酒", "魔術", "電影"
+        ]
+
+        if any(k in name for k in perf_keywords):
+            days_count = 3
+            start_time = "18:30"
+            end_time = "21:30"
+            periods = ["A", "B", "C"]
+            activity_label = "常態集訓與排演"
+        elif cat in ("體育性", "服務性") or any(k in name for k in sports_keywords + service_keywords + hobby_keywords):
+            days_count = 2
+            start_time = "18:30"
+            end_time = "21:00"
+            periods = ["A", "B"]
+            activity_label = "常態社課與練習"
+        else:
+            days_count = 1
+            start_time = "18:30"
+            end_time = "20:30"
+            periods = ["A", "B"]
+            activity_label = "每週社課研討與例會"
+
+        if "據德" in loc_text:
+            loc_id, loc_name = "bldg_jude", "據德樓 (學生社團大樓)"
+        elif "游藝" in loc_text:
+            loc_id, loc_name = "bldg_youyi", "游藝館 (藝文活動中心)"
+        elif "夢工廠" in loc_text:
+            loc_id, loc_name = "bldg_jude", "夢工廠 (學生創意基地)"
+        elif "依仁" in loc_text or cat == "體育性":
+            loc_id, loc_name = "bldg_yireng", "依仁堂體育館"
+        elif loc_text:
+            loc_id, loc_name = "bldg_general_edu", loc_text
+        else:
+            loc_id, loc_name = "bldg_general_edu", "綜教館 (學生活動中心)"
+
+        return {
+            "days_count": days_count,
+            "start_time": start_time,
+            "end_time": end_time,
+            "periods": periods,
+            "activity_label": activity_label,
+            "location_id": loc_id,
+            "location_name": loc_name,
+        }
+
+    def resolve_club_weekly_schedule(
+        self,
+        db: Session | None,
+        profile: OnboardingParseSchema | None
+    ) -> dict[int, list[ScheduleSlot]]:
+        """
+        為使用者輸入的目標社團解析真實社團並排定週一至週五晚間時段 (18:00~22:00)
+        - 找不到時以最佳近似社團匹配
+        - 表演性 3 天、體育/服務/興趣 2 天、教學/學術/系學會/友會 1 天
+        - 多個社團時智慧分配平日不同晚上，杜絕時段衝突
+        """
+        all_clubs = self.load_all_clubs(db)
+        dept_hint = profile.department if profile else None
+
+        raw_candidates: list[str] = []
+        if profile and profile.clubs:
+            for c in profile.clubs:
+                if c and c.strip() and c.strip() not in raw_candidates:
+                    raw_candidates.append(c.strip())
+
+        if profile and getattr(profile, "club", None):
+            single_c = profile.club.strip()
+            if single_c and single_c not in raw_candidates:
+                raw_candidates.append(single_c)
+
+        if not raw_candidates:
+            raw_candidates = ["熱門舞蹈社", "資訊管理學系系學會"]
+
+        resolved_clubs: list[dict[str, Any]] = []
+        for raw_q in raw_candidates:
+            matched = self.match_nearest_club(raw_q, all_clubs, dept_hint=dept_hint)
+            profile_info = self.classify_club_activity(matched)
+            resolved_clubs.append({
+                "club": matched,
+                "profile": profile_info
+            })
+
+        resolved_clubs.sort(key=lambda x: x["profile"]["days_count"], reverse=True)
+
+        slots_by_day: dict[int, list[ScheduleSlot]] = {d: [] for d in range(1, 6)}
+        occupied_days: set[int] = set()
+
+        for item in resolved_clubs:
+            club = item["club"]
+            info = item["profile"]
+            needed_days = info["days_count"]
+
+            if needed_days == 3:
+                candidates_list = [1, 3, 5]
+            elif needed_days == 2:
+                candidates_list = [2, 4]
+            else:
+                candidates_list = [2, 3, 4]
+
+            assigned_days: list[int] = []
+            for d in candidates_list:
+                if d not in occupied_days and len(assigned_days) < needed_days:
+                    assigned_days.append(d)
+
+            if len(assigned_days) < needed_days:
+                for d in [1, 2, 3, 4, 5]:
+                    if d not in occupied_days and d not in assigned_days and len(assigned_days) < needed_days:
+                        assigned_days.append(d)
+
+            if len(assigned_days) < needed_days:
+                remaining_needed = needed_days - len(assigned_days)
+                sorted_by_load = sorted(range(1, 6), key=lambda d: len(slots_by_day[d]))
+                for d in sorted_by_load:
+                    if d not in assigned_days and remaining_needed > 0:
+                        assigned_days.append(d)
+                        remaining_needed -= 1
+
+            for day_idx in assigned_days:
+                occupied_days.add(day_idx)
+                day_name = DAY_NAMES[day_idx - 1]
+                s_time = info["start_time"]
+                e_time = info["end_time"]
+                display_t = f"{s_time} ~ {e_time}"
+                title_str = f"{club['name']} ({info['activity_label']})"
+
+                slots_by_day[day_idx].append(ScheduleSlot(
+                    day=day_idx,
+                    slot=s_time,
+                    title=title_str,
+                    type="club",
+                    club_id=club.get("id"),
+                    location_id=info["location_id"],
+                    location_name=info["location_name"],
+                    start_time=s_time,
+                    end_time=e_time,
+                    display_time=display_t,
+                    time_label=f"{day_name} 社團活動 ({display_t})",
+                    periods=info["periods"]
+                ))
+
+        return slots_by_day
+
     async def parse_onboarding(
         self,
         user_input: str,
@@ -321,6 +608,16 @@ class SimEngine:
                 parsed.secondary_type = sec_type
             if sec_dept and not parsed.secondary_department:
                 parsed.secondary_department = sec_dept
+
+            # 啟發式社團關鍵字萃取補強 (當 LLM 未成功萃取使用者輸入時)
+            if not parsed.clubs:
+                extracted_clubs = []
+                for alias_k, target_n in COMMON_CLUB_ALIASES.items():
+                    if len(alias_k) >= 2 and alias_k in user_input and target_n not in extracted_clubs:
+                        extracted_clubs.append(target_n)
+                if extracted_clubs:
+                    parsed.clubs = extracted_clubs
+
             return parsed
         except Exception as e:
             logger.warning(f"Onboarding parse failed, using fallback: {e}")
@@ -636,6 +933,9 @@ class SimEngine:
         # 3. 鋪設週一到週五真實課堂與社團行程 (僅保留課程與社團活動)
         schedule: list[ScheduleSlot] = []
 
+        # 智慧解析並排定社團真實活動時程 (依社團類型排定 1~3 天晚間 18:00~22:00，智慧杜絕衝突)
+        club_slots_by_day = self.resolve_club_weekly_schedule(db, profile)
+
         for day in range(1, 6):
             day_name = DAY_NAMES[day - 1]
             day_events: list[ScheduleSlot] = []
@@ -670,24 +970,11 @@ class SimEngine:
                             periods=pers
                         ))
 
-            # (2) 社團團體活動 (若有填寫社團，安排於週二與週四晚間 18:30~20:30)
-            club_name = profile.clubs[(day - 1) % len(profile.clubs)] if profile.clubs else None
-            if club_name and day in (2, 4):
-                day_events.append(ScheduleSlot(
-                    day=day,
-                    slot="18:30",
-                    title=f"{club_name} (社團課堂與團體練習)",
-                    type="club",
-                    location_id="bldg_general_edu",
-                    location_name="綜教館 (學生活動中心)",
-                    start_time="18:30",
-                    end_time="20:30",
-                    display_time="18:30 ~ 20:30",
-                    time_label=f"{day_name} 社團活動 (18:30~20:30)",
-                    periods=["A", "B"]
-                ))
+            # (2) 社團團體活動 (依 AI 研判之天數與時段排定)
+            if day in club_slots_by_day:
+                day_events.extend(club_slots_by_day[day])
 
-            # 當天行程按開始時間排序
+            # 當天行程按開始時間排序 (日間課堂在前，夜間社團在後)
             day_events.sort(key=lambda s: s.start_time or "00:00")
             schedule.extend(day_events)
 
@@ -764,6 +1051,25 @@ class SimEngine:
         if chosen_event:
             event_instruction = f"【突發狀況事件：{chosen_event.title}】\n{chosen_event.event_prompt}"
             preset_options = chosen_event.preset_options
+        elif slot_info.get("type") == "club":
+            event_instruction = f"社團活動時段：你在 {loc_name} 參與【{slot_info.get('title')}】。請描述你沉浸於社團練習、交流或例會討論的熱血情境。"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "全神貫注投入練習與團員切磋交流，精進社團專業技能",
+                    "effects": {"stamina": -12, "study": 0, "social": 12, "money": 0}
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "主動與幹部討論後續活動規劃與年度成發構想，展現責任與領導力",
+                    "effects": {"stamina": -8, "study": 0, "social": 15, "money": -50}
+                },
+                {
+                    "option_key": "C",
+                    "intent_hint": "社課結束後與社團夥伴揪團直奔宵夜街吃炭烤鹹酥雞暢聊大學生活",
+                    "effects": {"stamina": 5, "study": 0, "social": 18, "money": -120}
+                }
+            ]
         else:
             event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
             preset_options = [

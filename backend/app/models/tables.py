@@ -51,12 +51,18 @@ class ClubAndActivity(Base):
 
     id = Column(String(50), primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    type = Column(String(30), nullable=False, index=True)  # academic_club, recreation_club, student_org, part_time
-    day_of_week = Column(Integer, nullable=False)  # 1~7
-    period_slot = Column(String(20), nullable=False)  # morning, afternoon, evening
+    english_name = Column(String(100), nullable=True)
+    type = Column(String(30), nullable=False, index=True)  # academic_club, recreation_club, etc.
+    category = Column(String(50), nullable=True, index=True)  # 聯誼性, 學術性, 康樂性, 系學會, 體育性, 服務性
+    day_of_week = Column(Integer, nullable=False, default=2)  # 1~7
+    period_slot = Column(String(20), nullable=False, default="evening")  # morning, afternoon, evening
     location_id = Column(String(50), ForeignKey("campus_locations.id"), nullable=True)
+    location_text = Column(String(100), nullable=True)  # 社辦地點
+    website_url = Column(String(500), nullable=True)  # 社團網站
+    image_url = Column(String(500), nullable=True)  # 社團圖片
     prompt_context = Column(Text, nullable=False)
     full_intro = Column(Text, nullable=False)
+    english_intro = Column(Text, nullable=True)
 
     location = relationship("CampusLocation", back_populates="activities")
 
