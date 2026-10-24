@@ -16,7 +16,11 @@ class OnboardingParseSchema(BaseModel):
     secondary_type: str | None = Field(default=None, description="雙主修或輔系，值為 '雙主修'、'輔系' 或 None")
     secondary_department: str | None = Field(default=None, description="雙主修或輔系的目標系所全名，如：資訊工程學系")
     clubs: list[str] = Field(default_factory=list, description="想參加的社團或系學會名稱清單")
+    club: str | None = Field(default=None, description="相容單一社團輸入")
     interest_query: str = Field(default="", description="使用者的其他修課或領域興趣關鍵字，如：人工智慧、網頁設計、投資理財")
+
+    model_config = {"extra": "allow"}
+
 
 
 class CourseCompareSchema(BaseModel):
