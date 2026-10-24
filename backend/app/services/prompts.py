@@ -7,7 +7,7 @@ ONBOARDING_PROMPT_TEMPLATE = """
 
 【規範】：
 - 就讀系所請對應中大常見學系中文名稱（例如：資訊管理學系、資訊工程學系等）。
-- 若未提及年級，預設為大一（1）。學期預設為上學期（1）。
+- 年級（grade）請輸出數字 1、2、3 或 4（例：大一填 1，大二填 2，大三填 3，大四填 4）。若未提及年級，預設為大一（1）。學期（semester_term）預設為上學期（1）。
 - 若使用者提及「雙主修」或「雙修」某系（例如：雙主修資工、雙修電機），請將 secondary_type 設為 "雙主修"，secondary_department 設為該目標系所全名（如：資訊工程學系）。
 - 若使用者提及「輔系」或「輔修」某系（例如：輔系財金、輔修企管），請將 secondary_type 設為 "輔系"，secondary_department 設為該目標系所全名（如：財務金融學系）。
 - 若未提及雙主修或輔系，secondary_type 與 secondary_department 設為 null。

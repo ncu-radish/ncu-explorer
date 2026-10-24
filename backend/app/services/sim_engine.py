@@ -271,15 +271,17 @@ class SimEngine:
                     sec_dept = full_name
                     break
 
-        # 年級萃取 (使用者輸入文字有明確指定年級時優先)
-        if "大一" in user_input or "一年級" in user_input:
-            grade = 1
-        elif "大二" in user_input or "二年級" in user_input:
-            grade = 2
-        elif "大三" in user_input or "三年級" in user_input:
-            grade = 3
-        elif "大四" in user_input or "四年級" in user_input:
+        # 年級萃取 (若有傳入 grade_hint 則直接採用，否則從使用者輸入文字萃取)
+        if grade_hint in (1, 2, 3, 4):
+            grade = grade_hint
+        elif "大四" in user_input or "四年級" in user_input or "4年級" in user_input:
             grade = 4
+        elif "大三" in user_input or "三年級" in user_input or "3年級" in user_input:
+            grade = 3
+        elif "大二" in user_input or "二年級" in user_input or "2年級" in user_input:
+            grade = 2
+        elif "大一" in user_input or "一年級" in user_input or "1年級" in user_input:
+            grade = 1
         elif sec_type and grade == 1 and not grade_hint:
             # 雙主修/輔系主要適用於大二以上，未指定年級時自動推進為大二
             grade = 2
@@ -303,10 +305,18 @@ class SimEngine:
                 fallback_instance=fallback,
                 timeout=25.0
             )
+            # 確定性控制：學系與年級以使用者明確選擇 (dept_hint / grade_hint) 或基底萃取為準，杜絕輕量 LLM 默認大一的覆蓋
             if dept_hint:
                 parsed.department = dept_hint
-            if grade_hint and not any(g in user_input for g in ["大一", "大二", "大三", "大四"]):
+            elif not parsed.department or parsed.department == "資訊管理學系":
+                if dept:
+                    parsed.department = dept
+
+            if grade_hint in (1, 2, 3, 4):
                 parsed.grade = grade_hint
+            elif grade in (1, 2, 3, 4):
+                parsed.grade = grade
+
             if sec_type and not parsed.secondary_type:
                 parsed.secondary_type = sec_type
             if sec_dept and not parsed.secondary_department:
