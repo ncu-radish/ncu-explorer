@@ -38,7 +38,15 @@ function getCategoryBadge(slot: ScheduleSlot) {
     return { label: "自主充實", bg: "bg-stone-100 text-stone-600 border-stone-200" };
   }
   const cat = slot.course_category || "";
+
+  if (cat.includes("雙主修")) {
+    return { label: "雙主修", bg: "bg-rose-100 text-rose-800 border-rose-200" };
+  }
+  if (cat.includes("輔系") || cat.includes("輔修")) {
+    return { label: "輔系", bg: "bg-amber-100 text-amber-800 border-amber-200" };
+  }
   if (cat.includes("通識")) {
+
     return { label: "通識", bg: "bg-emerald-100 text-emerald-800 border-emerald-200" };
   }
   if (cat.includes("體育")) {

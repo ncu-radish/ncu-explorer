@@ -46,7 +46,22 @@ function getEventStyle(slot: ScheduleSlot) {
   }
 
   const cat = slot.course_category || "";
+  if (cat.includes("雙主修")) {
+    return {
+      bg: "bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-950",
+      badge: "bg-rose-200 text-rose-800",
+      label: "雙主修",
+    };
+  }
+  if (cat.includes("輔系") || cat.includes("輔修")) {
+    return {
+      bg: "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-950",
+      badge: "bg-amber-200 text-amber-800",
+      label: "輔系",
+    };
+  }
   if (cat.includes("通識")) {
+
     return {
       bg: "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-950",
       badge: "bg-emerald-200 text-emerald-800",

@@ -25,11 +25,13 @@ const POPULAR_DEPTS = [
 ];
 
 const PRESET_PROMPTS = [
+  { dept: "資訊管理學系", grade: 2, text: "我是資管系大二，雙主修資工系，想修演算法與計算機組織，晚上參加熱音社" },
   { dept: "資訊管理學系", grade: 1, text: "我是資訊管理學系大一，想參加資管系學會和熱舞社，想修一點人工智慧與現代網頁開發的課" },
   { dept: "資訊工程學系", grade: 2, text: "我是資訊工程學系大二，想參加 AI 創新研究社，對深度學習與密碼學演算法特別有熱忱" },
-  { dept: "企業管理學系", grade: 1, text: "我是企管系大一新生，想探索各類人文通識與商業思維，打算加入吉他社結交跨系好友" },
+  { dept: "企業管理學系", grade: 3, text: "我是企管系大三，輔系財金系，想探索各類商業策略與投資理財，打算加入吉他社" },
   { dept: "資訊管理學系", grade: 4, text: "我是資管系大四老鳥，主力在畢業專題與實習，想過個充實自在的大學生活" },
 ];
+
 
 export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
   const [dept, setDept] = useState("資訊管理學系");
@@ -123,10 +125,11 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="例如：想加入熱舞社和系學會，對人工智慧、攝影與校園美食有興趣..."
+              placeholder="例如：我是資管大二，想雙主修資工系，參加熱舞社，對演算法與深度學習有興趣...（亦支援自然輸入輔系）"
               rows={2}
               className="w-full px-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 text-xs focus:outline-none focus:border-blue-500 transition-colors resize-none"
             />
+
           </div>
 
           {/* Preset Buttons */}

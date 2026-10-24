@@ -108,38 +108,79 @@ class SimEngine:
         dept = dept_hint or "資訊管理學系"
         grade = grade_hint or 1
 
+        dept_keywords = {
+            "資訊管理": "資訊管理學系", "資管": "資訊管理學系",
+            "資訊工程": "資訊工程學系", "資工": "資訊工程學系",
+            "電機工程": "電機工程學系", "電機": "電機工程學系",
+            "通訊工程": "通訊工程學系", "通訊": "通訊工程學系",
+            "企業管理": "企業管理學系", "企管": "企業管理學系",
+            "財務金融": "財務金融學系", "財金": "財務金融學系",
+            "經濟": "經濟學系", "機械": "機械工程學系",
+            "土木": "土木工程學系", "化材": "化學工程與材料工程學系",
+            "數學": "數學系", "物理": "物理學系", "化學": "化學學系",
+            "生科": "生命科學系", "中文": "中國文學系", "英文": "英美語文學系", "法文": "法國語文學系",
+            "大氣": "大氣科學學系", "地科": "地球科學學系"
+        }
+
+        # 透過使用者文字直接判斷「雙主修」或「輔系」
+        sec_type = None
+        sec_dept = None
+
+        double_major_match = re.search(r"(?:雙主修|雙修|double\s*major)\s*[:：]?\s*([^\s,，。!！?？]+)", user_input, re.IGNORECASE)
+        minor_match = re.search(r"(?:輔系|輔修|minor)\s*[:：]?\s*([^\s,，。!！?？]+)", user_input, re.IGNORECASE)
+
+        if double_major_match:
+            sec_type = "雙主修"
+            target_str = double_major_match.group(1)
+            for kw, full_name in dept_keywords.items():
+                if kw in target_str:
+                    sec_dept = full_name
+                    break
+        elif minor_match:
+            sec_type = "輔系"
+            target_str = minor_match.group(1)
+            for kw, full_name in dept_keywords.items():
+                if kw in target_str:
+                    sec_dept = full_name
+                    break
+
+        if not sec_type:
+            if "雙主修" in user_input or "雙修" in user_input:
+                sec_type = "雙主修"
+            elif "輔系" in user_input or "輔修" in user_input:
+                sec_type = "輔系"
+
         if not dept_hint:
-            dept_keywords = {
-                "資訊管理": "資訊管理學系", "資管": "資訊管理學系",
-                "資訊工程": "資訊工程學系", "資工": "資訊工程學系",
-                "電機工程": "電機工程學系", "電機": "電機工程學系",
-                "通訊工程": "通訊工程學系", "通訊": "通訊工程學系",
-                "企業管理": "企業管理學系", "企管": "企業管理學系",
-                "財務金融": "財務金融學系", "財金": "財務金融學系",
-                "經濟": "經濟學系", "機械": "機械工程學系",
-                "土木": "土木工程學系", "化材": "化學工程與材料工程學系",
-                "數學": "數學系", "物理": "物理學系", "化學": "化學學系",
-                "生科": "生命科學系", "中文": "中國文學系", "英文": "英美語文學系", "法文": "法國語文學系"
-            }
             for kw, target in dept_keywords.items():
-                if kw in user_input:
+                if kw in user_input and target != sec_dept:
                     dept = target
                     break
 
-        if not grade_hint:
-            if "大一" in user_input or "一年級" in user_input:
-                grade = 1
-            elif "大二" in user_input or "二年級" in user_input:
-                grade = 2
-            elif "大三" in user_input or "三年級" in user_input:
-                grade = 3
-            elif "大四" in user_input or "四年級" in user_input:
-                grade = 4
+        if sec_type and not sec_dept:
+            for kw, full_name in dept_keywords.items():
+                if kw in user_input and full_name != dept:
+                    sec_dept = full_name
+                    break
+
+        # 年級萃取 (使用者輸入文字有明確指定年級時優先)
+        if "大一" in user_input or "一年級" in user_input:
+            grade = 1
+        elif "大二" in user_input or "二年級" in user_input:
+            grade = 2
+        elif "大三" in user_input or "三年級" in user_input:
+            grade = 3
+        elif "大四" in user_input or "四年級" in user_input:
+            grade = 4
+        elif sec_type and grade == 1 and not grade_hint:
+            # 雙主修/輔系主要適用於大二以上，未指定年級時自動推進為大二
+            grade = 2
 
         fallback = OnboardingParseSchema(
             department=dept,
             grade=grade,
             semester_term=1,
+            secondary_type=sec_type,
+            secondary_department=sec_dept,
             clubs=["熱舞社", "系學會"],
             interest_query="校園生活"
         )
@@ -155,8 +196,12 @@ class SimEngine:
             )
             if dept_hint:
                 parsed.department = dept_hint
-            if grade_hint:
+            if grade_hint and not any(g in user_input for g in ["大一", "大二", "大三", "大四"]):
                 parsed.grade = grade_hint
+            if sec_type and not parsed.secondary_type:
+                parsed.secondary_type = sec_type
+            if sec_dept and not parsed.secondary_department:
+                parsed.secondary_department = sec_dept
             return parsed
         except Exception as e:
             logger.warning(f"Onboarding parse failed, using fallback: {e}")
@@ -168,11 +213,11 @@ class SimEngine:
         profile: OnboardingParseSchema | None = None,
     ) -> list[ScheduleSlot]:
         """
-        為週一至週五排定完整一日時間軸 (5天 x 6時段 = 30回合)
-        1. 根據所選學系與年級撈取 courses.db 準確必修課 (大一含國文、英文、微積分、體育、服學)
-        2. 空堂填補 (至多加選2堂，優先順序：通識(CC/GS) -> 體育(大二以上零學分非校隊) -> 語言選修(LN) -> 系選修)
-        3. 學分規範：大一至大三 16~25 學分；大四 9~16 學分
-        4. 映射到週一至週五整天時段 (08:00~21:00)
+        為週一至週五排定完整一日時間軸 (僅保留真實課程與社團行程)
+        1. 根據所選學系與年級撈取本系 courses.db 準確必修課
+        2. 雙主修/輔系 (適用大二以上)：在本系必修排滿後，優先排目標系所必修課
+        3. 空堂填補 (通識/體育/語言隨機挑選)：至多加選2堂，隨機打散候選池增加多樣性
+        4. 學分規範：大一至大三 16~25 學分；大四 9~16 學分
         """
         if profile is None:
             profile = OnboardingParseSchema()
@@ -182,7 +227,7 @@ class SimEngine:
         min_credits = 9.0 if grade == 4 else 16.0
         max_credits = 16.0 if grade == 4 else 25.0
 
-        # 1. 撈取必修課基本盤
+        # 1. 撈取本系必修課基本盤
         roadmap = course_db_service.get_department_roadmap(dept)
         grade_map = {1: "大一上", 2: "大二上", 3: "大三上", 4: "大四上"}
         sem_key = grade_map.get(grade, "大一上")
@@ -248,7 +293,67 @@ class SimEngine:
                     "parsed_periods": parsed
                 })
 
-        # 2. 空堂填補與加選邏輯 (至多加選兩堂)
+        # 1.5 雙主修 / 輔系功能 (適用於大二以上，優先排目標系所必修課程)
+        sec_dept = getattr(profile, "secondary_department", None)
+        sec_type = getattr(profile, "secondary_type", None) or "雙主修"
+        if sec_dept and sec_dept != dept and grade >= 2:
+            sec_roadmap = course_db_service.get_department_roadmap(sec_dept)
+            candidate_sems = [sem_key]
+            if grade == 2:
+                candidate_sems.append("大一上")
+            elif grade == 3:
+                candidate_sems.extend(["大二上", "大一上"])
+            elif grade == 4:
+                candidate_sems.extend(["大三上", "大二上"])
+
+            for target_sem in candidate_sems:
+                sec_courses = sec_roadmap.get(target_sem, [])
+                for sc in sec_courses:
+                    sc_cr = float(sc.get("credits") or 0.0)
+                    if total_credits + sc_cr > max_credits:
+                        continue
+                    sc_name = sc["course_name"]
+                    sc_code = sc.get("course_code") or ""
+                    if any(ec["name"] == sc_name or (sc_code and ec["code"] == sc_code) for ec in enrolled_courses):
+                        continue
+
+                    sc_time = sc.get("raw_schedule") or ""
+                    sc_parsed = parse_schedule_periods(sc_time)
+                    if not sc_parsed and sc.get("sections"):
+                        for sec in sc["sections"]:
+                            sec_time = sec.get("raw_schedule") or ""
+                            sec_parsed = parse_schedule_periods(sec_time)
+                            if sec_parsed:
+                                sec_conflict = any((d, p) in occupied_periods for d, pers in sec_parsed for p in pers)
+                                if not sec_conflict:
+                                    sc_time = sec_time
+                                    sc_parsed = sec_parsed
+                                    if sec.get("location_name"):
+                                        sc["location_name"] = sec["location_name"]
+                                    if sec.get("instructor"):
+                                        sc["instructor"] = sec["instructor"]
+                                    break
+                    if not sc_parsed:
+                        continue
+
+                    conflicts = any((d, p) in occupied_periods for d, pers in sc_parsed for p in pers)
+                    if not conflicts:
+                        for d, pers in sc_parsed:
+                            for p in pers:
+                                occupied_periods.add((d, p))
+                        total_credits += sc_cr
+                        enrolled_courses.append({
+                            "name": sc_name,
+                            "credits": sc_cr,
+                            "category": f"{sec_type}必修",
+                            "time": sc_time,
+                            "code": sc_code,
+                            "teacher": sc.get("instructor") or "",
+                            "location": sc.get("location_name") or "綜合教學大樓",
+                            "parsed_periods": sc_parsed
+                        })
+
+        # 2. 空堂填補與加選邏輯 (至多加選兩堂，隨機挑選通識與體育)
         added_count = 0
         conn = course_db_service.get_connection()
         cur = conn.cursor()
@@ -264,10 +369,12 @@ class SimEngine:
             if not ignore_max_count and added_count >= 2:
                 return
             cur.execute(query, params)
-            rows = cur.fetchall()
+            rows = list(cur.fetchall())
+            random.shuffle(rows)  # 每次隨機打散候選池，使每次通識/體育等課程更具多樣性
             for r in rows:
                 if not ignore_max_count and added_count >= 2:
                     break
+
                 code = r["course_code"] or ""
                 name = r["course_name_zh"] or ""
                 cr = float(r["credits"] or 0.0)
