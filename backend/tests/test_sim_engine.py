@@ -227,4 +227,43 @@ def test_map_campus_location_codes_and_names():
     assert name == "文學一館"
 
 
+def test_parse_onboarding_grade_retention(monkeypatch):
+    """驗證部屬環境即使模型預設回傳大一 (1)，系統仍能強制保留使用者選擇的真實年級"""
+    import asyncio
+
+    # 模擬線上部屬環境中，LLM 固定回傳大一 (grade=1)
+    async def mock_call_ollama(*args, **kwargs):
+        return OnboardingParseSchema(
+            department="資訊管理學系",
+            grade=1,
+            clubs=["系學會"],
+            interest_query="程式設計"
+        )
+
+    monkeypatch.setattr("app.services.sim_engine.call_ollama_structured", mock_call_ollama)
+
+    async def run_checks():
+        # 1. 即使模型回傳大一，grade_hint=2 必須成功保留大二
+        profile_2 = await sim_engine.parse_onboarding("我是資管大二學生", "gemma3:4b", dept_hint="資訊管理學系", grade_hint=2)
+        assert profile_2.grade == 2
+        assert profile_2.department == "資訊管理學系"
+
+        # 2. grade_hint=3 必須成功保留大三
+        profile_3 = await sim_engine.parse_onboarding("大三想認真做專題", "gemma3:4b", dept_hint="資訊工程學系", grade_hint=3)
+        assert profile_3.grade == 3
+        assert profile_3.department == "資訊工程學系"
+
+        # 3. grade_hint=4 必須成功保留大四
+        profile_4 = await sim_engine.parse_onboarding("老鳥大四", "gemma3:4b", dept_hint="企業管理學系", grade_hint=4)
+        assert profile_4.grade == 4
+        assert profile_4.department == "企業管理學系"
+
+        # 4. 若未傳 grade_hint，由文字 '大二' 自動解析為 2
+        profile_text = await sim_engine.parse_onboarding("我是資管大二學生", "gemma3:4b", dept_hint="資訊管理學系")
+        assert profile_text.grade == 2
+
+    asyncio.run(run_checks())
+
+
+
 
