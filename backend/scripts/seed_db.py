@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -79,20 +80,77 @@ def seed_database():
         db.commit()
 
         # 3. 社團與活動
-        print("3. 匯入社團與學生活動...")
-        for act in data.get("clubs_and_activities", []):
-            if not db.query(ClubAndActivity).filter(ClubAndActivity.id == act["id"]).first():
+        print("3. 匯入中央大學真實社團與學生活動...")
+        clubs_file = backend_dir / "data" / "ncu_clubs.json"
+        if clubs_file.exists():
+            with open(clubs_file, encoding="utf-8") as cf:
+                real_clubs = json.load(cf)
+
+            db.query(ClubAndActivity).delete()
+            type_mapping = {
+                "學術性": "academic_club",
+                "康樂性": "recreation_club",
+                "體育性": "sports_club",
+                "服務性": "service_club",
+                "聯誼性": "social_club",
+                "系學會": "student_org",
+            }
+
+            for idx, item in enumerate(real_clubs, 1):
+                img = item.get("圖片網址") or ""
+                m = re.search(r'/([^/]+)\.(?:png|jpg|jpeg|gif)', img, re.I)
+                code = m.group(1).lower() if m else ""
+                eng = re.sub(r'[^a-zA-Z0-9_]', '', (item.get("英文名稱或縮寫") or "").strip().lower())
+                if code:
+                    cid = f"club_{code}"
+                elif eng and len(eng) >= 3:
+                    cid = f"club_{eng[:30]}"
+                else:
+                    cid = f"club_{idx:03d}"
+
+                cat = item.get("社團分類") or "其它"
+                mapped_type = type_mapping.get(cat, "recreation_club")
+                name = item.get("中文名稱", "").strip()
+                intro = item.get("中文簡介", "").strip()
+                english_name = item.get("英文名稱或縮寫", "").strip() or None
+                english_intro = item.get("英文簡介", "").strip() or None
+                loc_text = item.get("社辦地點", "").strip() or None
+                web_url = item.get("社團網站", "").strip() or None
+                img_url = item.get("圖片網址", "").strip() or None
+                p_ctx = f"在中大參與{name}（{cat}社團）活動，{intro[:100]}" if intro else f"在中大參加{name}社團日常活動與交流"
+
                 db.add(ClubAndActivity(
-                    id=act["id"],
-                    name=act["name"],
-                    type=act["type"],
-                    day_of_week=act["day_of_week"],
-                    period_slot=act["period_slot"],
-                    location_id=act.get("location_id"),
-                    prompt_context=act["prompt_context"],
-                    full_intro=act["full_intro"]
+                    id=cid,
+                    name=name,
+                    english_name=english_name,
+                    type=mapped_type,
+                    category=cat,
+                    day_of_week=(idx % 5) + 1,
+                    period_slot="evening",
+                    location_id=None,
+                    location_text=loc_text,
+                    website_url=web_url,
+                    image_url=img_url,
+                    prompt_context=p_ctx,
+                    full_intro=intro or f"{name}是中央大學活躍的{cat}學生組織。",
+                    english_intro=english_intro,
                 ))
-        db.commit()
+            db.commit()
+            print(f"   成功匯入 {len(real_clubs)} 個真實社團資料！")
+        else:
+            for act in data.get("clubs_and_activities", []):
+                if not db.query(ClubAndActivity).filter(ClubAndActivity.id == act["id"]).first():
+                    db.add(ClubAndActivity(
+                        id=act["id"],
+                        name=act["name"],
+                        type=act["type"],
+                        day_of_week=act["day_of_week"],
+                        period_slot=act["period_slot"],
+                        location_id=act.get("location_id"),
+                        prompt_context=act["prompt_context"],
+                        full_intro=act["full_intro"]
+                    ))
+            db.commit()
 
         # 4. 百科飲食交通生活細節
         print("4. 匯入校園生活百科...")

@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Gamepad2, BookOpen, Map, Library, Shield } from "lucide-react";
+import { Compass, Gamepad2, BookOpen, Users, Map, Library, Shield } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
 
   const navLinks = [
     { href: "/simulator", label: "生活模擬器", icon: Gamepad2 },
-    { href: "/courses", label: "課程探索中心", icon: BookOpen },
-    { href: "/map", label: "3D 校園地圖", icon: Map },
-    { href: "/explore", label: "校園生活百科", icon: Library },
+    { href: "/courses", label: "課程中心", icon: BookOpen },
+    { href: "/clubs", label: "社團活動", icon: Users },
+    { href: "/map", label: "3D 地圖", icon: Map },
+    { href: "/explore", label: "生活百科", icon: Library },
     { href: "/admin/dashboard", label: "管理後台", icon: Shield },
   ];
 
