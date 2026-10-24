@@ -37,7 +37,15 @@ export function SummaryModal({ isOpen }: { isOpen: boolean }) {
         </div>
 
         {/* Final Scorecard */}
-        <div className="grid grid-cols-4 gap-2 mb-6 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6 text-center">
+          <div className="p-3 rounded-xl border border-stone-200 bg-white col-span-2 sm:col-span-1">
+            <span className="text-[10px] text-stone-500 block">修習總學分</span>
+            <span className="text-sm sm:text-base font-bold text-indigo-600 font-mono">
+              {summary.total_credits !== undefined && summary.total_credits !== null
+                ? `${summary.total_credits} 學分`
+                : "—"}
+            </span>
+          </div>
           <div className="p-3 rounded-xl border border-stone-200 bg-white">
             <span className="text-[10px] text-stone-500 block">體力</span>
             <span className="text-sm sm:text-base font-bold text-emerald-600 font-mono">
@@ -66,37 +74,57 @@ export function SummaryModal({ isOpen }: { isOpen: boolean }) {
 
         {/* Visited Locations & Courses Deep Links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="p-4 rounded-xl border border-stone-200 bg-stone-50">
+          <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex flex-col">
             <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5 mb-2">
               <MapPin className="w-3.5 h-3.5 text-blue-600" />
-              本週探訪場域 ({summary.visited_locations.length})
+              本週探訪場域 ({summary.visited_locations?.length || 0})
             </span>
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-              {summary.visited_locations.map((loc: any) => (
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+              {summary.visited_locations?.map((loc: any) => (
                 <Link
                   key={loc.id}
                   href={`/map?loc=${loc.id}`}
-                  className="text-[11px] px-2 py-0.5 rounded-md bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 transition-colors flex items-center gap-1"
+                  className="text-[11px] px-2 py-1 rounded-md bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 transition-colors flex items-center gap-1 shadow-2xs"
                 >
-                  {loc.name} <ArrowRight className="w-2.5 h-2.5" />
+                  {loc.name} <ArrowRight className="w-2.5 h-2.5 text-stone-400" />
                 </Link>
               ))}
             </div>
           </div>
 
-          <div className="p-4 rounded-xl border border-stone-200 bg-stone-50">
-            <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5 mb-2">
-              <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-              修習課程紀錄 ({summary.enrolled_courses.length})
-            </span>
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-              {summary.enrolled_courses.map((course: any) => (
+          <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                修習課程紀錄 ({summary.enrolled_courses?.length || 0})
+              </span>
+              {summary.total_credits && (
+                <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                  共 {summary.total_credits} 學分
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+              {summary.enrolled_courses?.map((course: any) => (
                 <Link
-                  key={course.id}
+                  key={course.id || course.name}
                   href={`/courses?keyword=${encodeURIComponent(course.name)}`}
-                  className="text-[11px] px-2 py-0.5 rounded-md bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 transition-colors flex items-center gap-1"
+                  className="p-1.5 px-2 rounded-lg bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 transition-colors flex items-center justify-between text-xs shadow-2xs"
                 >
-                  {course.name} <ArrowRight className="w-2.5 h-2.5" />
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-semibold truncate">{course.name}</span>
+                    {course.category && (
+                      <span className="text-[10px] px-1 py-0.2 rounded bg-stone-100 text-stone-600 border border-stone-200 shrink-0">
+                        {course.category}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-stone-500 font-mono">
+                    {course.credits !== undefined && (
+                      <span className="text-blue-600 font-semibold">{course.credits}學分</span>
+                    )}
+                    <ArrowRight className="w-3 h-3 text-stone-400" />
+                  </div>
                 </Link>
               ))}
             </div>

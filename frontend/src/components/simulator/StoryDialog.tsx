@@ -1,13 +1,14 @@
 "use client";
 
-import { Sparkles, MapPin, Clock, ArrowRight } from "lucide-react";
-import { StoryState } from "@/store/useSimulatorStore";
+import { Sparkles, MapPin, Clock, ArrowRight, BookOpen, GraduationCap, User } from "lucide-react";
+import { StoryState, ScheduleSlot } from "@/store/useSimulatorStore";
 
 export function StoryDialog({
   story,
   dayName,
   slotName,
   locationName,
+  slot,
   isLoading,
   onChoose,
   onFocusLocation,
@@ -16,6 +17,7 @@ export function StoryDialog({
   dayName: string;
   slotName: string;
   locationName: string;
+  slot?: ScheduleSlot | null;
   isLoading: boolean;
   onChoose: (key: string) => void;
   onFocusLocation?: () => void;
@@ -27,7 +29,7 @@ export function StoryDialog({
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
             <Clock className="w-3.5 h-3.5" />
-            {dayName} {slotName}
+            {dayName} {slot?.display_time || slot?.time_label || slotName}
           </span>
 
           <button
@@ -38,6 +40,35 @@ export function StoryDialog({
             <span>{locationName || "校園巡禮"}</span>
             <span className="text-[10px] text-blue-600 underline ml-0.5">3D聚焦</span>
           </button>
+
+          {slot?.course_category && (
+            <span
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                slot.course_category.includes("通識")
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : slot.course_category.includes("體育")
+                  ? "bg-teal-50 text-teal-700 border-teal-200"
+                  : slot.course_category.includes("語言")
+                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                  : slot.course_category.includes("選修")
+                  ? "bg-violet-50 text-violet-700 border-violet-200"
+                  : "bg-blue-50 text-blue-700 border-blue-200"
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>{slot.course_category}</span>
+              {slot.credits !== undefined && slot.credits > 0 && (
+                <span className="ml-1 font-mono">({slot.credits}學分)</span>
+              )}
+            </span>
+          )}
+
+          {slot?.instructor && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-stone-100 text-stone-600 text-xs border border-stone-200">
+              <User className="w-3 h-3 text-stone-500" />
+              <span>{slot.instructor} 老師</span>
+            </span>
+          )}
         </div>
 
         {/* Narrative Text */}

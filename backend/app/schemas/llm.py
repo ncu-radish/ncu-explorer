@@ -13,8 +13,11 @@ class OnboardingParseSchema(BaseModel):
     department: str = Field(default="資訊管理學系", description="就讀系所中文全名，如：資訊管理學系、資訊工程學系")
     grade: int = Field(default=1, description="年級，預設為大一（1）")
     semester_term: int = Field(default=1, description="學期（1代表上學期，2代表下學期）")
+    secondary_type: str | None = Field(default=None, description="雙主修或輔系，值為 '雙主修'、'輔系' 或 None")
+    secondary_department: str | None = Field(default=None, description="雙主修或輔系的目標系所全名，如：資訊工程學系")
     clubs: list[str] = Field(default_factory=list, description="想參加的社團或系學會名稱清單")
     interest_query: str = Field(default="", description="使用者的其他修課或領域興趣關鍵字，如：人工智慧、網頁設計、投資理財")
+
 
 class CourseCompareSchema(BaseModel):
     target_names: list[str] = Field(description="參與比較的課程名稱列表")

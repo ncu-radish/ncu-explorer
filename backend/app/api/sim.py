@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.tables import CampusLocation, Course, GameSession, SystemConfig
+from app.models.tables import CampusLocation, GameSession, SystemConfig
 from app.schemas.sim import (
     SimNextTurnRequest,
     SimNextTurnResponse,
@@ -27,10 +27,15 @@ def get_system_config(db: Session):
 async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
     active_model, trigger_prob = get_system_config(db)
 
-    # 1. 解析玩家志向意圖
-    profile = await sim_engine.parse_onboarding(req.user_input, active_model)
+    # 1. 解析玩家志向意圖 (支援直接傳入學系與年級)
+    profile = await sim_engine.parse_onboarding(
+        req.user_input,
+        active_model,
+        dept_hint=req.department,
+        grade_hint=req.grade
+    )
 
-    # 2. 排定 21 時段課表
+    # 2. 排定週一至週五完整時間軸課表
     weekly_schedule = sim_engine.build_weekly_schedule(db, profile)
 
     # 3. 建立 Session
@@ -60,7 +65,6 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
         new_session.visited_locs = (new_session.visited_locs or []) + [loc_id]
         db.commit()
 
-    # 暫存本回合 options effects 至 session 或由前端依 key 傳送
     return SimStartResponse(
         session_id=session_id,
         player_profile=profile.model_dump(),
@@ -96,8 +100,9 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
     # 2. 推進至下一回合
     session.current_turn += 1
 
-    # 3. 檢查是否達一週終點 (21回合)
-    if session.current_turn >= 21:
+    # 3. 檢查是否達一週終點
+    total_turns = len(session.weekly_schedule)
+    if session.current_turn >= total_turns:
         db.commit()
         return SimNextTurnResponse(
             session_id=session.session_id,
@@ -145,15 +150,26 @@ async def get_summary(req: SimSummaryRequest, db: Session = Depends(get_db)):
         for loc in visited_loc_objs
     ]
 
-    # 修課清單
-    enrolled_ids = [
-        s.get("course_id") for s in session.weekly_schedule if s.get("type") == "course" and s.get("course_id")
-    ]
-    enrolled_courses = db.query(Course).filter(Course.id.in_(enrolled_ids)).all()
-    courses_data = [
-        {"id": c.id, "name": c.course_name, "department": c.department, "credits": c.credits}
-        for c in enrolled_courses
-    ]
+    # 修課清單從實際排定的 weekly_schedule 中統計
+    seen_c = set()
+    courses_data = []
+    total_cr = 0.0
+    for s in (session.weekly_schedule or []):
+        if s.get("type") == "course" and s.get("title"):
+            cid = s.get("course_id") or s.get("title")
+            if cid not in seen_c:
+                seen_c.add(cid)
+                cr = float(s.get("credits") or 0.0)
+                total_cr += cr
+                courses_data.append({
+                    "id": cid,
+                    "name": s.get("title"),
+                    "credits": cr,
+                    "category": s.get("course_category", "必修"),
+                    "instructor": s.get("instructor", ""),
+                    "raw_schedule": s.get("raw_schedule", ""),
+                    "location": s.get("location_name", "")
+                })
 
     return SimSummaryResponse(
         session_id=session.session_id,
@@ -161,5 +177,6 @@ async def get_summary(req: SimSummaryRequest, db: Session = Depends(get_db)):
         summary_diary=diary,
         final_stats=session.stats,
         visited_locations=visited_data,
-        enrolled_courses=courses_data
+        enrolled_courses=courses_data,
+        total_credits=total_cr
     )
