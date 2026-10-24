@@ -417,7 +417,7 @@ class SimEngine:
                     raw_candidates.append(c.strip())
 
         if profile and getattr(profile, "club", None):
-            single_c = getattr(profile, "club").strip()
+            single_c = profile.club.strip()
             if single_c and single_c not in raw_candidates:
                 raw_candidates.append(single_c)
 
