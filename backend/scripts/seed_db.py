@@ -12,6 +12,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import get_password_hash
 from app.models.tables import (
     AdminUser,
+    CampusActivity,
     CampusLifeInfo,
     CampusLocation,
     ClubAndActivity,
@@ -182,6 +183,27 @@ def seed_database():
                     cond_max_stamina=evt.get("cond_max_stamina", 100),
                     event_prompt=evt["event_prompt"],
                     preset_options=evt["preset_options"]
+                ))
+        db.commit()
+
+        # 5.1 校園動態日常活動 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
+        print("5.1 匯入校園動態日常活動 (早餐/午餐/晚餐/宿舍休閒/校園休閒)...")
+        from app.api.admin import DEFAULT_CAMPUS_ACTIVITIES
+        for act in DEFAULT_CAMPUS_ACTIVITIES:
+            if not db.query(CampusActivity).filter(CampusActivity.id == act["id"]).first():
+                db.add(CampusActivity(
+                    id=act["id"],
+                    title=act["title"],
+                    category=act["category"],
+                    trigger_type=act["trigger_type"],
+                    trigger_timing=act["trigger_timing"],
+                    trigger_mode=act["trigger_mode"],
+                    location_id=act.get("location_id"),
+                    location_name=act.get("location_name"),
+                    is_active=act["is_active"],
+                    weight=act["weight"],
+                    event_prompt=act["event_prompt"],
+                    preset_options=act["preset_options"]
                 ))
         db.commit()
 

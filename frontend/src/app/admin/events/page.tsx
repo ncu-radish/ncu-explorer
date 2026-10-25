@@ -7,290 +7,1045 @@ import {
   ArrowLeft,
   CheckCircle2,
   Zap,
+  Plus,
+  Trash2,
+  RotateCcw,
+  Utensils,
+  Coffee,
+  Moon,
+  Compass,
+  Clock,
+  MapPin,
+  Search,
+  Filter,
+  Check,
+  AlertCircle,
+  HelpCircle,
 } from "lucide-react";
-import { adminApi } from "@/lib/api";
+import { adminApi, CampusActivity, CampusActivityOption } from "@/lib/api";
 import { AdminAuthGuard } from "@/components/admin/AdminAuthGuard";
 
+const CATEGORY_MAP: Record<string, { label: string; icon: any; color: string; badge: string }> = {
+  breakfast: { label: "早餐", icon: Coffee, color: "text-amber-500", badge: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
+  lunch: { label: "午餐", icon: Utensils, color: "text-emerald-400", badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" },
+  dinner: { label: "晚餐", icon: Utensils, color: "text-orange-400", badge: "bg-orange-500/10 text-orange-400 border-orange-500/30" },
+  dorm_leisure: { label: "宿舍休閒活動", icon: Moon, color: "text-indigo-400", badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30" },
+  campus_leisure: { label: "校園休閒活動", icon: Compass, color: "text-cyan-400", badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" },
+};
+
+const TRIGGER_MODE_LABELS: Record<string, string> = {
+  manual_choice: "主動選擇是否觸發（如午餐時間詢問吃不吃、下課空檔選擇回宿舍或校園活動）",
+  auto_prompt: "時間到達自動提示推薦",
+  conditional: "特定條件/機率觸發",
+};
+
+const PRESET_TIMINGS = [
+  "07:00~09:00",
+  "11:50~13:30",
+  "17:30~19:30",
+  "下課空閒時間",
+  "課餘自由時段",
+];
+
+const PRESET_LOCATIONS = [
+  { id: "loc_backgate", name: "後門美食一條街" },
+  { id: "loc_pine_restaurant", name: "松果餐廳" },
+  { id: "loc_night_street", name: "中大宵夜街" },
+  { id: "loc_dorm_boy9", name: "男九舍 / 學生宿舍" },
+  { id: "loc_dorm_girl14", name: "女十四舍 / 學生宿舍" },
+  { id: "loc_yiren", name: "依仁堂體育館與健身房" },
+  { id: "loc_park_creek", name: "百花川林蔭道與大草坪" },
+  { id: "loc_library", name: "中大總圖書館與K書中心" },
+];
+
 function EventsContent() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<"activities" | "random_events">("activities");
 
-  // Form State
-  const [title, setTitle] = useState("");
-  const [weight, setWeight] = useState(15);
-  const [eventPrompt, setEventPrompt] = useState("");
-  const [optionAHint, setOptionAHint] = useState("");
-  const [optionBHint, setOptionBHint] = useState("");
-  const [optionCHint, setOptionCHint] = useState("");
+  // ==================== Activities State ====================
+  const [activities, setActivities] = useState<CampusActivity[]>([]);
+  const [selectedActivity, setSelectedActivity] = useState<CampusActivity | null>(null);
+  const [isCreatingNewActivity, setIsCreatingNewActivity] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [activitySearchQuery, setActivitySearchQuery] = useState("");
 
-  // Sandbox Live Test State
-  const [sandboxStory, setSandboxStory] = useState<any | null>(null);
-  const [isSandboxTesting, setIsSandboxTesting] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  // Activity Form State
+  const [actId, setActId] = useState("");
+  const [actTitle, setActTitle] = useState("");
+  const [actCategory, setActCategory] = useState<string>("lunch");
+  const [actTriggerType, setActTriggerType] = useState<string>("time_slot");
+  const [actTriggerTiming, setActTriggerTiming] = useState<string>("11:50~13:30");
+  const [actTriggerMode, setActTriggerMode] = useState<string>("manual_choice");
+  const [actLocationId, setActLocationId] = useState<string>("loc_pine_restaurant");
+  const [actLocationName, setActLocationName] = useState<string>("松果餐廳");
+  const [actIsActive, setActIsActive] = useState<boolean>(true);
+  const [actWeight, setActWeight] = useState<number>(15);
+  const [actEventPrompt, setActEventPrompt] = useState("");
+  const [actOptions, setActOptions] = useState<CampusActivityOption[]>([
+    { option_key: "A", intent_hint: "", effects: { stamina: 20, study: 0, social: 5, money: -80 }, marks_activity: true },
+    { option_key: "B", intent_hint: "", effects: { stamina: 10, study: 5, social: 10, money: -50 }, marks_activity: true },
+    { option_key: "C", intent_hint: "", effects: { stamina: -5, study: 10, social: 0, money: 0 }, marks_activity: false },
+  ]);
 
-  const selectForEdit = (ev: any) => {
-    setSelectedEvent(ev);
-    setTitle(ev.title);
-    setWeight(ev.weight);
-    setEventPrompt(ev.event_prompt);
-    setOptionAHint(ev.preset_options?.[0]?.intent_hint || "");
-    setOptionBHint(ev.preset_options?.[1]?.intent_hint || "");
-    setOptionCHint(ev.preset_options?.[2]?.intent_hint || "");
-    setSandboxStory(null);
-  };
+  // Activity Sandbox
+  const [actSandboxStory, setActSandboxStory] = useState<any | null>(null);
+  const [isActSandboxTesting, setIsActSandboxTesting] = useState(false);
+  const [actSaveMessage, setActSaveMessage] = useState<string | null>(null);
 
-  const loadEvents = async () => {
+  // ==================== Random Events State ====================
+  const [randomEvents, setRandomEvents] = useState<any[]>([]);
+  const [selectedRandomEvent, setSelectedRandomEvent] = useState<any | null>(null);
+  const [reTitle, setReTitle] = useState("");
+  const [reWeight, setReWeight] = useState(15);
+  const [rePrompt, setRePrompt] = useState("");
+  const [reOptA, setReOptA] = useState("");
+  const [reOptB, setReOptB] = useState("");
+  const [reOptC, setReOptC] = useState("");
+  const [reSandboxStory, setReSandboxStory] = useState<any | null>(null);
+  const [isReSandboxTesting, setIsReSandboxTesting] = useState(false);
+  const [reSaveMessage, setReSaveMessage] = useState<string | null>(null);
+
+  // 載入活動清單
+  const loadActivities = async () => {
     try {
-      const data = await adminApi.getEvents();
-      setEvents(data);
-      if (data.length > 0 && !selectedEvent) {
-        selectForEdit(data[0]);
+      const data = await adminApi.getActivities();
+      setActivities(data);
+      if (data.length > 0 && !selectedActivity && !isCreatingNewActivity) {
+        selectActivityForEdit(data[0]);
       }
     } catch (err) {
-      console.error(err);
+      console.error("載入校園活動失敗:", err);
+    }
+  };
+
+  // 載入隨機突發事件
+  const loadRandomEvents = async () => {
+    try {
+      const data = await adminApi.getEvents();
+      setRandomEvents(data);
+      if (data.length > 0 && !selectedRandomEvent) {
+        selectRandomEventForEdit(data[0]);
+      }
+    } catch (err) {
+      console.error("載入突發事件失敗:", err);
     }
   };
 
   useEffect(() => {
-    loadEvents();
+    loadActivities();
+    loadRandomEvents();
   }, []);
 
-  const handleTestSandbox = async () => {
-    setIsSandboxTesting(true);
+  const selectActivityForEdit = (act: CampusActivity) => {
+    setIsCreatingNewActivity(false);
+    setSelectedActivity(act);
+    setActId(act.id);
+    setActTitle(act.title);
+    setActCategory(act.category);
+    setActTriggerType(act.trigger_type || "time_slot");
+    setActTriggerTiming(act.trigger_timing || "11:50~13:30");
+    setActTriggerMode(act.trigger_mode || "manual_choice");
+    setActLocationId(act.location_id || "loc_pine_restaurant");
+    setActLocationName(act.location_name || "松果餐廳");
+    setActIsActive(act.is_active);
+    setActWeight(act.weight);
+    setActEventPrompt(act.event_prompt);
+
+    const opts = act.preset_options && act.preset_options.length >= 3
+      ? act.preset_options
+      : [
+          { option_key: "A", intent_hint: "", effects: { stamina: 20, study: 0, social: 5, money: -80 }, marks_activity: true },
+          { option_key: "B", intent_hint: "", effects: { stamina: 10, study: 5, social: 10, money: -50 }, marks_activity: true },
+          { option_key: "C", intent_hint: "", effects: { stamina: -5, study: 10, social: 0, money: 0 }, marks_activity: false },
+        ];
+    setActOptions(opts);
+    setActSandboxStory(null);
+  };
+
+  const handleCreateNewActivityClick = () => {
+    setIsCreatingNewActivity(true);
+    setSelectedActivity(null);
+    const newId = `act_${Date.now().toString().slice(-6)}`;
+    setActId(newId);
+    setActTitle("新活動名稱");
+    setActCategory("lunch");
+    setActTriggerType("time_slot");
+    setActTriggerTiming("11:50~13:30");
+    setActTriggerMode("manual_choice");
+    setActLocationId("loc_pine_restaurant");
+    setActLocationName("松果餐廳");
+    setActIsActive(true);
+    setActWeight(15);
+    setActEventPrompt("活動時間到了，校園人來人往。當前可選擇是否觸發此活動：");
+    setActOptions([
+      { option_key: "A", intent_hint: "方案 A 描述 (如進行活動)", effects: { stamina: 20, study: 0, social: 5, money: -80 }, marks_activity: true },
+      { option_key: "B", intent_hint: "方案 B 描述 (如替代方案)", effects: { stamina: 10, study: 5, social: 10, money: -50 }, marks_activity: true },
+      { option_key: "C", intent_hint: "方案 C 描述 (如不進行活動)", effects: { stamina: -5, study: 10, social: 0, money: 0 }, marks_activity: false },
+    ]);
+    setActSandboxStory(null);
+  };
+
+  const handleSaveActivity = async () => {
+    if (!actTitle.trim()) {
+      alert("請填寫活動名稱");
+      return;
+    }
+
     try {
-      const presetOptions = [
-        { option_key: "A", intent_hint: optionAHint || "全力以赴應對", effects: {} },
-        { option_key: "B", intent_hint: optionBHint || "尋求室友幫助", effects: {} },
-        { option_key: "C", intent_hint: optionCHint || "先回宿舍補眠", effects: {} },
-      ];
-      const data = await adminApi.testSandbox({
-        event_prompt: eventPrompt || "突發狀況發生",
-        preset_options: presetOptions,
-        location_id: selectedEvent?.cond_location || "loc_park_creek",
+      const payload: Partial<CampusActivity> = {
+        id: actId,
+        title: actTitle,
+        category: actCategory,
+        trigger_type: actTriggerType,
+        trigger_timing: actTriggerTiming,
+        trigger_mode: actTriggerMode,
+        location_id: actLocationId,
+        location_name: actLocationName,
+        is_active: actIsActive,
+        weight: actWeight,
+        event_prompt: actEventPrompt,
+        preset_options: actOptions,
+      };
+
+      if (isCreatingNewActivity) {
+        const created = await adminApi.createActivity(payload);
+        setActSaveMessage("成功新增校園活動！");
+        await loadActivities();
+        selectActivityForEdit(created);
+      } else if (selectedActivity) {
+        await adminApi.updateActivity(selectedActivity.id, payload);
+        setActSaveMessage("活動已成功更新！");
+        await loadActivities();
+      }
+      setTimeout(() => setActSaveMessage(null), 3000);
+    } catch (err: any) {
+      setActSaveMessage(`儲存失敗: ${err.message}`);
+    }
+  };
+
+  const handleDeleteActivity = async (id: string) => {
+    if (!confirm(`確定要刪除活動「${id}」嗎？此動作無法復原。`)) return;
+    try {
+      await adminApi.deleteActivity(id);
+      setActSaveMessage("已成功刪除活動！");
+      setTimeout(() => setActSaveMessage(null), 3000);
+      await loadActivities();
+      setSelectedActivity(null);
+    } catch (err: any) {
+      alert(`刪除失敗: ${err.message}`);
+    }
+  };
+
+  const handleSeedDefaults = async () => {
+    if (!confirm("確定要重設並恢復 5 大預設活動（早餐、午餐、晚餐、宿舍休閒、校園休閒）嗎？")) return;
+    try {
+      const data = await adminApi.seedDefaultActivities();
+      setActivities(data);
+      if (data.length > 0) selectActivityForEdit(data[0]);
+      setActSaveMessage("已成功恢復 5 大預設活動！");
+      setTimeout(() => setActSaveMessage(null), 3000);
+    } catch (err: any) {
+      alert(`恢復預設失敗: ${err.message}`);
+    }
+  };
+
+  const handleTestActivitySandbox = async () => {
+    setIsActSandboxTesting(true);
+    try {
+      const data = await adminApi.testActivitySandbox({
+        event_prompt: actEventPrompt || "當前為活動時段，請選擇是否進行活動：",
+        preset_options: actOptions,
+        location_id: actLocationId || "loc_pine_restaurant",
+        slot: actTriggerTiming,
       });
-      setSandboxStory(data.generated_story);
+      setActSandboxStory(data.generated_story);
     } catch (err) {
       console.error(err);
     } finally {
-      setIsSandboxTesting(false);
+      setIsActSandboxTesting(false);
     }
   };
 
-  const handleSaveEvent = async () => {
-    if (!selectedEvent) return;
+  // ==================== Random Events Helpers ====================
+  const selectRandomEventForEdit = (ev: any) => {
+    setSelectedRandomEvent(ev);
+    setReTitle(ev.title);
+    setReWeight(ev.weight);
+    setRePrompt(ev.event_prompt);
+    setReOptA(ev.preset_options?.[0]?.intent_hint || "");
+    setReOptB(ev.preset_options?.[1]?.intent_hint || "");
+    setReOptC(ev.preset_options?.[2]?.intent_hint || "");
+    setReSandboxStory(null);
+  };
+
+  const handleSaveRandomEvent = async () => {
+    if (!selectedRandomEvent) return;
     try {
       const updatedOptions = [
-        {
-          option_key: "A",
-          intent_hint: optionAHint,
-          effects: selectedEvent.preset_options?.[0]?.effects || { stamina: -10, study: 10, social: 0, money: 0 },
-        },
-        {
-          option_key: "B",
-          intent_hint: optionBHint,
-          effects: selectedEvent.preset_options?.[1]?.effects || { stamina: -5, study: 5, social: 10, money: -50 },
-        },
-        {
-          option_key: "C",
-          intent_hint: optionCHint,
-          effects: selectedEvent.preset_options?.[2]?.effects || { stamina: 15, study: -10, social: -5, money: 0 },
-        },
+        { option_key: "A", intent_hint: reOptA, effects: selectedRandomEvent.preset_options?.[0]?.effects || {} },
+        { option_key: "B", intent_hint: reOptB, effects: selectedRandomEvent.preset_options?.[1]?.effects || {} },
+        { option_key: "C", intent_hint: reOptC, effects: selectedRandomEvent.preset_options?.[2]?.effects || {} },
       ];
-
-      await adminApi.updateEvent(selectedEvent.id, {
-        title,
-        weight,
-        event_prompt: eventPrompt,
+      await adminApi.updateEvent(selectedRandomEvent.id, {
+        title: reTitle,
+        weight: reWeight,
+        event_prompt: rePrompt,
         preset_options: updatedOptions,
       });
-      setSaveMessage("事件已成功更新！");
-      setTimeout(() => setSaveMessage(null), 3000);
-      await loadEvents();
+      setReSaveMessage("突發事件已成功更新！");
+      setTimeout(() => setReSaveMessage(null), 3000);
+      await loadRandomEvents();
     } catch (err: any) {
-      setSaveMessage(`更新失敗: ${err.message}`);
+      setReSaveMessage(`更新失敗: ${err.message}`);
     }
   };
+
+  const handleTestRandomSandbox = async () => {
+    setIsReSandboxTesting(true);
+    try {
+      const presetOptions = [
+        { option_key: "A", intent_hint: reOptA || "全力以赴應對", effects: {} },
+        { option_key: "B", intent_hint: reOptB || "尋求室友幫助", effects: {} },
+        { option_key: "C", intent_hint: reOptC || "先回宿舍補眠", effects: {} },
+      ];
+      const data = await adminApi.testSandbox({
+        event_prompt: rePrompt || "突發狀況發生",
+        preset_options: presetOptions,
+        location_id: selectedRandomEvent?.cond_location || "loc_park_creek",
+      });
+      setReSandboxStory(data.generated_story);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsReSandboxTesting(false);
+    }
+  };
+
+  // Filter activities
+  const filteredActivities = activities.filter((act) => {
+    if (categoryFilter !== "all" && act.category !== categoryFilter) return false;
+    if (activitySearchQuery.trim()) {
+      const q = activitySearchQuery.toLowerCase();
+      return (
+        act.title.toLowerCase().includes(q) ||
+        (act.location_name && act.location_name.toLowerCase().includes(q)) ||
+        act.event_prompt.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-white/10 gap-4">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2 rounded-xl glass-panel text-gray-400 hover:text-white border border-white/10"
+            className="p-2.5 rounded-xl glass-panel text-gray-400 hover:text-white border border-white/10 transition-colors"
+            title="回管理控制台"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-400" />
-              突發事件管理與 AI 即時沙盒
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <Zap className="w-6 h-6 text-amber-400" />
+              校園活動與突發事件管理後台
             </h1>
-            <p className="text-xs text-gray-400">
-              調整機率加權、修改觸發 Prompt，並點擊即時測試由本地端合規 LLM 生成預覽
+            <p className="text-xs text-gray-400 mt-0.5">
+              新增、修改、刪除日常活動（早餐、午餐、晚餐、宿舍休閒、校園休閒），設定觸發時間點與觸發方式，並在模擬進行後即時標記在行事曆上
             </p>
           </div>
         </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl glass-panel border border-white/10">
+          <button
+            onClick={() => setActiveTab("activities")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "activities"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Utensils className="w-3.5 h-3.5" />
+            <span>日常活動管理 ({activities.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("random_events")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "random_events"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>突發事件庫 ({randomEvents.length})</span>
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-        {/* Left Column: Events List (4 cols) */}
-        <div className="lg:col-span-4 glass-panel p-4 rounded-2xl border border-white/10 flex flex-col gap-2 max-h-[750px] overflow-y-auto">
-          <span className="text-xs font-bold text-gray-300 mb-2 block">突發事件庫清單 ({events.length})</span>
-          {events.map((ev) => {
-            const isSelected = selectedEvent?.id === ev.id;
-            return (
-              <div
-                key={ev.id}
-                onClick={() => selectForEdit(ev)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1 ${
-                  isSelected
-                    ? "bg-blue-600/25 border-cyan-400 shadow-md shadow-blue-500/20"
-                    : "bg-white/5 border-white/5 hover:border-white/15"
+      {/* ======================================================== */}
+      {/* TAB 1: DAILY CAMPUS ACTIVITIES (Core User Request) */}
+      {/* ======================================================== */}
+      {activeTab === "activities" && (
+        <div className="flex flex-col gap-5">
+          {/* Action and Filter Bar */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 glass-panel p-3.5 rounded-2xl border border-white/10">
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 md:pb-0">
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  categoryFilter === "all"
+                    ? "bg-white text-stone-900 shadow-xs"
+                    : "bg-white/5 text-gray-400 hover:text-white"
                 }`}
               >
-                <div className="flex items-center justify-between text-xs font-bold text-white">
-                  <span>{ev.title}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300">
-                    權重 {ev.weight}
-                  </span>
-                </div>
-                <span className="text-[11px] text-gray-400 line-clamp-2">{ev.event_prompt}</span>
-              </div>
-            );
-          })}
-        </div>
+                全部活動 ({activities.length})
+              </button>
+              {Object.entries(CATEGORY_MAP).map(([catKey, catMeta]) => {
+                const Icon = catMeta.icon;
+                const count = activities.filter((a) => a.category === catKey).length;
+                return (
+                  <button
+                    key={catKey}
+                    onClick={() => setCategoryFilter(catKey)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      categoryFilter === catKey
+                        ? "bg-white text-stone-900 shadow-xs"
+                        : "bg-white/5 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${catMeta.color}`} />
+                    <span>{catMeta.label} ({count})</span>
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Right Column: Event Editor & Live Sandbox (8 cols) */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
-          {selectedEvent ? (
-            <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <h2 className="text-base font-bold text-white">編輯事件：{selectedEvent.title}</h2>
-                {saveMessage && (
-                  <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {saveMessage}
-                  </span>
-                )}
-              </div>
-
-              {/* Title & Weight */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs text-gray-400 mb-1">事件標題</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>抽籤權重 (1~100)</span>
-                    <span className="text-amber-400 font-mono font-bold">{weight}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={weight}
-                    onChange={(e) => setWeight(parseInt(e.target.value))}
-                    className="w-full accent-amber-500 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Event Prompt */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  餵給本地 LLM 的突發情境指令 (event_prompt)
-                </label>
-                <textarea
-                  value={eventPrompt}
-                  onChange={(e) => setEventPrompt(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"
+            {/* Right Buttons: Search + Create + Seed Defaults */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="relative flex-1 md:w-48">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="搜尋活動標題/地點..."
+                  value={activitySearchQuery}
+                  onChange={(e) => setActivitySearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"
                 />
               </div>
 
-              {/* Option Hints */}
-              <div className="space-y-2">
-                <span className="text-xs text-gray-400 block font-medium">
-                  三個預設選項意圖提示（由 LLM 潤飾為大學生生動語句）：
+              <button
+                onClick={handleSeedDefaults}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-amber-300 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="重設為 5 大預設活動 (早餐、午餐、晚餐、宿舍休閒、校園休閒)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">恢復預設活動</span>
+              </button>
+
+              <button
+                onClick={handleCreateNewActivityClick}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>新增活動</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main 2-Column Split: Activities List + Comprehensive Editor */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Activities List (4 cols) */}
+            <div className="lg:col-span-4 glass-panel p-4 rounded-3xl border border-white/10 flex flex-col gap-2.5 max-h-[780px] overflow-y-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <span className="text-xs font-bold text-gray-300">
+                  活動清單 ({filteredActivities.length})
                 </span>
-                <input
-                  type="text"
-                  placeholder="選項 A 提示..."
-                  value={optionAHint}
-                  onChange={(e) => setOptionAHint(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
-                />
-                <input
-                  type="text"
-                  placeholder="選項 B 提示..."
-                  value={optionBHint}
-                  onChange={(e) => setOptionBHint(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
-                />
-                <input
-                  type="text"
-                  placeholder="選項 C 提示..."
-                  value={optionCHint}
-                  onChange={(e) => setOptionCHint(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
-                />
+                <span className="text-[10px] text-gray-400">點擊卡片編輯設定</span>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={handleSaveEvent}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer shadow-md shadow-blue-500/20"
-                >
-                  儲存修改
-                </button>
-                <button
-                  onClick={handleTestSandbox}
-                  disabled={isSandboxTesting}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold text-xs cursor-pointer shadow-md shadow-amber-500/20 flex items-center gap-1.5"
-                >
-                  {isSandboxTesting ? <Sparkles className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  <span>★ AI 即時預覽沙盒測試</span>
-                </button>
-              </div>
+              {filteredActivities.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-400">
+                  尚無符合條件之活動項目，可點擊上方「新增活動」或「恢復預設活動」
+                </div>
+              ) : (
+                filteredActivities.map((act) => {
+                  const isSelected = (!isCreatingNewActivity && selectedActivity?.id === act.id);
+                  const catMeta = CATEGORY_MAP[act.category] || { label: act.category, icon: Compass, color: "text-blue-400", badge: "bg-white/10 text-gray-300 border-white/20" };
+                  const Icon = catMeta.icon;
 
-              {/* Live Sandbox Output Box */}
-              {sandboxStory && (
-                <div className="mt-3 p-5 rounded-2xl glass-panel-glow border border-amber-500/30 bg-amber-500/5 flex flex-col gap-3">
-                  <span className="text-xs font-mono uppercase text-amber-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    本地 LLM 即時生成沙盒結果
-                  </span>
-                  <p className="text-xs sm:text-sm text-gray-200 leading-relaxed">
-                    {sandboxStory.narrative}
-                  </p>
-                  <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
-                    {sandboxStory.options?.map((opt: any) => (
-                      <div key={opt.option_key} className="text-xs text-gray-300 flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-black/40 text-amber-300 font-mono font-bold">
-                          {opt.option_key}
+                  return (
+                    <div
+                      key={act.id}
+                      onClick={() => selectActivityForEdit(act)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative ${
+                        isSelected
+                          ? "bg-blue-600/20 border-cyan-400 shadow-md shadow-blue-500/20"
+                          : "bg-white/5 border-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Icon className={`w-4 h-4 ${catMeta.color} shrink-0`} />
+                          <span className="text-xs font-bold text-white line-clamp-1">{act.title}</span>
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium shrink-0 ${catMeta.badge}`}>
+                          {catMeta.label}
                         </span>
-                        <span>{opt.display_text}</span>
+                      </div>
+
+                      {/* Trigger Timing & Mode Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-black/40 text-amber-300 border border-amber-500/20 font-mono flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{act.trigger_timing || "全天"}</span>
+                        </span>
+                        {act.location_name && (
+                          <span className="px-2 py-0.5 rounded bg-black/40 text-blue-300 border border-blue-500/20 flex items-center gap-1 truncate max-w-[130px]">
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate">{act.location_name}</span>
+                          </span>
+                        )}
+                        <span className="px-1.5 py-0.5 rounded bg-white/5 text-gray-400 text-[9px]">
+                          權重 {act.weight}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-gray-400 line-clamp-2">
+                        {act.event_prompt}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Right Column: Activity Editor & Live Sandbox (8 cols) */}
+            <div className="lg:col-span-8 flex flex-col gap-5">
+              {(selectedActivity || isCreatingNewActivity) ? (
+                <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col gap-5">
+                  {/* Editor Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-white flex items-center gap-2">
+                        {isCreatingNewActivity ? (
+                          <>
+                            <Plus className="w-4 h-4 text-emerald-400" />
+                            <span>新增校園動態活動</span>
+                          </>
+                        ) : (
+                          <>
+                            <Utensils className="w-4 h-4 text-cyan-400" />
+                            <span>編輯活動：{actTitle}</span>
+                          </>
+                        )}
+                      </h2>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {actSaveMessage && (
+                        <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {actSaveMessage}
+                        </span>
+                      )}
+                      {!isCreatingNewActivity && selectedActivity && (
+                        <button
+                          onClick={() => handleDeleteActivity(selectedActivity.id)}
+                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition-colors cursor-pointer"
+                          title="刪除此活動"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Form Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Activity ID */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">活動代碼 (ID)</label>
+                      <input
+                        type="text"
+                        value={actId}
+                        disabled={!isCreatingNewActivity}
+                        onChange={(e) => setActId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white font-mono disabled:opacity-50"
+                      />
+                    </div>
+
+                    {/* Activity Title */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">活動名稱</label>
+                      <input
+                        type="text"
+                        value={actTitle}
+                        onChange={(e) => setActTitle(e.target.value)}
+                        placeholder="例如：午膳美味時光、宿舍補眠放鬆..."
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    {/* Category Selector */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">活動類別</label>
+                      <select
+                        value={actCategory}
+                        onChange={(e) => setActCategory(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      >
+                        <option value="breakfast">早餐 (Breakfast)</option>
+                        <option value="lunch">午餐 (Lunch)</option>
+                        <option value="dinner">晚餐 (Dinner)</option>
+                        <option value="dorm_leisure">宿舍休閒活動 (Dormitory Leisure)</option>
+                        <option value="campus_leisure">校園休閒活動 (Campus Leisure)</option>
+                      </select>
+                    </div>
+
+                    {/* Trigger Mode */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">觸發方式 (Trigger Mode)</label>
+                      <select
+                        value={actTriggerMode}
+                        onChange={(e) => setActTriggerMode(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      >
+                        <option value="manual_choice">主動選擇是否觸發 (要不要吃午餐 / 空檔選擇回宿舍或校園活動)</option>
+                        <option value="auto_prompt">時間到達時自動提示與推薦</option>
+                        <option value="conditional">符合特定條件/機率時觸發</option>
+                      </select>
+                    </div>
+
+                    {/* Trigger Timing Input & Quick Presets */}
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-gray-400">觸發時間點 (Trigger Timing)</label>
+                        <div className="flex items-center gap-1">
+                          {PRESET_TIMINGS.map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setActTriggerTiming(preset)}
+                              className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-cyan-300 font-mono transition-colors cursor-pointer"
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={actTriggerTiming}
+                        onChange={(e) => setActTriggerTiming(e.target.value)}
+                        placeholder="例如：11:50~13:30、下課空閒時間、07:00~09:00..."
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white font-mono focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    {/* Location Selector */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">活動場域 / 館舍</label>
+                      <select
+                        value={actLocationId}
+                        onChange={(e) => {
+                          const lid = e.target.value;
+                          setActLocationId(lid);
+                          const found = PRESET_LOCATIONS.find((p) => p.id === lid);
+                          if (found) setActLocationName(found.name);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      >
+                        {PRESET_LOCATIONS.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name} ({loc.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Weight and Active Toggle */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span>抽籤權重</span>
+                          <span className="text-amber-400 font-mono font-bold">{actWeight}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="100"
+                          value={actWeight}
+                          onChange={(e) => setActWeight(parseInt(e.target.value))}
+                          className="w-full accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-3">
+                        <label className="text-xs text-gray-300 cursor-pointer flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={actIsActive}
+                            onChange={(e) => setActIsActive(e.target.checked)}
+                            className="w-4 h-4 rounded accent-emerald-500 cursor-pointer"
+                          />
+                          <span>啟用此活動</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Event Prompt */}
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      餵給本地 LLM 的情境指令 (event_prompt)
+                    </label>
+                    <textarea
+                      value={actEventPrompt}
+                      onChange={(e) => setActEventPrompt(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none leading-relaxed"
+                      placeholder="描述當前時間點的環境氣氛，引導玩家做出是否參與或何種方式參與之抉擇..."
+                    />
+                  </div>
+
+                  {/* Preset Options & Stat Effects */}
+                  <div className="space-y-3 pt-2 border-t border-white/10">
+                    <span className="text-xs text-gray-300 font-bold block flex items-center justify-between">
+                      <span>行動選項設定 (三個方案與數值增減)：</span>
+                      <span className="text-[10px] text-gray-400 font-normal">
+                        勾選「標記於行事曆」者將在玩家選擇後即時於課表上加入行程
+                      </span>
+                    </span>
+
+                    {actOptions.map((opt, idx) => (
+                      <div
+                        key={opt.option_key}
+                        className="p-3 rounded-2xl bg-black/30 border border-white/10 flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-mono font-bold text-xs">
+                            選項 {opt.option_key}
+                          </span>
+                          <label className="text-xs text-gray-300 flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={opt.marks_activity !== false}
+                              onChange={(e) => {
+                                const next = [...actOptions];
+                                next[idx] = { ...next[idx], marks_activity: e.target.checked };
+                                setActOptions(next);
+                              }}
+                              className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                            />
+                            <span className="text-[11px] text-cyan-300">選擇後標記在行事曆上</span>
+                          </label>
+                        </div>
+
+                        <input
+                          type="text"
+                          value={opt.intent_hint}
+                          onChange={(e) => {
+                            const next = [...actOptions];
+                            next[idx] = { ...next[idx], intent_hint: e.target.value };
+                            setActOptions(next);
+                          }}
+                          placeholder={`方案 ${opt.option_key} 意圖提示...`}
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                        />
+
+                        {/* Effects sliders / numbers */}
+                        <div className="grid grid-cols-4 gap-2 pt-1">
+                          <div>
+                            <span className="text-[10px] text-emerald-400 block">體力 (Stamina)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.stamina ?? 0}
+                              onChange={(e) => {
+                                const next = [...actOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, stamina: parseInt(e.target.value) || 0 },
+                                };
+                                setActOptions(next);
+                              }}
+                              className="w-full px-2 py-1 rounded bg-black/50 border border-white/10 text-xs text-white font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-blue-400 block">學業 (Study)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.study ?? 0}
+                              onChange={(e) => {
+                                const next = [...actOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, study: parseInt(e.target.value) || 0 },
+                                };
+                                setActOptions(next);
+                              }}
+                              className="w-full px-2 py-1 rounded bg-black/50 border border-white/10 text-xs text-white font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-purple-400 block">社交 (Social)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.social ?? 0}
+                              onChange={(e) => {
+                                const next = [...actOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, social: parseInt(e.target.value) || 0 },
+                                };
+                                setActOptions(next);
+                              }}
+                              className="w-full px-2 py-1 rounded bg-black/50 border border-white/10 text-xs text-white font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-amber-400 block">金錢 (Money)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.money ?? 0}
+                              onChange={(e) => {
+                                const next = [...actOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, money: parseInt(e.target.value) || 0 },
+                                };
+                                setActOptions(next);
+                              }}
+                              className="w-full px-2 py-1 rounded bg-black/50 border border-white/10 text-xs text-white font-mono"
+                            />
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/10">
+                    <button
+                      onClick={handleSaveActivity}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer shadow-md shadow-blue-500/20"
+                    >
+                      {isCreatingNewActivity ? "建立並儲存活動" : "儲存活動修改"}
+                    </button>
+
+                    <button
+                      onClick={handleTestActivitySandbox}
+                      disabled={isActSandboxTesting}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold text-xs cursor-pointer shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+                    >
+                      {isActSandboxTesting ? <Sparkles className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      <span>★ AI 即時沙盒預覽測試</span>
+                    </button>
+                  </div>
+
+                  {/* Live Sandbox Output */}
+                  {actSandboxStory && (
+                    <div className="mt-2 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex flex-col gap-3 animate-in fade-in">
+                      <span className="text-xs font-mono uppercase text-amber-400 flex items-center gap-1.5 font-bold">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        本地 LLM 即時生成情境預覽
+                      </span>
+                      <p className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                        {actSandboxStory.narrative}
+                      </p>
+                      <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+                        {actSandboxStory.options?.map((opt: any) => (
+                          <div key={opt.option_key} className="text-xs text-gray-300 flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-black/50 text-amber-300 font-mono font-bold">
+                              {opt.option_key}
+                            </span>
+                            <span>{opt.display_text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="glass-panel p-16 rounded-3xl text-center text-gray-400 text-sm border border-white/10 flex flex-col items-center justify-center gap-3">
+                  <Utensils className="w-10 h-10 text-gray-500" />
+                  <p>請從左側清單選擇欲編輯的日常活動，或點擊「新增活動」建立項目</p>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="glass-panel p-12 rounded-3xl text-center text-gray-500 text-sm">
-              請從左側清單選擇欲編輯之突發事件
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 2: RANDOM EVENTS POOL (Preserved Existing Management) */}
+      {/* ======================================================== */}
+      {activeTab === "random_events" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+          {/* Left Column: Events List (4 cols) */}
+          <div className="lg:col-span-4 glass-panel p-4 rounded-3xl border border-white/10 flex flex-col gap-2 max-h-[750px] overflow-y-auto">
+            <span className="text-xs font-bold text-gray-300 mb-2 block">
+              突發事件庫清單 ({randomEvents.length})
+            </span>
+            {randomEvents.map((ev) => {
+              const isSelected = selectedRandomEvent?.id === ev.id;
+              return (
+                <div
+                  key={ev.id}
+                  onClick={() => selectRandomEventForEdit(ev)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-1 ${
+                    isSelected
+                      ? "bg-blue-600/25 border-cyan-400 shadow-md shadow-blue-500/20"
+                      : "bg-white/5 border-white/5 hover:border-white/15"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-white">
+                    <span>{ev.title}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300">
+                      權重 {ev.weight}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 line-clamp-2">{ev.event_prompt}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right Column: Event Editor & Live Sandbox (8 cols) */}
+          <div className="lg:col-span-8 flex flex-col gap-5">
+            {selectedRandomEvent ? (
+              <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <h2 className="text-base font-bold text-white">編輯事件：{selectedRandomEvent.title}</h2>
+                  {reSaveMessage && (
+                    <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {reSaveMessage}
+                    </span>
+                  )}
+                </div>
+
+                {/* Title & Weight */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">事件標題</label>
+                    <input
+                      type="text"
+                      value={reTitle}
+                      onChange={(e) => setReTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>抽籤權重 (1~100)</span>
+                      <span className="text-amber-400 font-mono font-bold">{reWeight}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={reWeight}
+                      onChange={(e) => setReWeight(parseInt(e.target.value))}
+                      className="w-full accent-amber-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Event Prompt */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    餵給本地 LLM 的突發情境指令 (event_prompt)
+                  </label>
+                  <textarea
+                    value={rePrompt}
+                    onChange={(e) => setRePrompt(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"
+                  />
+                </div>
+
+                {/* Option Hints */}
+                <div className="space-y-2">
+                  <span className="text-xs text-gray-400 block font-medium">
+                    三個預設選項意圖提示（由 LLM 潤飾為大學生生動語句）：
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="選項 A 提示..."
+                    value={reOptA}
+                    onChange={(e) => setReOptA(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="選項 B 提示..."
+                    value={reOptB}
+                    onChange={(e) => setReOptB(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="選項 C 提示..."
+                    value={reOptC}
+                    onChange={(e) => setReOptC(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={handleSaveRandomEvent}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer shadow-md shadow-blue-500/20"
+                  >
+                    儲存修改
+                  </button>
+                  <button
+                    onClick={handleTestRandomSandbox}
+                    disabled={isReSandboxTesting}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold text-xs cursor-pointer shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+                  >
+                    {isReSandboxTesting ? <Sparkles className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    <span>★ AI 即時預覽沙盒測試</span>
+                  </button>
+                </div>
+
+                {/* Live Sandbox Output Box */}
+                {reSandboxStory && (
+                  <div className="mt-3 p-5 rounded-2xl glass-panel-glow border border-amber-500/30 bg-amber-500/5 flex flex-col gap-3">
+                    <span className="text-xs font-mono uppercase text-amber-400 flex items-center gap-1.5 font-bold">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      本地 LLM 即時生成沙盒結果
+                    </span>
+                    <p className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                      {reSandboxStory.narrative}
+                    </p>
+                    <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+                      {reSandboxStory.options?.map((opt: any) => (
+                        <div key={opt.option_key} className="text-xs text-gray-300 flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded bg-black/40 text-amber-300 font-mono font-bold">
+                            {opt.option_key}
+                          </span>
+                          <span>{opt.display_text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="glass-panel p-12 rounded-3xl text-center text-gray-500 text-sm">
+                請從左側清單選擇欲編輯之突發事件
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

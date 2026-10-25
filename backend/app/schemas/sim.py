@@ -53,6 +53,24 @@ class SimNextTurnResponse(BaseModel):
     story: TurnGenerationSchema | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None
+    weekly_schedule: list[ScheduleSlot] | None = None
+
+
+class SimTriggerActivityRequest(BaseModel):
+    session_id: str
+    activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, etc.
+    option_key: str = "A"  # A, B, or C
+
+
+class SimTriggerActivityResponse(BaseModel):
+    session_id: str
+    message: str
+    marked_slot: ScheduleSlot | None = None
+    weekly_schedule: list[ScheduleSlot]
+    stats: dict[str, int]
+    delta_stats: dict[str, int]
+    current_location_id: str | None = None
+    current_location_name: str | None = None
 
 class SimSummaryRequest(BaseModel):
     session_id: str

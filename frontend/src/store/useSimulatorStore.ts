@@ -5,7 +5,7 @@ export interface ScheduleSlot {
   day: number;
   slot: string;
   title: string;
-  type: "course" | "club" | "lunch" | "dorm" | "free";
+  type: "course" | "club" | "lunch" | "dorm" | "free" | "breakfast" | "dinner" | "campus_leisure" | string;
   location_id?: string;
   location_name?: string;
   course_id?: string;
@@ -56,6 +56,7 @@ interface SimulatorState {
 
   startSimulation: (userInput: string, department?: string, grade?: number) => Promise<void>;
   chooseOption: (optionKey: string) => Promise<void>;
+  triggerDynamicActivity: (activityId: string, optionKey?: string) => Promise<any>;
   fetchSummary: () => Promise<void>;
   resetSimulation: () => void;
 }
@@ -108,6 +109,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         set({
           isGameOver: true,
           stats: data.stats,
+          weeklySchedule: data.weekly_schedule || get().weeklySchedule,
           isLoading: false,
         });
         await get().fetchSummary();
@@ -118,11 +120,33 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
           story: data.story,
           currentLocationId: data.current_location_id,
           currentLocationName: data.current_location_name,
+          weeklySchedule: data.weekly_schedule || get().weeklySchedule,
           isLoading: false,
         });
       }
     } catch (err: any) {
       set({ error: err.message || "選擇行動時發生錯誤", isLoading: false });
+    }
+  },
+
+  triggerDynamicActivity: async (activityId: string, optionKey: string = "A") => {
+    const { sessionId } = get();
+    if (!sessionId) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const res = await simApi.triggerActivity(sessionId, activityId, optionKey);
+      set({
+        weeklySchedule: res.weekly_schedule,
+        stats: res.stats,
+        currentLocationId: res.current_location_id || get().currentLocationId,
+        currentLocationName: res.current_location_name || get().currentLocationName,
+        isLoading: false,
+      });
+      return res;
+    } catch (err: any) {
+      set({ error: err.message || "觸發活動失敗", isLoading: false });
+      throw err;
     }
   },
 

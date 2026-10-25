@@ -16,11 +16,11 @@ function parseMinutes(timeStr?: string): number {
 }
 
 function getEventStyle(slot: ScheduleSlot) {
-  if (slot.type === "dorm") {
+  if (slot.type === "breakfast") {
     return {
-      bg: "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800",
-      badge: "bg-slate-200 text-slate-700",
-      label: "宿舍生活",
+      bg: "bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-950",
+      badge: "bg-yellow-200 text-yellow-800",
+      label: "晨光早餐",
     };
   }
   if (slot.type === "lunch") {
@@ -28,6 +28,27 @@ function getEventStyle(slot: ScheduleSlot) {
       bg: "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900",
       badge: "bg-amber-200 text-amber-800",
       label: "午膳時光",
+    };
+  }
+  if (slot.type === "dinner") {
+    return {
+      bg: "bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-950",
+      badge: "bg-orange-200 text-orange-800",
+      label: "晚餐時光",
+    };
+  }
+  if (slot.type === "dorm") {
+    return {
+      bg: "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800",
+      badge: "bg-slate-200 text-slate-700",
+      label: "宿舍休閒",
+    };
+  }
+  if (slot.type === "campus_leisure") {
+    return {
+      bg: "bg-teal-50 hover:bg-teal-100 border-teal-300 text-teal-950",
+      badge: "bg-teal-200 text-teal-800",
+      label: "校園休閒",
     };
   }
   if (slot.type === "club") {

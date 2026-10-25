@@ -166,7 +166,7 @@ function DashboardContent() {
             href="/admin/events"
             className="px-3.5 py-2 rounded-xl bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 border border-stone-300 flex items-center gap-1.5 transition-colors shadow-xs"
           >
-            <span>突發事件管理與沙盒</span>
+            <span>校園活動與突發事件管理</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

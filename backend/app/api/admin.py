@@ -12,6 +12,7 @@ from app.core.llm_client import call_ollama_structured
 from app.core.security import create_access_token, get_current_admin, get_password_hash, verify_password
 from app.models.tables import (
     AdminUser,
+    CampusActivity,
     CampusLocation,
     Course,
     GameSession,
@@ -19,6 +20,9 @@ from app.models.tables import (
     SystemConfig,
 )
 from app.schemas.admin import (
+    CampusActivityCreate,
+    CampusActivityDTO,
+    CampusActivityUpdate,
     DashboardMetricsResponse,
     LoginRequest,
     RandomEventCreate,
@@ -292,6 +296,365 @@ async def live_sandbox_test(
         story = fallback_story
 
     return SandboxTestResponse(generated_story=story)
+
+
+# ==========================================
+# 校園動態活動管理 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
+# ==========================================
+
+DEFAULT_CAMPUS_ACTIVITIES = [
+    {
+        "id": "act_breakfast",
+        "title": "晨光活力早餐",
+        "category": "breakfast",
+        "trigger_type": "time_slot",
+        "trigger_timing": "07:00~09:00",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_backgate",
+        "location_name": "後門美食一條街",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "清晨的微風拂過百花川與松林，距離晨光早課還有一點時間，校園各處飄來熱騰騰煎蛋餅、飯糰與現煮黑咖啡的香氣。是否要前去享用早餐？",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "衝後門早午餐店點現做起司蛋餅與大杯溫豆漿，元氣滿滿迎接早課",
+                "effects": {"stamina": 20, "study": 5, "social": 0, "money": -65},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "在超商快速抓一顆御飯糰與美式咖啡邊走邊吃，節省時間",
+                "effects": {"stamina": 10, "study": 0, "social": 0, "money": -45},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "多賴床十分鐘或直接趕去教室佔位置，今天先不吃早餐",
+                "effects": {"stamina": -5, "study": 5, "social": 0, "money": 0},
+                "marks_activity": False
+            }
+        ]
+    },
+    {
+        "id": "act_lunch",
+        "title": "午膳美味時光",
+        "category": "lunch",
+        "trigger_type": "time_slot",
+        "trigger_timing": "11:50~13:30",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_pine_restaurant",
+        "location_name": "松果餐廳",
+        "is_active": True,
+        "weight": 20,
+        "event_prompt": "第四節下課鐘聲敲響，中午覓食人潮湧向松果餐廳與校園後門。當前為午餐時間，即可選擇是否要觸發午餐活動？",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "快步走進松果餐廳吃高CP值雙主菜自助餐，補充充沛體力",
+                "effects": {"stamina": 25, "study": 0, "social": 5, "money": -90},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "揪同學散步到後門吃現炒泡麵或燒臘便當，配上一杯手搖茶",
+                "effects": {"stamina": 20, "study": 0, "social": 15, "money": -120},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "不吃午餐，留在安靜的教室趴著補眠小憩或自習預習下午內容",
+                "effects": {"stamina": 5, "study": 10, "social": -5, "money": 0},
+                "marks_activity": False
+            }
+        ]
+    },
+    {
+        "id": "act_dinner",
+        "title": "晚餐與宵夜探索",
+        "category": "dinner",
+        "trigger_type": "time_slot",
+        "trigger_timing": "17:30~19:30",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_night_street",
+        "location_name": "中大宵夜街",
+        "is_active": True,
+        "weight": 18,
+        "event_prompt": "夕陽西下，天色漸漸染上暮色，下課的步履輕快起來。宵夜街與後門店家亮起溫暖燈光，炭烤、滷味與鍋燒麵香氣撲鼻。是否要進行晚餐活動？",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "與室友或社團夥伴一同前往宵夜街享用熱騰騰拉麵與現炸地瓜球",
+                "effects": {"stamina": 25, "study": 0, "social": 15, "money": -150},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "買一份少油少鹽的健康水煮餐便當外帶回宿舍享用",
+                "effects": {"stamina": 15, "study": 5, "social": 0, "money": -95},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "全神貫注準備晚間的專題報告或作業，暫時省去晚餐時間",
+                "effects": {"stamina": -10, "study": 15, "social": 0, "money": 0},
+                "marks_activity": False
+            }
+        ]
+    },
+    {
+        "id": "act_dorm_leisure",
+        "title": "宿舍休閒放鬆",
+        "category": "dorm_leisure",
+        "trigger_type": "class_break",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_dorm_girl14",
+        "location_name": "學生宿舍",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "下課後迎來難得的空閒時間，這段時間沒有課程安排。你可以選擇回到宿舍享受愜意的個人時光，洗滌一天的疲勞。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "回到宿舍吹著冷氣躺上床痛快補眠一小時，徹底恢復充沛元氣",
+                "effects": {"stamina": 30, "study": -5, "social": 0, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "戴上耳機與室友開黑打一場英雄聯盟或手遊連線，笑聲不斷",
+                "effects": {"stamina": 10, "study": 0, "social": 15, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "洗衣服整理房間書桌，泡杯熱可可悠閒追最新一集動漫或影集",
+                "effects": {"stamina": 15, "study": 0, "social": 0, "money": -30},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_campus_leisure",
+        "title": "校園設施與戶外休閒",
+        "category": "campus_leisure",
+        "trigger_type": "free_time",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_yiren",
+        "location_name": "依仁堂與校園運動休閒設施",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "下課或午後迎來一段空檔自由時間。校園微風徐徐，正是踏出教室，前往健身房、K書中心、圖書館或散步放空的大好時機。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "前往依仁堂健身房重量訓練，或到大草坪與環校道路慢跑揮灑汗水",
+                "effects": {"stamina": 15, "study": 0, "social": 5, "money": -20},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "前往中大總圖書館或地下K書中心找個靠窗座位靜心自習閱讀",
+                "effects": {"stamina": -5, "study": 25, "social": 0, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "漫步百花川林蔭步道與中大湖畔，看黑天鵝優雅划水放空思緒",
+                "effects": {"stamina": 20, "study": 0, "social": 5, "money": 0},
+                "marks_activity": True
+            }
+        ]
+    }
+]
+
+def ensure_activities_seeded(db: Session):
+    Base.metadata.create_all(bind=engine)
+    count = db.query(CampusActivity).count()
+    if count == 0:
+        for item in DEFAULT_CAMPUS_ACTIVITIES:
+            act = CampusActivity(
+                id=item["id"],
+                title=item["title"],
+                category=item["category"],
+                trigger_type=item["trigger_type"],
+                trigger_timing=item["trigger_timing"],
+                trigger_mode=item["trigger_mode"],
+                location_id=item.get("location_id"),
+                location_name=item.get("location_name"),
+                is_active=item["is_active"],
+                weight=item["weight"],
+                event_prompt=item["event_prompt"],
+                preset_options=item["preset_options"],
+            )
+            db.add(act)
+        db.commit()
+
+@router.get("/activities", response_model=list[CampusActivityDTO])
+def list_campus_activities(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    ensure_activities_seeded(db)
+    activities = db.query(CampusActivity).all()
+    return [CampusActivityDTO.model_validate(a) for a in activities]
+
+@router.post("/activities", response_model=CampusActivityDTO)
+def create_campus_activity(
+    req: CampusActivityCreate,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    ensure_activities_seeded(db)
+    existing = db.query(CampusActivity).filter(CampusActivity.id == req.id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="活動代碼已存在")
+
+    act = CampusActivity(
+        id=req.id,
+        title=req.title,
+        category=req.category,
+        trigger_type=req.trigger_type,
+        trigger_timing=req.trigger_timing,
+        trigger_mode=req.trigger_mode,
+        location_id=req.location_id,
+        location_name=req.location_name,
+        is_active=req.is_active,
+        weight=req.weight,
+        event_prompt=req.event_prompt,
+        preset_options=req.preset_options
+    )
+    db.add(act)
+    db.commit()
+    db.refresh(act)
+    return CampusActivityDTO.model_validate(act)
+
+@router.put("/activities/{activity_id}", response_model=CampusActivityDTO)
+def update_campus_activity(
+    activity_id: str,
+    req: CampusActivityUpdate,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    act = db.query(CampusActivity).filter(CampusActivity.id == activity_id).first()
+    if not act:
+        raise HTTPException(status_code=404, detail="找不到指定活動")
+
+    update_data = req.model_dump(exclude_unset=True)
+    for k, v in update_data.items():
+        setattr(act, k, v)
+
+    db.commit()
+    db.refresh(act)
+    return CampusActivityDTO.model_validate(act)
+
+@router.delete("/activities/{activity_id}")
+def delete_campus_activity(
+    activity_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    act = db.query(CampusActivity).filter(CampusActivity.id == activity_id).first()
+    if not act:
+        raise HTTPException(status_code=404, detail="找不到指定活動")
+    db.delete(act)
+    db.commit()
+    return {"message": f"成功刪除活動 {activity_id}"}
+
+@router.post("/activities/seed-defaults", response_model=list[CampusActivityDTO])
+def seed_default_activities(
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    for item in DEFAULT_CAMPUS_ACTIVITIES:
+        act = db.query(CampusActivity).filter(CampusActivity.id == item["id"]).first()
+        if not act:
+            act = CampusActivity(
+                id=item["id"],
+                title=item["title"],
+                category=item["category"],
+                trigger_type=item["trigger_type"],
+                trigger_timing=item["trigger_timing"],
+                trigger_mode=item["trigger_mode"],
+                location_id=item.get("location_id"),
+                location_name=item.get("location_name"),
+                is_active=item["is_active"],
+                weight=item["weight"],
+                event_prompt=item["event_prompt"],
+                preset_options=item["preset_options"],
+            )
+            db.add(act)
+        else:
+            act.title = item["title"]
+            act.category = item["category"]
+            act.trigger_type = item["trigger_type"]
+            act.trigger_timing = item["trigger_timing"]
+            act.trigger_mode = item["trigger_mode"]
+            act.location_id = item.get("location_id")
+            act.location_name = item.get("location_name")
+            act.is_active = item["is_active"]
+            act.weight = item["weight"]
+            act.event_prompt = item["event_prompt"]
+            act.preset_options = item["preset_options"]
+    db.commit()
+    activities = db.query(CampusActivity).all()
+    return [CampusActivityDTO.model_validate(a) for a in activities]
+
+@router.post("/activities/sandbox", response_model=SandboxTestResponse)
+async def activity_sandbox_test(
+    req: SandboxTestRequest,
+    current_admin: AdminUser = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    conf = db.query(SystemConfig).first()
+    active_model = conf.active_llm_model if conf else "gemma3:4b"
+
+    loc = db.query(CampusLocation).filter(CampusLocation.id == req.location_id).first()
+    loc_name = loc.name if loc else "中央大學校園"
+    loc_desc = loc.short_desc if loc else "環境清幽"
+
+    opt_hints = [opt.get("intent_hint", "") for opt in req.preset_options]
+    while len(opt_hints) < 3:
+        opt_hints.append("彈性應對校園日常活動")
+
+    prompt = TURN_NARRATIVE_PROMPT_TEMPLATE.format(
+        day_name="週一",
+        slot_name=req.slot or "中午時段",
+        location_name=loc_name,
+        location_short_desc=loc_desc,
+        schedule_title="校園日常動態活動",
+        life_snippet="校園微風徐徐，下課鐘聲在百花川畔迴盪，正是自由展開活動的好時光。",
+        recent_history="結束上一時段行程",
+        event_instruction=req.event_prompt,
+        opt_a_hint=opt_hints[0],
+        opt_b_hint=opt_hints[1],
+        opt_c_hint=opt_hints[2],
+    )
+
+    fallback_story = TurnGenerationSchema(
+        narrative=f"【活動即時預覽】你身處在{loc_name}。{req.event_prompt} 陽光灑落校園，眼前多樣的選擇讓你充滿期待。",
+        options=[
+            OptionItem(option_key="A", display_text=opt_hints[0][:24]),
+            OptionItem(option_key="B", display_text=opt_hints[1][:24]),
+            OptionItem(option_key="C", display_text=opt_hints[2][:24]),
+        ]
+    )
+
+    try:
+        story = await call_ollama_structured(
+            user_prompt=prompt,
+            response_schema=TurnGenerationSchema,
+            model_name=active_model,
+            fallback_instance=fallback_story,
+            timeout=25.0
+        )
+    except Exception:
+        story = fallback_story
+
+    return SandboxTestResponse(generated_story=story)
+
 
 @router.put("/locations/{loc_id}")
 def update_location_node(

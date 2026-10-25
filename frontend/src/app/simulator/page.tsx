@@ -11,6 +11,7 @@ import { WeeklySchedule } from "@/components/simulator/WeeklySchedule";
 import { StoryDialog } from "@/components/simulator/StoryDialog";
 import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
+import { DynamicActivityBar } from "@/components/simulator/DynamicActivityBar";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -139,6 +140,9 @@ export default function SimulatorPage() {
           if (currentLocationId) setFocusedLoc(currentLocationId);
         }}
       />
+
+      {/* Dynamic Campus Activities Bar (Breakfast, Lunch, Dinner, Dorm, Campus Leisure) */}
+      <DynamicActivityBar />
 
       {/* Main Game Interface: Left Calendar + Right Narrative & 3D PiP */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">

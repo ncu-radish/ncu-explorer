@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.llm_client import call_ollama_structured
 from app.models.tables import (
     Building,
+    CampusActivity,
     CampusLifeInfo,
     CampusLocation,
     ClubAndActivity,
@@ -1071,24 +1072,51 @@ class SimEngine:
                 }
             ]
         else:
-            event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
-            preset_options = [
-                {
-                    "option_key": "A",
-                    "intent_hint": "全神貫注認真參與，主動與教授或身旁同學交流提問",
-                    "effects": {"stamina": -10, "study": 12, "social": 5, "money": 0}
-                },
-                {
-                    "option_key": "B",
-                    "intent_hint": "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
-                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0}
-                },
-                {
-                    "option_key": "C",
-                    "intent_hint": "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦",
-                    "effects": {"stamina": -5, "study": 0, "social": 12, "money": -60}
-                }
-            ]
+            # 檢查是否有對應的校園動態活動 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
+            slot_type = slot_info.get("type", "course")
+            start_t = slot_info.get("start_time") or "10:00"
+
+            target_cat = None
+            if slot_type == "lunch" or ("11:30" <= start_t <= "13:30"):
+                target_cat = "lunch"
+            elif slot_type == "dinner" or ("17:30" <= start_t <= "19:30"):
+                target_cat = "dinner"
+            elif slot_type == "breakfast" or (start_t < "09:00" and slot_type != "course"):
+                target_cat = "breakfast"
+            elif slot_type == "dorm":
+                target_cat = "dorm_leisure"
+            elif slot_type in ("campus_leisure", "free"):
+                target_cat = "campus_leisure"
+
+            matched_act = None
+            if target_cat:
+                matched_act = db.query(CampusActivity).filter(
+                    CampusActivity.category == target_cat,
+                    CampusActivity.is_active == True
+                ).first()
+
+            if matched_act:
+                event_instruction = f"【校園動態活動：{matched_act.title}】\n{matched_act.event_prompt}"
+                preset_options = matched_act.preset_options
+            else:
+                event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": "全神貫注認真參與，主動與教授或身旁同學交流提問",
+                        "effects": {"stamina": -10, "study": 12, "social": 5, "money": 0}
+                    },
+                    {
+                        "option_key": "B",
+                        "intent_hint": "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0}
+                    },
+                    {
+                        "option_key": "C",
+                        "intent_hint": "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦",
+                        "effects": {"stamina": -5, "study": 0, "social": 12, "money": -60}
+                    }
+                ]
 
         # 備援內容
         fallback_story = TurnGenerationSchema(

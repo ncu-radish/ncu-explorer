@@ -1,19 +1,28 @@
 "use client";
 
-import { Clock, MapPin, CheckCircle2, ChevronRight, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Home } from "lucide-react";
+import { Clock, MapPin, CheckCircle2, ChevronRight, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Home, Coffee, Compass } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 function getEventIcon(slot: ScheduleSlot) {
+  if (slot.type === "breakfast") {
+    return <Coffee className="w-4 h-4 text-amber-500" />;
+  }
+  if (slot.type === "lunch") {
+    return <Utensils className="w-4 h-4 text-amber-600" />;
+  }
+  if (slot.type === "dinner") {
+    return <Utensils className="w-4 h-4 text-orange-600" />;
+  }
   if (slot.type === "dorm") {
     if (slot.start_time && slot.start_time < "12:00") {
       return <Sunrise className="w-4 h-4 text-amber-500" />;
     }
     return <Moon className="w-4 h-4 text-indigo-500" />;
   }
-  if (slot.type === "lunch") {
-    return <Utensils className="w-4 h-4 text-amber-600" />;
+  if (slot.type === "campus_leisure") {
+    return <Compass className="w-4 h-4 text-teal-600" />;
   }
   if (slot.type === "club") {
     return <Music className="w-4 h-4 text-purple-600" />;
@@ -25,11 +34,20 @@ function getEventIcon(slot: ScheduleSlot) {
 }
 
 function getCategoryBadge(slot: ScheduleSlot) {
-  if (slot.type === "dorm") {
-    return { label: "宿舍生活", bg: "bg-slate-100 text-slate-700 border-slate-200" };
+  if (slot.type === "breakfast") {
+    return { label: "晨光早餐", bg: "bg-yellow-100 text-yellow-800 border-yellow-200" };
   }
   if (slot.type === "lunch") {
     return { label: "午膳時光", bg: "bg-amber-100 text-amber-700 border-amber-200" };
+  }
+  if (slot.type === "dinner") {
+    return { label: "晚餐時光", bg: "bg-orange-100 text-orange-800 border-orange-200" };
+  }
+  if (slot.type === "dorm") {
+    return { label: "宿舍休閒", bg: "bg-slate-100 text-slate-700 border-slate-200" };
+  }
+  if (slot.type === "campus_leisure") {
+    return { label: "校園休閒", bg: "bg-teal-100 text-teal-800 border-teal-200" };
   }
   if (slot.type === "club") {
     return { label: "社團活動", bg: "bg-purple-100 text-purple-700 border-purple-200" };
