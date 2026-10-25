@@ -104,6 +104,43 @@ function EventsContent() {
   const [isReSandboxTesting, setIsReSandboxTesting] = useState(false);
   const [reSaveMessage, setReSaveMessage] = useState<string | null>(null);
 
+  const selectActivityForEdit = (act: CampusActivity) => {
+    setIsCreatingNewActivity(false);
+    setSelectedActivity(act);
+    setActId(act.id);
+    setActTitle(act.title);
+    setActCategory(act.category);
+    setActTriggerType(act.trigger_type || "time_slot");
+    setActTriggerTiming(act.trigger_timing || "11:50~13:30");
+    setActTriggerMode(act.trigger_mode || "manual_choice");
+    setActLocationId(act.location_id || "loc_pine_restaurant");
+    setActLocationName(act.location_name || "松果餐廳");
+    setActIsActive(act.is_active);
+    setActWeight(act.weight);
+    setActEventPrompt(act.event_prompt);
+
+    const opts = act.preset_options && act.preset_options.length >= 3
+      ? act.preset_options
+      : [
+          { option_key: "A", intent_hint: "", effects: { stamina: 20, study: 0, social: 5, money: -80 }, marks_activity: true },
+          { option_key: "B", intent_hint: "", effects: { stamina: 10, study: 5, social: 10, money: -50 }, marks_activity: true },
+          { option_key: "C", intent_hint: "", effects: { stamina: -5, study: 10, social: 0, money: 0 }, marks_activity: false },
+        ];
+    setActOptions(opts);
+    setActSandboxStory(null);
+  };
+
+  const selectRandomEventForEdit = (ev: any) => {
+    setSelectedRandomEvent(ev);
+    setReTitle(ev.title);
+    setReWeight(ev.weight);
+    setRePrompt(ev.event_prompt);
+    setReOptA(ev.preset_options?.[0]?.intent_hint || "");
+    setReOptB(ev.preset_options?.[1]?.intent_hint || "");
+    setReOptC(ev.preset_options?.[2]?.intent_hint || "");
+    setReSandboxStory(null);
+  };
+
   // 載入活動清單
   const loadActivities = async () => {
     try {
@@ -134,32 +171,6 @@ function EventsContent() {
     loadActivities();
     loadRandomEvents();
   }, []);
-
-  const selectActivityForEdit = (act: CampusActivity) => {
-    setIsCreatingNewActivity(false);
-    setSelectedActivity(act);
-    setActId(act.id);
-    setActTitle(act.title);
-    setActCategory(act.category);
-    setActTriggerType(act.trigger_type || "time_slot");
-    setActTriggerTiming(act.trigger_timing || "11:50~13:30");
-    setActTriggerMode(act.trigger_mode || "manual_choice");
-    setActLocationId(act.location_id || "loc_pine_restaurant");
-    setActLocationName(act.location_name || "松果餐廳");
-    setActIsActive(act.is_active);
-    setActWeight(act.weight);
-    setActEventPrompt(act.event_prompt);
-
-    const opts = act.preset_options && act.preset_options.length >= 3
-      ? act.preset_options
-      : [
-          { option_key: "A", intent_hint: "", effects: { stamina: 20, study: 0, social: 5, money: -80 }, marks_activity: true },
-          { option_key: "B", intent_hint: "", effects: { stamina: 10, study: 5, social: 10, money: -50 }, marks_activity: true },
-          { option_key: "C", intent_hint: "", effects: { stamina: -5, study: 10, social: 0, money: 0 }, marks_activity: false },
-        ];
-    setActOptions(opts);
-    setActSandboxStory(null);
-  };
 
   const handleCreateNewActivityClick = () => {
     setIsCreatingNewActivity(true);
@@ -266,16 +277,6 @@ function EventsContent() {
   };
 
   // ==================== Random Events Helpers ====================
-  const selectRandomEventForEdit = (ev: any) => {
-    setSelectedRandomEvent(ev);
-    setReTitle(ev.title);
-    setReWeight(ev.weight);
-    setRePrompt(ev.event_prompt);
-    setReOptA(ev.preset_options?.[0]?.intent_hint || "");
-    setReOptB(ev.preset_options?.[1]?.intent_hint || "");
-    setReOptC(ev.preset_options?.[2]?.intent_hint || "");
-    setReSandboxStory(null);
-  };
 
   const handleSaveRandomEvent = async () => {
     if (!selectedRandomEvent) return;

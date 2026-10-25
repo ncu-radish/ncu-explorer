@@ -267,8 +267,8 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         end_time = f"{actual_h:02d}:{actual_m:02d}"
     else:
         following_slots = [
-            s for s in updated_schedule 
-            if s.get("day") == day 
+            s for s in updated_schedule
+            if s.get("day") == day
             and (s.get("start_time") or "00:00") > start_time
             and s.get("type") in ("course", "club", "day_end")
         ]

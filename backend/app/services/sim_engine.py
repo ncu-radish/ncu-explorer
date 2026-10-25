@@ -1007,10 +1007,10 @@ class SimEngine:
                 max_class_end = max(class_ends)
                 # 尋找課後下一個活動
                 later_acts = [s for s in day_events if (s.start_time or "00:00") >= max_class_end and s.type != "lunch_prompt"]
-                next_act_start = later_acts[0].start_time if later_acts else "21:00"
+                next_act_start = (later_acts[0].start_time if later_acts and later_acts[0].start_time else None) or "21:00"
 
                 # 若空檔大於等於 90 分鐘，且不與已有檢查點衝突
-                if max_class_end < "19:00" and next_act_start > max_class_end:
+                if max_class_end and max_class_end < "19:00" and next_act_start > max_class_end:
                     gap_checkpoints.append(ScheduleSlot(
                         day=day,
                         slot=max_class_end,
