@@ -81,13 +81,23 @@ export const simApi = {
         custom_title: customTitle || undefined,
       }),
     }),
-  prePlanTomorrow: (sessionId: string, targetDay: number, slots: any[]) =>
+  prePlanTomorrow: (
+    sessionId: string,
+    targetDay: number,
+    slots: any[],
+    sleepTime: string = "22:00",
+    alarmTime: string = "07:30"
+  ) =>
     fetchApi<{
       session_id: string;
       message: string;
       current_turn: number;
+      current_time?: string;
+      current_day?: number;
       weekly_schedule: any[];
       stats: any;
+      delta_stats?: any;
+      sleep_hours?: number;
       story?: any;
       current_location_id?: string;
       current_location_name?: string;
@@ -97,6 +107,8 @@ export const simApi = {
         session_id: sessionId,
         target_day: targetDay,
         slots,
+        sleep_time: sleepTime,
+        alarm_time: alarmTime,
       }),
     }),
 };

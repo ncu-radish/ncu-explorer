@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, MapPin, Clock, ArrowRight, BookOpen, GraduationCap, User } from "lucide-react";
+import { Sparkles, MapPin, Clock, ArrowRight, BookOpen, GraduationCap, User, Moon } from "lucide-react";
 import { StoryState, ScheduleSlot } from "@/store/useSimulatorStore";
 
 export function StoryDialog({
@@ -11,6 +11,7 @@ export function StoryDialog({
   slot,
   isLoading,
   onChoose,
+  onGoToSleep,
   onFocusLocation,
 }: {
   story: StoryState | null;
@@ -20,6 +21,7 @@ export function StoryDialog({
   slot?: ScheduleSlot | null;
   isLoading: boolean;
   onChoose: (key: string) => void;
+  onGoToSleep?: () => void;
   onFocusLocation?: () => void;
 }) {
   return (
@@ -88,25 +90,49 @@ export function StoryDialog({
 
       {/* Options Buttons */}
       <div className="space-y-2.5">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-stone-500 block mb-1">
-          請選擇你的下一步行動：
-        </span>
-        {story?.options.map((opt) => (
-          <button
-            key={opt.option_key}
-            disabled={isLoading}
-            onClick={() => onChoose(opt.option_key)}
-            className="w-full text-left p-3.5 sm:p-4 rounded-xl bg-stone-50 hover:bg-blue-50 border border-stone-200 hover:border-blue-300 text-stone-800 hover:text-stone-900 transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-200 text-blue-800 font-bold text-xs flex items-center justify-center font-mono group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                {opt.option_key}
-              </span>
-              <span className="text-sm font-medium">{opt.display_text}</span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
-          </button>
-        ))}
+        {story?.options.map((opt) => {
+          const isSleep = opt.display_text.includes("去睡覺");
+          const isNightAct = opt.display_text.includes("進行活動");
+
+          return (
+            <button
+              key={opt.option_key}
+              disabled={isLoading}
+              onClick={() => onChoose(opt.option_key)}
+              className={`w-full text-left p-3.5 sm:p-4 rounded-xl transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] cursor-pointer border ${
+                isSleep
+                  ? "bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-indigo-500/40 hover:border-indigo-400 shadow-md"
+                  : isNightAct
+                  ? "bg-slate-50 hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-300 text-stone-800 hover:text-stone-900 shadow-xs"
+                  : "bg-stone-50 hover:bg-blue-50 border-stone-200 hover:border-blue-300 text-stone-800 hover:text-stone-900"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center font-mono shrink-0 transition-colors ${
+                    isSleep
+                      ? "bg-indigo-500/30 border border-indigo-400/40 text-amber-300"
+                      : isNightAct
+                      ? "bg-indigo-100 border border-indigo-200 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white"
+                      : "bg-blue-100 border border-blue-200 text-blue-800 group-hover:bg-blue-600 group-hover:text-white"
+                  }`}
+                >
+                  {opt.option_key}
+                </span>
+                <span className={`text-sm font-medium ${isSleep ? "text-indigo-50 font-semibold" : ""}`}>
+                  {opt.display_text}
+                </span>
+              </div>
+              <ArrowRight
+                className={`w-4 h-4 transition-all shrink-0 ${
+                  isSleep
+                    ? "text-indigo-300 group-hover:translate-x-1"
+                    : "text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1"
+                }`}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );

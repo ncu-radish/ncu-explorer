@@ -1115,6 +1115,10 @@ class SimEngine:
                 chosen_event = random.choices(filtered, weights=weights, k=1)[0]
                 session.triggered_evts = (session.triggered_evts or []) + [chosen_event.id]
 
+        start_t = slot_info.get("start_time") or "10:00"
+        is_night_time = (slot_info.get("type") == "day_end") or (start_t >= "21:00" or start_t < "05:00")
+        is_cutoff_reached = start_t == "05:00" or (start_t > "04:30" and start_t < "06:00")
+
         if chosen_event:
             event_instruction = f"【突發狀況事件：{chosen_event.title}】\n{chosen_event.event_prompt}"
             preset_options = chosen_event.preset_options
@@ -1135,7 +1139,6 @@ class SimEngine:
                 }
             ]
         elif slot_info.get("type") == "leisure_prompt":
-            start_t = slot_info.get("start_time", "課後")
             event_instruction = f"下課或午後空閒時間到了（{start_t}），目前沒有任何課程或活動安排。系統詢問你是否要回宿舍休息，或者前往校園休閒設施？"
             preset_options = [
                 {
@@ -1157,24 +1160,35 @@ class SimEngine:
                     "action_type": "skip"
                 }
             ]
-        elif slot_info.get("type") == "day_end":
+        elif slot_info.get("type") == "day_end" or is_night_time:
             day_num = slot_info.get("day", 1)
             next_day_str = DAY_NAMES[day_num] if day_num < len(DAY_NAMES) else "週末"
-            event_instruction = f"今日校園作息圓滿結束（21:00）。在進入【{next_day_str}】之前，你可以預先規劃明天的各項活動行程（如早餐、午餐或課餘休閒）。"
-            preset_options = [
-                {
-                    "option_key": "A",
-                    "intent_hint": f"進入明日活動預排（為{next_day_str}預排早餐、午餐或課餘活動）",
-                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
-                    "action_type": "open_preplan_modal"
-                },
-                {
-                    "option_key": "B",
-                    "intent_hint": f"直接進入{next_day_str}（明日依當下提示決定）",
-                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
-                    "action_type": "skip_preplan"
-                }
-            ]
+            if is_cutoff_reached:
+                event_instruction = f"晨曦微露，已達清晨 05:00 每日換日線！不可再繼續熬夜，請立即就寢入眠並設定鬧鐘進入【{next_day_str}】。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": f"🛏️ 去睡覺（設定隔日鬧鐘並預排{next_day_str}行程）",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                        "action_type": "go_to_sleep"
+                    }
+                ]
+            else:
+                event_instruction = f"夜幕低垂（{start_t}），中大校園夜色已深。你可以準備就寢（設定明日鬧鐘並預排{next_day_str}行程），或是繼續進行宿舍休閒或校園夜間活動。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": f"🛏️ 去睡覺（設定隔日鬧鐘並預排{next_day_str}行程）",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                        "action_type": "go_to_sleep"
+                    },
+                    {
+                        "option_key": "B",
+                        "intent_hint": "🌙 進行活動（宿舍休閒或校園活動）",
+                        "effects": {"stamina": -5, "study": 0, "social": 5, "money": 0},
+                        "action_type": "open_night_activity"
+                    }
+                ]
         elif slot_info.get("type") == "club":
             event_instruction = f"社團活動時段：你在 {loc_name} 參與【{slot_info.get('title')}】。請描述你沉浸於社團練習、交流或例會討論的熱血情境。"
             preset_options = [
@@ -1242,13 +1256,13 @@ class SimEngine:
                 ]
 
         # Special handling for interactive prompt checkpoints: return crisp predefined narrative & options immediately
-        if slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end"):
+        if slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end") or is_night_time:
             story = TurnGenerationSchema(
                 narrative=f"【{day_str} {slot_str}】{event_instruction}",
                 options=[
                     OptionItem(
                         option_key=opt.get("option_key", chr(65 + i)),
-                        display_text=opt.get("intent_hint", "")[:30]
+                        display_text=opt.get("intent_hint", "")[:38]
                     )
                     for i, opt in enumerate(preset_options)
                 ]

@@ -63,7 +63,7 @@ export default function SimulatorPage() {
 
   // Modal States
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityCategory, setActivityCategory] = useState<"lunch" | "dorm_leisure" | "campus_leisure">("lunch");
+  const [activityCategory, setActivityCategory] = useState<"lunch" | "dorm_leisure" | "campus_leisure" | "night_leisure">("lunch");
 
   const [prePlanModalOpen, setPrePlanModalOpen] = useState(false);
   const [prePlanTargetDay, setPrePlanTargetDay] = useState<number>(2);
@@ -162,16 +162,28 @@ export default function SimulatorPage() {
       return;
     }
 
-    // Phase 3: Day End prompt (21:00)
-    if (slotType === "day_end") {
+    // Phase 3: 21:00 開始晚間時段與換日線 (05:00) 嚴格雙選項抉擇
+    const currentStartTime = currentSlotInfo.start_time || currentTime || "08:00";
+    const isLateNight =
+      slotType === "day_end" ||
+      currentStartTime >= "21:00" ||
+      currentStartTime < "05:00";
+
+    if (isLateNight) {
       if (optionKey === "A") {
-        // Open Pre-plan Tomorrow Modal
-        const nextDay = Math.min(5, (currentSlotInfo.day || 1) + 1);
+        // 使用者點選「🛏️ 去睡覺」-> 自動進入設鬧鐘以及預排行程頁面
+        const nextDay = Math.min(5, (currentSlotInfo.day || currentDay || 1) + 1);
         setPrePlanTargetDay(nextDay);
         setPrePlanModalOpen(true);
         return;
       }
-      // Skip pre-plan and advance into tomorrow with linear time flow
+      if (optionKey === "B") {
+        // 使用者點選「🌙 進行活動 (宿舍 & 校園活動)」-> 開啟夜間活動彈窗
+        setActivityCategory("night_leisure");
+        setActivityModalOpen(true);
+        return;
+      }
+      // 備援推進
       await executeWithTimeFlow(() => chooseOption(optionKey));
       return;
     }
@@ -180,11 +192,22 @@ export default function SimulatorPage() {
     await executeWithTimeFlow(() => chooseOption(optionKey));
   };
 
-  // Calculate maximum hours available before next scheduled event to prevent overlap
+  // Calculate maximum hours available before next scheduled event or 05:00 cutoff
   const calcAvailableHours = (): number => {
     if (!currentSlotInfo) return 1;
-    const currentStart = currentSlotInfo.start_time || "12:00";
+    const currentStart = currentSlotInfo.start_time || currentTime || "12:00";
     const day = currentSlotInfo.day || currentDay || 1;
+
+    // 若在晚間或深夜時段 (21:00 ~ 05:00)，以清晨 05:00 換日線計算最大可用小時
+    const isLateNight = currentStart >= "21:00" || currentStart < "05:00";
+    if (isLateNight) {
+      const [h, m] = currentStart.split(":").map(Number);
+      const nightMins = (h < 5 ? h + 24 : h) * 60 + (m || 0);
+      const cutoffMins = 29 * 60; // 05:00 (次日凌晨換日線)
+      const remainHours = Math.floor((cutoffMins - nightMins) / 60);
+      return Math.max(1, Math.min(3, remainHours));
+    }
+
     const laterEvents = weeklySchedule.filter(
       (s) =>
         s.day === day &&
@@ -214,9 +237,28 @@ export default function SimulatorPage() {
     );
   };
 
-  // Pre-Plan Tomorrow Confirm Callback
-  const handleConfirmPrePlan = async (targetDay: number, slots: any[]) => {
-    await executeWithTimeFlow(() => prePlanTomorrow(targetDay, slots));
+  const currentStartTime = currentSlotInfo.start_time || currentTime || "08:00";
+  const canGoToSleep =
+    currentStartTime >= "21:00" ||
+    currentSlotInfo.type === "day_end" ||
+    (currentSlotInfo.type === "dorm" && currentStartTime >= "20:00");
+
+  const handleOpenSleepModal = () => {
+    const nextDay = Math.min(5, (currentSlotInfo.day || currentDay || 1) + 1);
+    setPrePlanTargetDay(nextDay);
+    setPrePlanModalOpen(true);
+  };
+
+  // Pre-Plan Tomorrow & Sleep Confirm Callback
+  const handleConfirmPrePlan = async (
+    targetDay: number,
+    slots: any[],
+    sleepTime: string = "22:00",
+    alarmTime: string = "07:30"
+  ) => {
+    await executeWithTimeFlow(() =>
+      prePlanTomorrow(targetDay, slots, sleepTime, alarmTime)
+    );
   };
 
   return (
@@ -238,12 +280,13 @@ export default function SimulatorPage() {
         isLoading={isLoading}
       />
 
-      {/* Pre-Plan Tomorrow Modal */}
+      {/* Pre-Plan Tomorrow & Sleep Alarm Modal */}
       <PrePlanModal
         isOpen={prePlanModalOpen}
         onClose={() => setPrePlanModalOpen(false)}
         targetDay={prePlanTargetDay}
         existingSchedule={weeklySchedule}
+        currentSleepTime={currentStartTime}
         onConfirm={handleConfirmPrePlan}
         isLoading={isLoading}
       />

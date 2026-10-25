@@ -64,7 +64,12 @@ interface SimulatorState {
     durationHours?: number,
     customTitle?: string
   ) => Promise<any>;
-  prePlanTomorrow: (targetDay: number, slots: any[]) => Promise<any>;
+  prePlanTomorrow: (
+    targetDay: number,
+    slots: any[],
+    sleepTime?: string,
+    alarmTime?: string
+  ) => Promise<any>;
   fetchSummary: () => Promise<void>;
   resetSimulation: () => void;
 }
@@ -185,21 +190,26 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     }
   },
 
-  prePlanTomorrow: async (targetDay: number, slots: any[]) => {
+  prePlanTomorrow: async (
+    targetDay: number,
+    slots: any[],
+    sleepTime?: string,
+    alarmTime?: string
+  ) => {
     const { sessionId } = get();
     if (!sessionId) return;
 
     set({ isLoading: true, error: null });
     try {
-      const res = await simApi.prePlanTomorrow(sessionId, targetDay, slots);
+      const res = await simApi.prePlanTomorrow(sessionId, targetDay, slots, sleepTime, alarmTime);
       const currSlot = res.weekly_schedule?.[res.current_turn];
       set({
         currentTurn: res.current_turn,
         weeklySchedule: res.weekly_schedule,
         stats: res.stats,
         story: res.story,
-        currentTime: currSlot?.start_time || "08:00",
-        currentDay: currSlot?.day || targetDay,
+        currentTime: res.current_time || currSlot?.start_time || alarmTime || "07:30",
+        currentDay: res.current_day || currSlot?.day || targetDay,
         currentLocationId: res.current_location_id || get().currentLocationId,
         currentLocationName: res.current_location_name || get().currentLocationName,
         isLoading: false,

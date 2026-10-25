@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Utensils, Home, Compass, Clock, Check, X, Sparkles, MapPin, Coffee } from "lucide-react";
+import { Utensils, Home, Compass, Clock, Check, X, Sparkles, MapPin, Coffee, Moon } from "lucide-react";
 import { CampusActivity } from "@/lib/api";
 
 interface ActivitySelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  category: "lunch" | "dorm_leisure" | "campus_leisure" | string;
+  category: "lunch" | "dorm_leisure" | "campus_leisure" | "night_leisure" | string;
   activities: CampusActivity[];
   maxAvailableHours?: number;
   onConfirm: (activityId: string, optionKey: string, durationHours: number, customTitle?: string) => Promise<void>;
@@ -25,6 +25,7 @@ export function ActivitySelectionModal({
 }: ActivitySelectionModalProps) {
   const [selectedActId, setSelectedActId] = useState<string>("");
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>("A");
+  const [nightTab, setNightTab] = useState<"dorm" | "campus">("dorm");
   const effectiveMaxHours = Math.max(1, Math.min(3, maxAvailableHours));
   const [durationHours, setDurationHours] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,10 +33,82 @@ export function ActivitySelectionModal({
   if (!isOpen) return null;
 
   // Filter activities matching the category
-  const categoryActivities = activities.filter((act) => act.category === category);
+  const targetCategory = category === "night_leisure" 
+    ? (nightTab === "dorm" ? "dorm_leisure" : "campus_leisure") 
+    : category;
+
+  const categoryActivities = activities.filter((act) => act.category === targetCategory);
 
   // Fallback preset options if DB activities are empty
-  const defaultItems = category === "lunch" ? [
+  const dormItems = [
+    {
+      id: "act_dorm_leisure",
+      title: "宿舍小憩與深度補眠",
+      location_name: "學生宿舍房內",
+      options: [
+        { key: "A", name: "戴上眼罩深度補眠充電", effects: "+25體力/小時" },
+        { key: "B", name: "躺床上聽音樂放空放鬆", effects: "+18體力/小時" },
+      ],
+    },
+    {
+      id: "act_dorm_leisure",
+      title: "手遊開黑 / 線上追劇",
+      location_name: "學生宿舍書桌",
+      options: [
+        { key: "A", name: "與室友開黑打傳說對決", effects: "+15體力, +10社交/小時" },
+        { key: "B", name: "吃零食追最新熱門影集", effects: "+15體力, +5社交/小時" },
+      ],
+    },
+    {
+      id: "act_dorm_leisure",
+      title: "洗衣服整理寢室環境",
+      location_name: "宿舍洗衣間 / 寢室",
+      options: [
+        { key: "A", name: "排隊洗烘衣物、收拾書桌", effects: "+10學術, +5社交/小時" },
+      ],
+    },
+  ];
+
+  const campusItems = [
+    {
+      id: "act_campus_leisure",
+      title: "宵夜街 / 後門炭烤美食探訪",
+      location_name: "後門宵夜街",
+      options: [
+        { key: "A", name: "炭烤雞排配冰鎮奶茶", effects: "+22體力, +12社交/小時, -$120" },
+        { key: "B", name: "滷味鹹酥雞宵夜小聚", effects: "+18體力, +15社交/小時, -$100" },
+      ],
+    },
+    {
+      id: "act_campus_leisure",
+      title: "依仁堂體育館揮灑汗水",
+      location_name: "依仁堂體育館 / 健身房",
+      options: [
+        { key: "A", name: "重訓器材核心自主鍛鍊", effects: "+12體力, +8社交/小時" },
+        { key: "B", name: "室內慢跑或打羽球交流", effects: "+15體力, +10社交/小時" },
+      ],
+    },
+    {
+      id: "act_campus_leisure",
+      title: "總圖書館 / K書中心沉浸充實",
+      location_name: "總圖書館 / 舊圖K書中心",
+      options: [
+        { key: "A", name: "安靜閱覽區溫習課程講義", effects: "+22學術/小時" },
+        { key: "B", name: "翻閱科技新知與課外讀物", effects: "+15學術, +5社交/小時" },
+      ],
+    },
+    {
+      id: "act_campus_leisure",
+      title: "中大湖與百花川夜景散步",
+      location_name: "中大湖畔 / 百花川步道",
+      options: [
+        { key: "A", name: "湖畔夜風散心放鬆", effects: "+16體力, +8社交/小時" },
+        { key: "B", name: "大草坪看星空沉澱心靈", effects: "+18體力/小時" },
+      ],
+    },
+  ];
+
+  const lunchItems = [
     {
       id: "act_lunch",
       title: "松果餐廳特選美食",
@@ -64,62 +137,13 @@ export function ActivitySelectionModal({
         { key: "B", name: "飯糰拿鐵邊走邊吃", effects: "+10體力, -$60" },
       ],
     },
-  ] : category === "dorm_leisure" ? [
-    {
-      id: "act_dorm_leisure",
-      title: "宿舍小憩與深度補眠",
-      location_name: "學生宿舍房內",
-      options: [
-        { key: "A", name: "戴上眼罩深度補眠充電", effects: "+25體力/小時" },
-        { key: "B", name: "躺床上聽音樂放空放鬆", effects: "+18體力/小時" },
-      ],
-    },
-    {
-      id: "act_dorm_leisure",
-      title: "手遊開黑 / 線上追劇",
-      location_name: "學生宿舍書桌",
-      options: [
-        { key: "A", name: "與室友開黑打傳說對決", effects: "+15體力, +10社交/小時" },
-        { key: "B", name: "吃零食追最新熱門影集", effects: "+15體力, +5社交/小時" },
-      ],
-    },
-    {
-      id: "act_dorm_leisure",
-      title: "洗衣服整理寢室環境",
-      location_name: "宿舍洗衣間 / 寢室",
-      options: [
-        { key: "A", name: "排隊洗烘衣物、收拾書桌", effects: "+10學術, +5社交/小時" },
-      ],
-    },
-  ] : [
-    {
-      id: "act_campus_leisure",
-      title: "依仁堂體育館揮灑汗水",
-      location_name: "依仁堂體育館 / 健身房",
-      options: [
-        { key: "A", name: "重訓器材核心自主鍛鍊", effects: "+12體力, +8社交/小時" },
-        { key: "B", name: "室內慢跑或打羽球交流", effects: "+15體力, +10社交/小時" },
-      ],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "總圖書館 / K書中心沉浸充實",
-      location_name: "總圖書館 / 舊圖K書中心",
-      options: [
-        { key: "A", name: "安靜閱覽區溫習課程講義", effects: "+22學術/小時" },
-        { key: "B", name: "翻閱科技新知與課外讀物", effects: "+15學術, +5社交/小時" },
-      ],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "中大湖與百花川悠閒散步",
-      location_name: "中大湖畔 / 百花川步道",
-      options: [
-        { key: "A", name: "環湖吹風看黑天鵝優游", effects: "+15體力, +5社交/小時" },
-        { key: "B", name: "在大草坪樹蔭下散心沉澱", effects: "+18體力/小時" },
-      ],
-    },
   ];
+
+  const defaultItems = category === "lunch" 
+    ? lunchItems 
+    : (category === "night_leisure" 
+        ? (nightTab === "dorm" ? dormItems : campusItems) 
+        : (category === "dorm_leisure" ? dormItems : campusItems));
 
   // Pick first item by default if nothing selected
   const activeList = categoryActivities.length > 0 ? categoryActivities : defaultItems;
@@ -127,7 +151,7 @@ export function ActivitySelectionModal({
 
   const handleConfirmAction = async () => {
     if (!currentSelectedAct) return;
-    const actId = (currentSelectedAct as any).id || "act_lunch";
+    const actId = (currentSelectedAct as any).id || (targetCategory === "dorm_leisure" ? "act_dorm_leisure" : "act_campus_leisure");
     const title = (currentSelectedAct as any).title;
     const dur = Math.min(durationHours, effectiveMaxHours);
 
@@ -147,6 +171,16 @@ export function ActivitySelectionModal({
         title: "請挑選你想進行的午餐行程",
         subtitle: "12:00 中午無排定課程，選好美食後系統將即時在行事曆標記你的用餐時段",
         showDuration: false,
+      };
+    }
+    if (category === "night_leisure") {
+      return {
+        icon: <Moon className="w-5 h-5 text-indigo-500" />,
+        badge: "晚間活動",
+        badgeBg: "bg-indigo-100 text-indigo-800 border-indigo-300",
+        title: "挑選宿舍放鬆或校園夜間休閒活動",
+        subtitle: "可自主選擇 1 ~ 3 小時（受 05:00 換日線防呆限制），完成後時間將向前推進",
+        showDuration: true,
       };
     }
     if (category === "dorm_leisure") {
@@ -205,6 +239,42 @@ export function ActivitySelectionModal({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+          {/* Night Leisure Dorm/Campus Tab Switcher */}
+          {category === "night_leisure" && (
+            <div className="flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setNightTab("dorm");
+                  setSelectedActId("");
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  nightTab === "dorm"
+                    ? "bg-white text-indigo-700 shadow-xs border border-stone-200/80"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <Home className="w-3.5 h-3.5" />
+                <span>🏠 宿舍休閒活動</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNightTab("campus");
+                  setSelectedActId("");
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  nightTab === "campus"
+                    ? "bg-white text-teal-700 shadow-xs border border-stone-200/80"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>🌲 校園夜間活動</span>
+              </button>
+            </div>
+          )}
+
           {/* Duration Selector (Only for leisure activities) */}
           {header.showDuration && (
             <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">

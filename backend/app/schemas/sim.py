@@ -87,15 +87,21 @@ class SimTriggerActivityResponse(BaseModel):
 class SimPrePlanRequest(BaseModel):
     session_id: str
     target_day: int
-    slots: list[dict[str, Any]]
+    slots: list[dict[str, Any]] = []
+    sleep_time: str | None = "22:00"
+    alarm_time: str | None = "07:30"
 
 
 class SimPrePlanResponse(BaseModel):
     session_id: str
     message: str
     current_turn: int
+    current_time: str | None = None
+    current_day: int | None = None
     weekly_schedule: list[ScheduleSlot]
     stats: dict[str, int]
+    delta_stats: dict[str, int] | None = None
+    sleep_hours: float | None = None
     story: TurnGenerationSchema | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None
