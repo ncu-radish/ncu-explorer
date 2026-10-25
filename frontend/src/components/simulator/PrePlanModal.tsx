@@ -38,8 +38,22 @@ export function PrePlanModal({
   onConfirm,
   isLoading = false,
 }: PrePlanModalProps) {
-  // Alarm Clock State
+  // Alarm Clock State (User-defined time)
   const [alarmTime, setAlarmTime] = useState<string>("07:30");
+
+  const adjustAlarmMinutes = (deltaMins: number) => {
+    try {
+      const [h, m] = alarmTime.split(":").map(Number);
+      let totalMins = h * 60 + (m || 0) + deltaMins;
+      if (totalMins < 0) totalMins += 24 * 60;
+      totalMins = totalMins % (24 * 60);
+      const newH = Math.floor(totalMins / 60);
+      const newM = totalMins % 60;
+      setAlarmTime(`${newH.toString().padStart(2, "0")}:${newM.toString().padStart(2, "0")}`);
+    } catch {
+      // ignore
+    }
+  };
 
   // Pre-plan Activities State
   const [enableBreakfast, setEnableBreakfast] = useState<boolean>(true);
@@ -50,8 +64,12 @@ export function PrePlanModal({
 
   const [enableLeisure, setEnableLeisure] = useState<boolean>(false);
   const [leisureCategory, setLeisureCategory] = useState<"dorm" | "campus">("dorm");
-  const [leisureHours, setLeisureHours] = useState<number>(2);
+  const [leisureMinutes, setLeisureMinutes] = useState<number>(120); // 預設 120 分鐘 (2 小時)
   const [leisureChoice, setLeisureChoice] = useState<string>("宿舍補眠與小憩放空");
+
+  const adjustLeisureMinutes = (delta: number) => {
+    setLeisureMinutes((prev) => Math.max(30, Math.min(300, prev + delta)));
+  };
 
   if (!isOpen) return null;
 
@@ -106,8 +124,11 @@ export function PrePlanModal({
 
     if (enableLeisure) {
       const startTime = "15:30";
-      const h = 15 + leisureHours;
-      const endTime = `${h.toString().padStart(2, "0")}:30`;
+      const totalEndMins = 15 * 60 + 30 + leisureMinutes;
+      const endH = Math.floor(totalEndMins / 60);
+      const endM = totalEndMins % 60;
+      const endTime = `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
+      const durHours = Math.round((leisureMinutes / 60.0) * 10) / 10;
       slots.push({
         title: `【${leisureCategory === "dorm" ? "宿舍休閒" : "校園休閒"}】${leisureChoice}`,
         type: leisureCategory === "dorm" ? "dorm" : "campus_leisure",
@@ -115,7 +136,7 @@ export function PrePlanModal({
         location_name: leisureCategory === "dorm" ? "學生宿舍" : "依仁堂/總圖",
         start_time: startTime,
         end_time: endTime,
-        duration_hours: leisureHours,
+        duration_hours: durHours,
       });
     }
 
@@ -190,17 +211,74 @@ export function PrePlanModal({
               </div>
             </div>
 
-            {/* Quick Alarm Time Presets */}
-            <div className="grid grid-cols-5 gap-2 mb-3">
+            {/* Custom User-defined Alarm Time Picker */}
+            <div className="bg-white rounded-xl p-3 border border-indigo-200 shadow-2xs mb-2.5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Clock className="w-5 h-5 text-indigo-600 shrink-0" />
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-stone-700 block mb-0.5">
+                      自訂鬧鐘時間 (直接輸入或調整)：
+                    </label>
+                    <input
+                      type="time"
+                      value={alarmTime}
+                      onChange={(e) => setAlarmTime(e.target.value)}
+                      className="text-lg sm:text-xl font-bold font-mono text-indigo-950 bg-indigo-50/70 hover:bg-indigo-50 border border-indigo-300 rounded-xl px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Stepper Buttons */}
+                <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => adjustAlarmMinutes(-30)}
+                    className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                    title="提前 30 分鐘"
+                  >
+                    -30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustAlarmMinutes(-15)}
+                    className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                    title="提前 15 分鐘"
+                  >
+                    -15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustAlarmMinutes(15)}
+                    className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                    title="延後 15 分鐘"
+                  >
+                    +15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustAlarmMinutes(30)}
+                    className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                    title="延後 30 分鐘"
+                  >
+                    +30m
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Alarm Reference Chips */}
+            <div className="flex items-center gap-1.5 text-xs text-stone-500 overflow-x-auto pb-1 mb-1">
+              <span className="text-[11px] shrink-0 font-medium">快捷設定：</span>
               {["06:30", "07:00", "07:30", "08:00", "08:30"].map((timeStr) => (
                 <button
                   key={timeStr}
                   type="button"
                   onClick={() => setAlarmTime(timeStr)}
-                  className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer font-mono ${
+                  className={`text-[11px] px-2 py-0.5 rounded-md border font-mono transition-colors cursor-pointer ${
                     alarmTime === timeStr
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-[1.03]"
-                      : "bg-white text-stone-700 border-stone-200 hover:border-indigo-300 hover:bg-white"
+                      ? "bg-indigo-600 text-white border-indigo-600 font-bold"
+                      : "bg-white text-stone-600 border-stone-200 hover:border-indigo-300"
                   }`}
                 >
                   {timeStr}
@@ -381,22 +459,31 @@ export function PrePlanModal({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-stone-600 block mb-1">預計時長：</label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[1, 2, 3].map((h) => (
+                    <label className="text-[11px] font-bold text-stone-600 block mb-1">
+                      預計時長 (自訂調整)：
+                    </label>
+                    <div className="flex items-center gap-1.5 bg-stone-50 p-1.5 rounded-xl border border-stone-200">
+                      <span className="text-xs font-bold font-mono text-stone-800 px-2 py-1 bg-white rounded-lg border border-stone-200 shadow-2xs">
+                        {Math.floor(leisureMinutes / 60)}h {leisureMinutes % 60}m
+                      </span>
+                      <div className="flex items-center gap-1 ml-auto">
                         <button
-                          key={h}
                           type="button"
-                          onClick={() => setLeisureHours(h)}
-                          className={`p-2 rounded-xl border text-xs font-bold cursor-pointer ${
-                            leisureHours === h
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-stone-50 border-stone-200 text-stone-600"
-                          }`}
+                          onClick={() => adjustLeisureMinutes(-30)}
+                          className="px-2 py-1 rounded-lg bg-white border border-stone-200 text-stone-700 text-[11px] font-mono font-bold hover:bg-stone-100 cursor-pointer"
+                          title="減少 30 分鐘"
                         >
-                          {h} 小時
+                          -30m
                         </button>
-                      ))}
+                        <button
+                          type="button"
+                          onClick={() => adjustLeisureMinutes(30)}
+                          className="px-2 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-mono font-bold hover:bg-teal-100 cursor-pointer"
+                          title="增加 30 分鐘"
+                        >
+                          +30m
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

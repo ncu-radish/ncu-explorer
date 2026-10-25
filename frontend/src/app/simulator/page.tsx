@@ -230,10 +230,19 @@ export default function SimulatorPage() {
     activityId: string,
     optionKey: string,
     durationHours: number,
-    customTitle?: string
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
   ) => {
     await executeWithTimeFlow(() =>
-      triggerDynamicActivity(activityId, optionKey, durationHours, customTitle)
+      triggerDynamicActivity(
+        activityId,
+        optionKey,
+        durationHours,
+        customTitle,
+        durationMinutes,
+        customEndTime
+      )
     );
   };
 
@@ -276,6 +285,7 @@ export default function SimulatorPage() {
         category={activityCategory}
         activities={activities}
         maxAvailableHours={calcAvailableHours()}
+        currentStartTime={currentStartTime}
         onConfirm={handleConfirmActivity}
         isLoading={isLoading}
       />

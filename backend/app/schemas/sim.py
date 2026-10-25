@@ -64,7 +64,9 @@ class SimTriggerActivityRequest(BaseModel):
     session_id: str
     activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, act_campus_leisure
     option_key: str = "A"  # A, B, or C
-    duration_hours: int = 1  # 1, 2, or 3 hours
+    duration_hours: float = 1.0  # Flexible hours e.g. 1.5, 2.0
+    duration_minutes: int | None = None  # Flexible minutes e.g. 45, 90, 120
+    custom_end_time: str | None = None  # e.g. '22:30'
     custom_title: str | None = None
 
 

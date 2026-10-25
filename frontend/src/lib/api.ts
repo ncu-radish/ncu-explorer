@@ -60,7 +60,9 @@ export const simApi = {
     activityId: string,
     optionKey: string = "A",
     durationHours: number = 1,
-    customTitle?: string
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
   ) =>
     fetchApi<{
       session_id: string;
@@ -78,6 +80,8 @@ export const simApi = {
         activity_id: activityId,
         option_key: optionKey,
         duration_hours: durationHours,
+        duration_minutes: durationMinutes,
+        custom_end_time: customEndTime,
         custom_title: customTitle || undefined,
       }),
     }),

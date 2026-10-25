@@ -62,7 +62,9 @@ interface SimulatorState {
     activityId: string,
     optionKey?: string,
     durationHours?: number,
-    customTitle?: string
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
   ) => Promise<any>;
   prePlanTomorrow: (
     targetDay: number,
@@ -154,14 +156,24 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     activityId: string,
     optionKey: string = "A",
     durationHours: number = 1,
-    customTitle?: string
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
   ) => {
     const { sessionId } = get();
     if (!sessionId) return;
 
     set({ isLoading: true, error: null });
     try {
-      const res = await simApi.triggerActivity(sessionId, activityId, optionKey, durationHours, customTitle);
+      const res = await simApi.triggerActivity(
+        sessionId,
+        activityId,
+        optionKey,
+        durationHours,
+        customTitle,
+        durationMinutes,
+        customEndTime
+      );
       if ((res as any).is_game_over) {
         set({
           isGameOver: true,

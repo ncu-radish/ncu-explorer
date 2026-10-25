@@ -87,15 +87,22 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
         current_location_name=loc_name
     )
 
-def add_time_hours(time_str: str, hours: int) -> str:
+def add_time_minutes(time_str: str, minutes: int) -> str:
     try:
         parts = time_str.split(":")
         h = int(parts[0])
         m = int(parts[1]) if len(parts) > 1 else 0
-        new_h = (h + hours) % 24
-        return f"{new_h:02d}:{m:02d}"
+        total_mins = h * 60 + m + minutes
+        new_total_mins = total_mins % (24 * 60)
+        new_h = new_total_mins // 60
+        new_m = new_total_mins % 60
+        return f"{new_h:02d}:{new_m:02d}"
     except Exception:
         return time_str
+
+def add_time_hours(time_str: str, hours: float) -> str:
+    mins = int(round(hours * 60))
+    return add_time_minutes(time_str, mins)
 
 def time_to_night_mins(time_str: str) -> int:
     try:
@@ -107,6 +114,19 @@ def time_to_night_mins(time_str: str) -> int:
         return h * 60 + m
     except Exception:
         return 0
+
+def schedule_sort_key(s: dict) -> tuple[int, int]:
+    d = s.get("day", 1)
+    st = s.get("start_time") or "08:00"
+    try:
+        parts = st.split(":")
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+        if h <= 5 and s.get("type") in ("day_end", "dorm", "campus_leisure"):
+            h += 24
+        return (d, h * 60 + m)
+    except Exception:
+        return (d, 0)
 
 @router.post("/next-turn", response_model=SimNextTurnResponse)
 async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
@@ -195,13 +215,6 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         chosen_opt = activity.preset_options[0]
 
     effects = chosen_opt.get("effects", {}) if chosen_opt else {}
-    # Apply effects scaled by duration (1~3 hrs)
-    duration = max(1, min(3, req.duration_hours or 1))
-    scaled_effects = {}
-    for k, v in effects.items():
-        scaled_effects[k] = v * duration
-
-    applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: scaled_effects}, req.option_key)
 
     curr_turn = min(session.current_turn, max(0, len(session.weekly_schedule) - 1))
     curr_slot = session.weekly_schedule[curr_turn] if session.weekly_schedule else {}
@@ -212,11 +225,41 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     default_start = "12:00" if cat == "lunch" else ("07:30" if cat == "breakfast" else ("18:00" if cat == "dinner" else "15:00"))
     start_time = curr_slot.get("start_time") or default_start
 
+    # 解析使用者自訂時長 (支援分鐘、自訂結束時間、或浮點數小時)
+    if req.custom_end_time:
+        try:
+            sh, sm = map(int, start_time.split(":"))
+            eh, em = map(int, req.custom_end_time.split(":"))
+            s_mins = (sh < 5 and (curr_slot.get("type") == "day_end" or start_time < "05:00")) and (sh + 24) * 60 + sm or (sh * 60 + sm)
+            e_mins = (eh < 5) and (eh + 24) * 60 + em or (eh * 60 + em)
+            diff_m = max(15, e_mins - s_mins)
+            duration_minutes = diff_m
+            duration = round(duration_minutes / 60.0, 2)
+        except Exception:
+            duration = float(req.duration_hours or 1.0)
+            duration_minutes = int(round(duration * 60))
+    elif req.duration_minutes is not None and req.duration_minutes > 0:
+        duration_minutes = req.duration_minutes
+        duration = round(duration_minutes / 60.0, 2)
+    else:
+        duration = float(req.duration_hours or 1.0)
+        duration_minutes = int(round(duration * 60))
+
+    duration = max(0.25, min(8.0, duration))
+    duration_minutes = max(15, min(480, duration_minutes))
+
+    # Apply effects scaled by duration
+    scaled_effects = {}
+    for k, v in effects.items():
+        scaled_effects[k] = int(round(v * duration))
+
+    applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: scaled_effects}, req.option_key)
+
     # 計算活動結束時間 (若在 21:00 之後或深夜，以清晨 05:00 為換日線上限)
     is_late_night = (curr_slot.get("type") == "day_end") or (start_time >= "21:00" or start_time < "05:00")
     if is_late_night:
         cur_mins = time_to_night_mins(start_time)
-        target_mins = cur_mins + duration * 60
+        target_mins = cur_mins + duration_minutes
         max_night_mins = 29 * 60  # 清晨 05:00 換日線
         actual_mins = min(target_mins, max_night_mins)
         actual_h = (actual_mins // 60) % 24
@@ -230,7 +273,7 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
             and s.get("type") in ("course", "club", "day_end")
         ]
         next_limit_time = min((s.get("start_time") for s in following_slots), default="21:00")
-        tentative_end = add_time_hours(start_time, duration)
+        tentative_end = add_time_minutes(start_time, duration_minutes)
         end_time = min(tentative_end, next_limit_time) if next_limit_time > start_time else tentative_end
 
     slot_type = "lunch" if cat == "lunch" else ("dorm" if cat == "dorm_leisure" else ("breakfast" if cat == "breakfast" else ("dinner" if cat == "dinner" else "campus_leisure")))
@@ -238,11 +281,12 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     loc_name = activity.location_name or "校園活動地點"
 
     intent_text = req.custom_title or (chosen_opt.get("intent_hint", activity.title) if chosen_opt else activity.title)
+    dur_label = f"{int(duration)}小時" if duration == int(duration) else (f"{duration}小時" if duration >= 1 else f"{duration_minutes}分鐘")
 
     new_slot = {
         "day": day,
         "slot": f"dynamic_{cat}_{session.current_turn}",
-        "title": f"【{activity.title}】{intent_text[:18]} ({duration}小時)",
+        "title": f"【{activity.title}】{intent_text[:18]} ({dur_label})",
         "type": slot_type,
         "location_id": loc_id,
         "location_name": loc_name,
@@ -280,19 +324,6 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
             })
     else:
         updated_schedule.append(new_slot)
-
-    def schedule_sort_key(s: dict) -> tuple[int, int]:
-        d = s.get("day", 1)
-        st = s.get("start_time") or "08:00"
-        try:
-            parts = st.split(":")
-            h = int(parts[0])
-            m = int(parts[1]) if len(parts) > 1 else 0
-            if h <= 5 and s.get("type") in ("day_end", "dorm", "campus_leisure"):
-                h += 24
-            return (d, h * 60 + m)
-        except Exception:
-            return (d, 0)
 
     # Strictly sort the schedule by schedule_sort_key to ensure no timeline disorder
     updated_schedule.sort(key=schedule_sort_key)

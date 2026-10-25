@@ -10,8 +10,28 @@ interface ActivitySelectionModalProps {
   category: "lunch" | "dorm_leisure" | "campus_leisure" | "night_leisure" | string;
   activities: CampusActivity[];
   maxAvailableHours?: number;
-  onConfirm: (activityId: string, optionKey: string, durationHours: number, customTitle?: string) => Promise<void>;
+  currentStartTime?: string;
+  onConfirm: (
+    activityId: string,
+    optionKey: string,
+    durationHours: number,
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
+  ) => Promise<void>;
   isLoading?: boolean;
+}
+
+function calcEndTime(startTime: string, minutes: number): string {
+  try {
+    const [h, m] = startTime.split(":").map(Number);
+    const totalMins = h * 60 + (m || 0) + minutes;
+    const endH = Math.floor((totalMins % (24 * 60)) / 60);
+    const endM = totalMins % 60;
+    return `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
+  } catch {
+    return startTime;
+  }
 }
 
 export function ActivitySelectionModal({
@@ -20,17 +40,23 @@ export function ActivitySelectionModal({
   category,
   activities,
   maxAvailableHours = 3,
+  currentStartTime = "12:00",
   onConfirm,
   isLoading = false,
 }: ActivitySelectionModalProps) {
   const [selectedActId, setSelectedActId] = useState<string>("");
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>("A");
   const [nightTab, setNightTab] = useState<"dorm" | "campus">("dorm");
-  const effectiveMaxHours = Math.max(1, Math.min(3, maxAvailableHours));
-  const [durationHours, setDurationHours] = useState<number>(1);
+  const effectiveMaxHours = Math.max(1, Math.min(4, maxAvailableHours));
+  const [durationMinutes, setDurationMinutes] = useState<number>(60); // 預設 60 分鐘
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
+
+  const adjustMinutes = (delta: number) => {
+    const maxMins = effectiveMaxHours * 60;
+    setDurationMinutes((prev) => Math.max(15, Math.min(maxMins, prev + delta)));
+  };
 
   // Filter activities matching the category
   const targetCategory = category === "night_leisure" 
@@ -153,13 +179,16 @@ export function ActivitySelectionModal({
     if (!currentSelectedAct) return;
     const actId = (currentSelectedAct as any).id || (targetCategory === "dorm_leisure" ? "act_dorm_leisure" : "act_campus_leisure");
     const title = (currentSelectedAct as any).title;
-    const dur = Math.min(durationHours, effectiveMaxHours);
+    const maxMins = effectiveMaxHours * 60;
+    const actualMins = Math.min(durationMinutes, maxMins);
+    const durHours = Math.round((actualMins / 60.0) * 100) / 100;
+    const customEndTime = calcEndTime(currentStartTime, actualMins);
 
     // 立即關閉彈窗，直接回到主畫面欣賞時間流逝與日程更新
     onClose();
 
     // 執行排程與時間流逝推進
-    await onConfirm(actId, selectedOptionKey, dur, title);
+    await onConfirm(actId, selectedOptionKey, durHours, title, actualMins, customEndTime);
   };
 
   const getHeaderInfo = () => {
@@ -275,38 +304,97 @@ export function ActivitySelectionModal({
             </div>
           )}
 
-          {/* Duration Selector (Only for leisure activities) */}
+          {/* Custom Duration Selector (Only for leisure activities) */}
           {header.showDuration && (
-            <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
-              <div className="flex items-center justify-between mb-2">
+            <div className="bg-gradient-to-br from-stone-50 to-blue-50/40 p-4 rounded-2xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between mb-2.5">
                 <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  <span>預計活動時長 (小時)：</span>
+                  <span>自訂活動時長 (可自行調整分鐘)：</span>
                 </label>
-                <span className="text-[11px] font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                  下一行程前可用：{effectiveMaxHours} 小時
+                <span className="text-[11px] font-mono font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md border border-blue-200">
+                  上限可用：{effectiveMaxHours} 小時
                 </span>
               </div>
-              <div className={`grid gap-2 ${effectiveMaxHours === 1 ? "grid-cols-1" : effectiveMaxHours === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-                {[1, 2, 3].filter((h) => h <= effectiveMaxHours).map((hours) => (
-                  <button
-                    key={hours}
-                    type="button"
-                    onClick={() => setDurationHours(hours)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      durationHours === hours
-                        ? "bg-blue-600 text-white border-blue-600 shadow-xs scale-[1.02]"
-                        : "bg-white text-stone-700 border-stone-200 hover:border-stone-300 hover:bg-stone-100"
-                    }`}
-                  >
-                    <span>{hours} 小時</span>
-                    {durationHours === hours && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
+
+              {/* Time Display & Stepper Controls */}
+              <div className="bg-white rounded-xl p-3 border border-stone-200 shadow-2xs mb-2.5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl sm:text-2xl font-black font-mono text-stone-900 tracking-tight">
+                        {Math.floor(durationMinutes / 60)} <span className="text-xs font-normal text-stone-500">小時</span> {durationMinutes % 60} <span className="text-xs font-normal text-stone-500">分鐘</span>
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-stone-400">
+                        ({(durationMinutes / 60).toFixed(1)}h)
+                      </span>
+                    </div>
+                    {currentStartTime && (
+                      <p className="text-[11px] text-stone-500 font-mono mt-0.5">
+                        預計時間：{currentStartTime} ➔ {calcEndTime(currentStartTime, durationMinutes)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Stepper Buttons */}
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => adjustMinutes(-30)}
+                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      title="減少 30 分鐘"
+                    >
+                      -30m
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adjustMinutes(-15)}
+                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      title="減少 15 分鐘"
+                    >
+                      -15m
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adjustMinutes(15)}
+                      className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      title="增加 15 分鐘"
+                    >
+                      +15m
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adjustMinutes(30)}
+                      className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      title="增加 30 分鐘"
+                    >
+                      +30m
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="text-[11px] text-stone-500 mt-1.5 leading-relaxed">
-                系統已自動根據下一排定活動時間防呆限制時長，避免行程時間重疊。
-              </p>
+
+              {/* Quick Preset Reference Chips */}
+              <div className="flex items-center gap-1.5 text-xs text-stone-500 overflow-x-auto pb-0.5">
+                <span className="text-[11px] shrink-0 font-medium">常見時長：</span>
+                {[30, 45, 60, 90, 120, 180].filter((m) => m <= effectiveMaxHours * 60).map((m) => {
+                  const hLabel = m >= 60 ? (m % 60 === 0 ? `${m / 60}h` : `${(m / 60).toFixed(1)}h`) : `${m}m`;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setDurationMinutes(m)}
+                      className={`text-[11px] px-2 py-0.5 rounded-md border font-mono transition-colors cursor-pointer ${
+                        durationMinutes === m
+                          ? "bg-blue-600 text-white border-blue-600 font-bold"
+                          : "bg-white text-stone-600 border-stone-200 hover:border-blue-300 hover:bg-stone-50"
+                      }`}
+                    >
+                      {hLabel}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
