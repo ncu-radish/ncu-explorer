@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Compass, RotateCcw, MapPin, Maximize2, ArrowLeft, CalendarDays } from "lucide-react";
 import Link from "next/link";
@@ -86,6 +86,46 @@ export default function SimulatorPage() {
     }
   }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
 
+  // Time Transition Pipeline States
+  const [isTimeFlowing, setIsTimeFlowing] = useState(false);
+  const [flowFrom, setFlowFrom] = useState("08:00");
+  const [flowTo, setFlowTo] = useState("12:00");
+  const flowResolverRef = useRef<(() => void) | null>(null);
+
+  const startFlowingTransition = (fromTime: string, toTime: string): Promise<void> => {
+    setFlowFrom(fromTime);
+    setFlowTo(toTime);
+    setIsTimeFlowing(true);
+
+    return new Promise((resolve) => {
+      flowResolverRef.current = resolve;
+    });
+  };
+
+  const handleFlowComplete = () => {
+    setIsTimeFlowing(false);
+    if (flowResolverRef.current) {
+      flowResolverRef.current();
+      flowResolverRef.current = null;
+    }
+  };
+
+  const handleSkipFlow = () => {
+    handleFlowComplete();
+  };
+
+  const executeWithTimeFlow = async (action: () => Promise<any>) => {
+    const curStart = currentSlotInfo.start_time || currentTime || "08:00";
+    const nextSlot = weeklySchedule[currentTurn + 1];
+    const targetEnd = nextSlot?.start_time || currentSlotInfo.end_time || "12:00";
+
+    // Run linear ticking animation and action concurrently
+    const flowPromise = startFlowingTransition(curStart, targetEnd);
+    const actionPromise = action().catch(() => {});
+
+    await Promise.all([flowPromise, actionPromise]);
+  };
+
   // Handle options with two-phase workflow
   const handleChooseOption = async (optionKey: string) => {
     const slotType = currentSlotInfo.type;
@@ -98,8 +138,8 @@ export default function SimulatorPage() {
         setActivityModalOpen(true);
         return;
       }
-      // User said NO -> skip lunch and advance
-      await chooseOption(optionKey);
+      // User said NO -> skip lunch and advance with linear time flow
+      await executeWithTimeFlow(() => chooseOption(optionKey));
       return;
     }
 
@@ -117,8 +157,8 @@ export default function SimulatorPage() {
         setActivityModalOpen(true);
         return;
       }
-      // User chose C (skip) -> advance
-      await chooseOption(optionKey);
+      // User chose C (skip) -> advance with linear time flow
+      await executeWithTimeFlow(() => chooseOption(optionKey));
       return;
     }
 
@@ -131,13 +171,35 @@ export default function SimulatorPage() {
         setPrePlanModalOpen(true);
         return;
       }
-      // Skip pre-plan and advance into tomorrow
-      await chooseOption(optionKey);
+      // Skip pre-plan and advance into tomorrow with linear time flow
+      await executeWithTimeFlow(() => chooseOption(optionKey));
       return;
     }
 
-    // Normal story turns
-    await chooseOption(optionKey);
+    // Normal story turns: advance with linear time flow
+    await executeWithTimeFlow(() => chooseOption(optionKey));
+  };
+
+  // Calculate maximum hours available before next scheduled event to prevent overlap
+  const calcAvailableHours = (): number => {
+    if (!currentSlotInfo) return 1;
+    const currentStart = currentSlotInfo.start_time || "12:00";
+    const day = currentSlotInfo.day || currentDay || 1;
+    const laterEvents = weeklySchedule.filter(
+      (s) =>
+        s.day === day &&
+        (s.start_time || "00:00") > currentStart &&
+        s.type !== "lunch_prompt" &&
+        s.type !== "leisure_prompt" &&
+        s.type !== "day_end"
+    );
+    if (laterEvents.length === 0) return 3;
+    const sorted = [...laterEvents].sort((a, b) => (a.start_time || "00:00").localeCompare(b.start_time || "00:00"));
+    const nextStart = sorted[0].start_time || "21:00";
+    const [h1, m1] = currentStart.split(":").map(Number);
+    const [h2, m2] = nextStart.split(":").map(Number);
+    const diffHours = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+    return Math.max(1, Math.min(3, Math.floor(diffHours)));
   };
 
   // Activity Modal Confirm Callback
@@ -147,12 +209,14 @@ export default function SimulatorPage() {
     durationHours: number,
     customTitle?: string
   ) => {
-    await triggerDynamicActivity(activityId, optionKey, durationHours, customTitle);
+    await executeWithTimeFlow(() =>
+      triggerDynamicActivity(activityId, optionKey, durationHours, customTitle)
+    );
   };
 
   // Pre-Plan Tomorrow Confirm Callback
   const handleConfirmPrePlan = async (targetDay: number, slots: any[]) => {
-    await prePlanTomorrow(targetDay, slots);
+    await executeWithTimeFlow(() => prePlanTomorrow(targetDay, slots));
   };
 
   return (
@@ -169,6 +233,7 @@ export default function SimulatorPage() {
         onClose={() => setActivityModalOpen(false)}
         category={activityCategory}
         activities={activities}
+        maxAvailableHours={calcAvailableHours()}
         onConfirm={handleConfirmActivity}
         isLoading={isLoading}
       />
@@ -256,7 +321,11 @@ export default function SimulatorPage() {
         slot={currentSlotInfo}
         currentTurn={currentTurn}
         totalTurns={totalTurns}
-        isLoading={isLoading}
+        isFlowing={isTimeFlowing}
+        flowFromTime={flowFrom}
+        flowToTime={flowTo}
+        onFlowComplete={handleFlowComplete}
+        onSkip={handleSkipFlow}
         onFocusLocation={() => {
           if (currentLocationId) setFocusedLoc(currentLocationId);
         }}
@@ -298,7 +367,7 @@ export default function SimulatorPage() {
             slotName={slotName}
             locationName={currentLocationName || "中大校園"}
             slot={currentSlotInfo}
-            isLoading={isLoading}
+            isLoading={isLoading || isTimeFlowing}
             onChoose={handleChooseOption}
             onFocusLocation={() => {
               if (currentLocationId) setFocusedLoc(currentLocationId);

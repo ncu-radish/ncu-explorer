@@ -9,6 +9,7 @@ interface ActivitySelectionModalProps {
   onClose: () => void;
   category: "lunch" | "dorm_leisure" | "campus_leisure" | string;
   activities: CampusActivity[];
+  maxAvailableHours?: number;
   onConfirm: (activityId: string, optionKey: string, durationHours: number, customTitle?: string) => Promise<void>;
   isLoading?: boolean;
 }
@@ -18,11 +19,13 @@ export function ActivitySelectionModal({
   onClose,
   category,
   activities,
+  maxAvailableHours = 3,
   onConfirm,
   isLoading = false,
 }: ActivitySelectionModalProps) {
   const [selectedActId, setSelectedActId] = useState<string>("");
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>("A");
+  const effectiveMaxHours = Math.max(1, Math.min(3, maxAvailableHours));
   const [durationHours, setDurationHours] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -124,15 +127,15 @@ export function ActivitySelectionModal({
 
   const handleConfirmAction = async () => {
     if (!currentSelectedAct) return;
-    setIsSubmitting(true);
-    try {
-      const actId = (currentSelectedAct as any).id || "act_lunch";
-      const title = (currentSelectedAct as any).title;
-      await onConfirm(actId, selectedOptionKey, durationHours, title);
-      onClose();
-    } finally {
-      setIsSubmitting(false);
-    }
+    const actId = (currentSelectedAct as any).id || "act_lunch";
+    const title = (currentSelectedAct as any).title;
+    const dur = Math.min(durationHours, effectiveMaxHours);
+
+    // 立即關閉彈窗，直接回到主畫面欣賞時間流逝與日程更新
+    onClose();
+
+    // 執行排程與時間流逝推進
+    await onConfirm(actId, selectedOptionKey, dur, title);
   };
 
   const getHeaderInfo = () => {
@@ -205,12 +208,17 @@ export function ActivitySelectionModal({
           {/* Duration Selector (Only for leisure activities) */}
           {header.showDuration && (
             <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
-              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-2">
-                <Clock className="w-3.5 h-3.5 text-blue-600" />
-                <span>預計活動時長 (小時)：</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((hours) => (
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <span>預計活動時長 (小時)：</span>
+                </label>
+                <span className="text-[11px] font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                  下一行程前可用：{effectiveMaxHours} 小時
+                </span>
+              </div>
+              <div className={`grid gap-2 ${effectiveMaxHours === 1 ? "grid-cols-1" : effectiveMaxHours === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                {[1, 2, 3].filter((h) => h <= effectiveMaxHours).map((hours) => (
                   <button
                     key={hours}
                     type="button"
@@ -226,8 +234,8 @@ export function ActivitySelectionModal({
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-stone-400 mt-1.5 font-mono">
-                時長越長，相應的精力回復或學術/社交成長效果將以倍率結算。
+              <p className="text-[11px] text-stone-500 mt-1.5 leading-relaxed">
+                系統已自動根據下一排定活動時間防呆限制時長，避免行程時間重疊。
               </p>
             </div>
           )}

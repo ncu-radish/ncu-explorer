@@ -75,8 +75,8 @@ export function StoryDialog({
         <div className="min-h-[110px] mb-6 flex items-center">
           {isLoading ? (
             <div className="flex items-center gap-3 text-blue-600 animate-pulse text-sm py-4">
-              <Sparkles className="w-5 h-5 animate-spin" />
-              <span>校園情境推進中，故事生成中...</span>
+              <Sparkles className="w-5 h-5 animate-spin text-amber-500" />
+              <span className="font-medium text-stone-700">活動進行中...</span>
             </div>
           ) : (
             <p className="text-stone-800 text-base sm:text-lg leading-relaxed font-normal">

@@ -89,10 +89,12 @@ export function PrePlanModal({
         });
       }
 
-      await onConfirm(targetDay, slots);
+      // 立即關閉彈窗回到主畫面
       onClose();
-    } finally {
-      setIsSubmitting(false);
+
+      await onConfirm(targetDay, slots);
+    } catch {
+      // Handled in parent
     }
   };
 

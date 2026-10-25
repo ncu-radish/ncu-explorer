@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { Clock, MapPin, Play, Pause, Sparkles } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Clock, MapPin, Play, Pause, Sparkles, FastForward } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
@@ -13,71 +13,93 @@ function timeToMinutes(t: string): number {
 }
 
 function minutesToTime(m: number): string {
-  const total = Math.max(0, m);
+  const total = Math.max(0, Math.floor(m));
   const h = Math.floor(total / 60) % 24;
-  const mins = Math.floor(total % 60);
+  const mins = total % 60;
   return `${h.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+interface CampusTimeWidgetProps {
+  slot?: ScheduleSlot | null;
+  currentTurn: number;
+  totalTurns: number;
+  isFlowing?: boolean;
+  flowFromTime?: string;
+  flowToTime?: string;
+  onFlowComplete?: () => void;
+  onSkip?: () => void;
+  onFocusLocation?: () => void;
 }
 
 export function CampusTimeWidget({
   slot,
   currentTurn,
   totalTurns,
-  isLoading = false,
+  isFlowing = false,
+  flowFromTime = "08:00",
+  flowToTime = "12:00",
+  onFlowComplete,
+  onSkip,
   onFocusLocation,
-}: {
-  slot?: ScheduleSlot | null;
-  currentTurn: number;
-  totalTurns: number;
-  isLoading?: boolean;
-  onFocusLocation?: () => void;
-}) {
+}: CampusTimeWidgetProps) {
   const dayIndex = Math.max(0, Math.min(4, ((slot?.day || 1) - 1)));
   const dayName = DAYS[dayIndex];
 
-  const startTimeStr = slot?.start_time || "08:00";
-  const endTimeStr = slot?.end_time || slot?.start_time || "10:00";
+  const staticTimeStr = slot?.start_time || "08:00";
+  const [clockMinutes, setClockMinutes] = useState<number>(() => timeToMinutes(staticTimeStr));
 
-  // Dynamic ticking clock state
-  const [clockMinutes, setClockMinutes] = useState<number>(() => timeToMinutes(startTimeStr));
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number>(0);
 
-  // When slot changes and not loading, snap to slot's start time and pause
+  // If not flowing, strictly freeze clock at current slot start time
   useEffect(() => {
-    if (!isLoading) {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    if (!isFlowing) {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
-      setClockMinutes(timeToMinutes(startTimeStr));
+      setClockMinutes(timeToMinutes(staticTimeStr));
     }
-  }, [slot, startTimeStr, isLoading]);
+  }, [isFlowing, staticTimeStr]);
 
-  // When user selects an option (isLoading = true), clock runs continuously forward
+  // When isFlowing is true, linearly tick from flowFromTime to flowToTime (1 min every 10ms)
   useEffect(() => {
-    if (isLoading) {
-      const startMin = timeToMinutes(startTimeStr);
-      const endMin = Math.max(startMin + 50, timeToMinutes(endTimeStr));
-      const totalSpan = endMin - startMin;
-      let cur = startMin;
+    if (isFlowing) {
+      const fromMin = timeToMinutes(flowFromTime);
+      const toMin = Math.max(fromMin + 30, timeToMinutes(flowToTime));
+      let cur = fromMin;
+      setClockMinutes(cur);
+      lastTickRef.current = performance.now();
 
-      // Animate ticking every 40ms, advancing dynamically
-      timerRef.current = setInterval(() => {
-        cur += Math.max(2, Math.ceil(totalSpan / 25));
-        if (cur >= endMin) {
-          cur = endMin;
+      const step = (now: number) => {
+        // Advance 1 minute linearly every 10ms (approx. 100 minutes/sec smooth linear progression)
+        if (now - lastTickRef.current >= 40) {
+          cur += 1;
+          lastTickRef.current = now;
+          setClockMinutes(cur);
         }
-        setClockMinutes(cur);
-      }, 40);
+
+        if (cur < toMin) {
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          setClockMinutes(toMin);
+          animFrameRef.current = null;
+          if (onFlowComplete) {
+            onFlowComplete();
+          }
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(step);
 
       return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
         }
       };
     }
-  }, [isLoading, startTimeStr, endTimeStr]);
+  }, [isFlowing, flowFromTime, flowToTime, onFlowComplete]);
 
   if (!slot) return null;
 
@@ -85,19 +107,18 @@ export function CampusTimeWidget({
 
   return (
     <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 rounded-2xl p-3.5 sm:p-4 text-white shadow-lg border border-blue-800/40 flex flex-wrap items-center justify-between gap-3 relative overflow-hidden">
-      {/* Running time highlight beam */}
-      {isLoading && (
+      {/* Running time highlight ambient glow */}
+      {isFlowing && (
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-amber-500/20 to-transparent animate-pulse pointer-events-none" />
       )}
 
-      {/* Left: Day & Flowing Clock Display */}
+      {/* Left: Day & Linear Flowing Clock Display */}
       <div className="flex items-center gap-3 relative z-10">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-amber-300 shrink-0 shadow-inner border transition-all ${
-          isLoading
-            ? "bg-amber-500/20 border-amber-400/50 shadow-amber-500/30 scale-105"
-            : "bg-white/10 backdrop-blur-xs border-white/20"
-        }`}>
-          {isLoading ? (
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border transition-all ${isFlowing
+          ? "bg-amber-500/20 border-amber-400/50 shadow-amber-500/30 scale-105"
+          : "bg-white/10 backdrop-blur-xs border-white/20 text-blue-300"
+          }`}>
+          {isFlowing ? (
             <Play className="w-5 h-5 text-amber-300 animate-pulse fill-amber-300" />
           ) : (
             <Pause className="w-5 h-5 text-blue-300" />
@@ -105,20 +126,21 @@ export function CampusTimeWidget({
         </div>
 
         <div>
-          <div className="flex items-center gap-2.5">
-            {/* Pure Time Display (e.g., 週一 12:00) */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Pure Time Display: Weekday + Linear Clock (e.g., 週一 12:00 -> 12:01 -> ...) */}
             <div className="flex items-baseline gap-2">
               <span className="text-base sm:text-lg font-bold text-blue-200">
                 {dayName}
               </span>
-              <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white drop-shadow-xs">
+              <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight drop-shadow-xs transition-colors ${isFlowing ? "text-amber-300" : "text-white"
+                }`}>
                 {currentDisplayClock}
               </span>
             </div>
 
-            {/* Time Status Badge (Running vs Paused) */}
-            {isLoading ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/50 animate-pulse shadow-xs font-mono">
+            {/* Time Status Badge (Flowing vs Paused) */}
+            {isFlowing ? (
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/50 animate-pulse font-mono">
                 <Sparkles className="w-3 h-3 animate-spin" />
                 <span>時間流逝中...</span>
               </span>
@@ -126,6 +148,19 @@ export function CampusTimeWidget({
               <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 font-mono">
                 <span>⏸️ 時間暫停 · 等待決策</span>
               </span>
+            )}
+
+            {/* Skip Button: Instant skip to next event */}
+            {isFlowing && (
+              <button
+                type="button"
+                onClick={onSkip}
+                className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs font-bold transition-all shadow-md cursor-pointer animate-in fade-in"
+                title="快速跳到下一個事件選項"
+              >
+                <FastForward className="w-3.5 h-3.5 fill-stone-950" />
+                <span>跳過 (Skip)</span>
+              </button>
             )}
           </div>
 

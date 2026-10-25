@@ -195,12 +195,22 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     curr_turn = min(session.current_turn, max(0, len(session.weekly_schedule) - 1))
     curr_slot = session.weekly_schedule[curr_turn] if session.weekly_schedule else {}
     day = curr_slot.get("day", 1)
+    updated_schedule = list(session.weekly_schedule or [])
 
-    # Determine start and end time
     cat = activity.category
     default_start = "12:00" if cat == "lunch" else ("07:30" if cat == "breakfast" else ("18:00" if cat == "dinner" else "15:00"))
     start_time = curr_slot.get("start_time") or default_start
-    end_time = add_time_hours(start_time, duration)
+
+    # Prevent time overlap: check next scheduled event on the same day
+    following_slots = [
+        s for s in updated_schedule 
+        if s.get("day") == day 
+        and (s.get("start_time") or "00:00") > start_time
+        and s.get("type") in ("course", "club", "day_end")
+    ]
+    next_limit_time = min((s.get("start_time") for s in following_slots), default="21:00")
+    tentative_end = add_time_hours(start_time, duration)
+    end_time = min(tentative_end, next_limit_time) if next_limit_time > start_time else tentative_end
 
     slot_type = "lunch" if cat == "lunch" else ("dorm" if cat == "dorm_leisure" else ("breakfast" if cat == "breakfast" else ("dinner" if cat == "dinner" else "campus_leisure")))
     loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else "loc_dorm_boy9")
@@ -222,7 +232,6 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     }
 
     # If the current slot is a prompt checkpoint (lunch_prompt or leisure_prompt), replace it directly
-    updated_schedule = list(session.weekly_schedule or [])
     if curr_slot.get("type") in ("lunch_prompt", "leisure_prompt"):
         updated_schedule[curr_turn] = new_slot
     else:
@@ -235,9 +244,8 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     # Locate new_slot's new index in sorted schedule
     try:
         new_turn_idx = updated_schedule.index(new_slot)
-        session.current_turn = new_turn_idx
     except ValueError:
-        pass
+        new_turn_idx = curr_turn
 
     # Update history log
     log_entry = f"進行了【{activity.title}】({duration}小時)：{intent_text}"
@@ -246,6 +254,31 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     if loc_id and loc_id not in (session.visited_locs or []):
         session.visited_locs = (session.visited_locs or []) + [loc_id]
 
+    # Directly advance to next turn to avoid requiring the user to choose again
+    next_turn_idx = new_turn_idx + 1
+    total_slots = len(updated_schedule)
+    is_game_over = False
+    next_story = None
+    next_time = end_time
+    next_day = day
+
+    if next_turn_idx >= total_slots:
+        session.current_turn = total_slots
+        is_game_over = True
+    else:
+        session.current_turn = next_turn_idx
+        active_model, trigger_prob = get_system_config(db)
+        next_story, _, next_loc_id, next_loc_name = await sim_engine.generate_turn_content(
+            db, session, active_model, trigger_prob
+        )
+        if next_loc_id and next_loc_id not in (session.visited_locs or []):
+            session.visited_locs = (session.visited_locs or []) + [next_loc_id]
+        next_slot = updated_schedule[session.current_turn]
+        next_time = next_slot.get("start_time") or "08:00"
+        next_day = next_slot.get("day", 1)
+        loc_id = next_loc_id or loc_id
+        loc_name = next_loc_name or loc_name
+
     db.commit()
 
     return SimTriggerActivityResponse(
@@ -253,8 +286,13 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         message=f"已成功進行並在行事曆上標記「{activity.title}」！",
         marked_slot=ScheduleSlot(**new_slot),
         weekly_schedule=[ScheduleSlot(**s) for s in updated_schedule],
+        current_turn=session.current_turn,
+        current_time=next_time,
+        current_day=next_day,
         stats=session.stats,
         delta_stats=applied_effects,
+        story=next_story,
+        is_game_over=is_game_over,
         current_location_id=loc_id,
         current_location_name=loc_name
     )

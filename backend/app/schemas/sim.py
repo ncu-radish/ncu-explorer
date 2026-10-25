@@ -73,8 +73,13 @@ class SimTriggerActivityResponse(BaseModel):
     message: str
     marked_slot: ScheduleSlot | None = None
     weekly_schedule: list[ScheduleSlot]
+    current_turn: int | None = None
+    current_time: str | None = None
+    current_day: int | None = None
     stats: dict[str, int]
     delta_stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
+    is_game_over: bool = False
     current_location_id: str | None = None
     current_location_name: str | None = None
 

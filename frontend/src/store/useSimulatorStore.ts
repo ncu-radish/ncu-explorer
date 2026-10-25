@@ -157,16 +157,27 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await simApi.triggerActivity(sessionId, activityId, optionKey, durationHours, customTitle);
-      const currSlot = res.marked_slot;
-      set({
-        weeklySchedule: res.weekly_schedule,
-        stats: res.stats,
-        currentTime: currSlot?.start_time || get().currentTime,
-        currentDay: currSlot?.day || get().currentDay,
-        currentLocationId: res.current_location_id || get().currentLocationId,
-        currentLocationName: res.current_location_name || get().currentLocationName,
-        isLoading: false,
-      });
+      if ((res as any).is_game_over) {
+        set({
+          isGameOver: true,
+          weeklySchedule: res.weekly_schedule,
+          stats: res.stats,
+          isLoading: false,
+        });
+        await get().fetchSummary();
+      } else {
+        set({
+          currentTurn: (res as any).current_turn !== undefined ? (res as any).current_turn : get().currentTurn,
+          currentTime: (res as any).current_time || get().currentTime,
+          currentDay: (res as any).current_day || get().currentDay,
+          weeklySchedule: res.weekly_schedule,
+          stats: res.stats,
+          story: (res as any).story || get().story,
+          currentLocationId: res.current_location_id || get().currentLocationId,
+          currentLocationName: res.current_location_name || get().currentLocationName,
+          isLoading: false,
+        });
+      }
       return res;
     } catch (err: any) {
       set({ error: err.message || "觸發活動失敗", isLoading: false });
