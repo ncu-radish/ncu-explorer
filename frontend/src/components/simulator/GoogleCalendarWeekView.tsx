@@ -135,6 +135,10 @@ export function GoogleCalendarWeekView({
       1: [], 2: [], 3: [], 4: [], 5: []
     };
     schedule.forEach((slot, index) => {
+      // 隱藏內部未觸發的提問檢查點，只顯示正式活動與課堂行程
+      if (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") {
+        return;
+      }
       if (slot.day >= 1 && slot.day <= 5) {
         map[slot.day].push({ slot, index });
       }

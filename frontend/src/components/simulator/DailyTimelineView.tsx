@@ -92,10 +92,25 @@ export function DailyTimelineView({
   const activeDay = currentSlot?.day || 1;
   const dayName = DAYS[Math.max(0, Math.min(4, activeDay - 1))];
 
-  // Filter slots for the current active day
+  // Filter and sort slots for the current active day strictly by start_time
   const todaySlots = schedule
     .map((slot, index) => ({ slot, index }))
-    .filter(({ slot }) => slot.day === activeDay);
+    .filter(({ slot, index }) => {
+      if (slot.day !== activeDay) return false;
+      // 隱藏未觸發的內部檢查點 (僅在是當前回合時才呈現或互動)
+      if (
+        (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") &&
+        index !== currentTurn
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = a.slot.start_time || "00:00";
+      const timeB = b.slot.start_time || "00:00";
+      return timeA.localeCompare(timeB);
+    });
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">

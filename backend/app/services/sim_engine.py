@@ -967,7 +967,7 @@ class SimEngine:
                             start_time=s_time,
                             end_time=e_time,
                             display_time=f"{s_time} ~ {e_time}",
-                            time_label=f"{day_name} {p_label}",
+                            time_label=f"{day_name} {s_time}",
                             periods=pers
                         ))
 
@@ -975,7 +975,73 @@ class SimEngine:
             if day in club_slots_by_day:
                 day_events.extend(club_slots_by_day[day])
 
-            # 當天行程按開始時間排序 (日間課堂在前，夜間社團在後)
+            # 當天行程按開始時間排序
+            day_events.sort(key=lambda s: s.start_time or "00:00")
+
+            # (3) 中午午餐時間檢測：若 12:00~13:00 沒有課程或任何活動，加入午餐提問檢查點
+            has_lunch_conflict = any(
+                (s.start_time or "00:00") < "13:00" and (s.end_time or "00:00") > "12:00"
+                for s in day_events
+            )
+            if not has_lunch_conflict:
+                day_events.append(ScheduleSlot(
+                    day=day,
+                    slot="12:00",
+                    title="12:00 中午時光",
+                    type="lunch_prompt",
+                    location_id="loc_pine_restaurant",
+                    location_name="松果餐廳",
+                    start_time="12:00",
+                    end_time="13:00",
+                    display_time="12:00 ~ 13:00",
+                    time_label=f"{day_name} 12:00"
+                ))
+
+            # (4) 課餘空閒時間檢測：在課程結束後或課間空檔若有 >= 1.5 小時無活動，加入休閒提問檢查點
+            day_events.sort(key=lambda s: s.start_time or "00:00")
+            gap_checkpoints: list[ScheduleSlot] = []
+
+            # 檢測下午課後空檔 (例如 15:00~18:00 或 17:00~18:30)
+            class_ends = [s.end_time for s in day_events if s.type == "course" and s.end_time]
+            if class_ends:
+                max_class_end = max(class_ends)
+                # 尋找課後下一個活動
+                later_acts = [s for s in day_events if (s.start_time or "00:00") >= max_class_end and s.type != "lunch_prompt"]
+                next_act_start = later_acts[0].start_time if later_acts else "21:00"
+
+                # 若空檔大於等於 90 分鐘，且不與已有檢查點衝突
+                if max_class_end < "19:00" and next_act_start > max_class_end:
+                    gap_checkpoints.append(ScheduleSlot(
+                        day=day,
+                        slot=max_class_end,
+                        title=f"{max_class_end} 課餘空閒時間",
+                        type="leisure_prompt",
+                        location_id="loc_dorm_girl14",
+                        location_name="學生宿舍 / 校園設施",
+                        start_time=max_class_end,
+                        end_time=next_act_start,
+                        display_time=f"{max_class_end} ~ {next_act_start}",
+                        time_label=f"{day_name} {max_class_end}"
+                    ))
+
+            day_events.extend(gap_checkpoints)
+
+            # (5) 每日結束檢查點 (用於觸發明日活動預排)
+            if day < 5:
+                day_events.append(ScheduleSlot(
+                    day=day,
+                    slot="21:00",
+                    title=f"{day_name} 夜幕結算 · 明日活動預排",
+                    type="day_end",
+                    location_id="loc_dorm_boy9",
+                    location_name="學生宿舍",
+                    start_time="21:00",
+                    end_time="22:00",
+                    display_time="21:00",
+                    time_label=f"{day_name} 21:00"
+                ))
+
+            # 嚴格按開始時間排序當日所有行程
             day_events.sort(key=lambda s: s.start_time or "00:00")
             schedule.extend(day_events)
 
@@ -1052,6 +1118,63 @@ class SimEngine:
         if chosen_event:
             event_instruction = f"【突發狀況事件：{chosen_event.title}】\n{chosen_event.event_prompt}"
             preset_options = chosen_event.preset_options
+        elif slot_info.get("type") == "lunch_prompt":
+            event_instruction = "中午 12:00 到了，此時段沒有任何排定課程或活動。肚子漸漸餓了，系統詢問你是否要吃午餐？"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "是，我想吃午餐（挑選想去的餐廳美食）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_lunch_menu"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "否，暫不吃午餐（留在教室小憩或自習，準備後續行程）",
+                    "effects": {"stamina": 5, "study": 10, "social": -5, "money": 0},
+                    "action_type": "skip"
+                }
+            ]
+        elif slot_info.get("type") == "leisure_prompt":
+            start_t = slot_info.get("start_time", "課後")
+            event_instruction = f"下課或午後空閒時間到了（{start_t}），目前沒有任何課程或活動安排。系統詢問你是否要回宿舍休息，或者前往校園休閒設施？"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "回宿舍放鬆（宿舍休閒活動，可選1~3小時補眠、打手遊、洗衣追劇）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_dorm_menu"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "進行校園休閒活動（前往依仁堂健身房、總圖/K書中心自習、百花川散步）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_campus_menu"
+                },
+                {
+                    "option_key": "C",
+                    "intent_hint": "自由漫步 / 準備下一行程（略過休閒活動）",
+                    "effects": {"stamina": 5, "study": 5, "social": 0, "money": 0},
+                    "action_type": "skip"
+                }
+            ]
+        elif slot_info.get("type") == "day_end":
+            day_num = slot_info.get("day", 1)
+            next_day_str = DAY_NAMES[day_num] if day_num < len(DAY_NAMES) else "週末"
+            event_instruction = f"今日校園作息圓滿結束（21:00）。在進入【{next_day_str}】之前，你可以預先規劃明天的各項活動行程（如早餐、午餐或課餘休閒）。"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": f"進入明日活動預排（為{next_day_str}預排早餐、午餐或課餘活動）",
+                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_preplan_modal"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": f"直接進入{next_day_str}（明日依當下提示決定）",
+                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                    "action_type": "skip_preplan"
+                }
+            ]
         elif slot_info.get("type") == "club":
             event_instruction = f"社團活動時段：你在 {loc_name} 參與【{slot_info.get('title')}】。請描述你沉浸於社團練習、交流或例會討論的熱血情境。"
             preset_options = [
@@ -1077,15 +1200,15 @@ class SimEngine:
             start_t = slot_info.get("start_time") or "10:00"
 
             target_cat = None
-            if slot_type == "lunch" or ("11:30" <= start_t <= "13:30"):
+            if slot_type == "lunch":
                 target_cat = "lunch"
-            elif slot_type == "dinner" or ("17:30" <= start_t <= "19:30"):
+            elif slot_type == "dinner":
                 target_cat = "dinner"
-            elif slot_type == "breakfast" or (start_t < "09:00" and slot_type != "course"):
+            elif slot_type == "breakfast":
                 target_cat = "breakfast"
             elif slot_type == "dorm":
                 target_cat = "dorm_leisure"
-            elif slot_type in ("campus_leisure", "free"):
+            elif slot_type == "campus_leisure":
                 target_cat = "campus_leisure"
 
             matched_act = None
@@ -1118,17 +1241,39 @@ class SimEngine:
                     }
                 ]
 
+        # Special handling for interactive prompt checkpoints: return crisp predefined narrative & options immediately
+        if slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end"):
+            story = TurnGenerationSchema(
+                narrative=f"【{day_str} {slot_str}】{event_instruction}",
+                options=[
+                    OptionItem(
+                        option_key=opt.get("option_key", chr(65 + i)),
+                        display_text=opt.get("intent_hint", "")[:30]
+                    )
+                    for i, opt in enumerate(preset_options)
+                ]
+            )
+            effects_map = {opt["option_key"]: opt["effects"] for opt in preset_options}
+            return story, effects_map, loc_id, loc_name
+
         # 備援內容
+        fallback_options = [
+            OptionItem(
+                option_key=opt.get("option_key", chr(65 + i)),
+                display_text=opt.get("intent_hint", "")[:24]
+            )
+            for i, opt in enumerate(preset_options)
+        ]
         fallback_story = TurnGenerationSchema(
             narrative=f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。",
-            options=[
-                OptionItem(option_key="A", display_text=preset_options[0]["intent_hint"][:24]),
-                OptionItem(option_key="B", display_text=preset_options[1]["intent_hint"][:24]),
-                OptionItem(option_key="C", display_text=preset_options[2]["intent_hint"][:24]),
-            ]
+            options=fallback_options
         )
 
         recent_hist = "、".join(session.history_logs[-2:]) if session.history_logs else "剛踏入中央大學展開第一週校園生活"
+        opt_a_hint = preset_options[0]["intent_hint"] if len(preset_options) > 0 else "專注投入"
+        opt_b_hint = preset_options[1]["intent_hint"] if len(preset_options) > 1 else "稍作休息"
+        opt_c_hint = preset_options[2]["intent_hint"] if len(preset_options) > 2 else "自由活動"
+
         prompt = TURN_NARRATIVE_PROMPT_TEMPLATE.format(
             day_name=day_str,
             slot_name=slot_str,
@@ -1138,9 +1283,9 @@ class SimEngine:
             life_snippet=life_snippet,
             recent_history=recent_hist,
             event_instruction=event_instruction,
-            opt_a_hint=preset_options[0]["intent_hint"],
-            opt_b_hint=preset_options[1]["intent_hint"],
-            opt_c_hint=preset_options[2]["intent_hint"],
+            opt_a_hint=opt_a_hint,
+            opt_b_hint=opt_b_hint,
+            opt_c_hint=opt_c_hint,
         )
 
         try:

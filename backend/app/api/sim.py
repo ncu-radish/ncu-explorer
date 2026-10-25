@@ -9,6 +9,8 @@ from app.schemas.sim import (
     ScheduleSlot,
     SimNextTurnRequest,
     SimNextTurnResponse,
+    SimPrePlanRequest,
+    SimPrePlanResponse,
     SimStartRequest,
     SimStartResponse,
     SimSummaryRequest,
@@ -68,16 +70,32 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
         new_session.visited_locs = (new_session.visited_locs or []) + [loc_id]
         db.commit()
 
+    curr_slot = weekly_schedule[0] if weekly_schedule else None
+    curr_time = (curr_slot.start_time if curr_slot else None) or "08:00"
+    curr_day = (curr_slot.day if curr_slot else 1) or 1
+
     return SimStartResponse(
         session_id=session_id,
         player_profile=profile.model_dump(),
         weekly_schedule=weekly_schedule,
         current_turn=0,
+        current_time=curr_time,
+        current_day=curr_day,
         stats=initial_stats,
         current_story=story,
         current_location_id=loc_id,
         current_location_name=loc_name
     )
+
+def add_time_hours(time_str: str, hours: int) -> str:
+    try:
+        parts = time_str.split(":")
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+        h = min(23, h + hours)
+        return f"{h:02d}:{m:02d}"
+    except Exception:
+        return time_str
 
 @router.post("/next-turn", response_model=SimNextTurnResponse)
 async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
@@ -110,6 +128,8 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
         return SimNextTurnResponse(
             session_id=session.session_id,
             current_turn=session.current_turn,
+            current_time="22:00",
+            current_day=5,
             is_game_over=True,
             stats=session.stats,
             delta_stats=applied_effects,
@@ -126,9 +146,15 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
 
     db.commit()
 
+    next_slot = session.weekly_schedule[session.current_turn]
+    curr_time = next_slot.get("start_time") or "08:00"
+    curr_day = next_slot.get("day", 1)
+
     return SimNextTurnResponse(
         session_id=session.session_id,
         current_turn=session.current_turn,
+        current_time=curr_time,
+        current_day=curr_day,
         is_game_over=False,
         stats=session.stats,
         delta_stats=applied_effects,
@@ -158,57 +184,63 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         chosen_opt = activity.preset_options[0]
 
     effects = chosen_opt.get("effects", {}) if chosen_opt else {}
-    applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: effects}, req.option_key)
+    # Apply effects scaled by duration (1~3 hrs)
+    duration = max(1, min(3, req.duration_hours or 1))
+    scaled_effects = {}
+    for k, v in effects.items():
+        scaled_effects[k] = v * duration
 
-    # Calculate day and time for dynamic slot
+    applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: scaled_effects}, req.option_key)
+
     curr_turn = min(session.current_turn, max(0, len(session.weekly_schedule) - 1))
     curr_slot = session.weekly_schedule[curr_turn] if session.weekly_schedule else {}
     day = curr_slot.get("day", 1)
 
-    # Determine time range and slot type
+    # Determine start and end time
     cat = activity.category
-    if cat == "breakfast":
-        start_time, end_time = "07:30", "08:30"
-        slot_type = "breakfast"
-    elif cat == "lunch":
-        start_time, end_time = "12:00", "13:00"
-        slot_type = "lunch"
-    elif cat == "dinner":
-        start_time, end_time = "18:00", "19:00"
-        slot_type = "dinner"
-    elif cat == "dorm_leisure":
-        start_time, end_time = "15:30", "16:30"
-        slot_type = "dorm"
-    else:  # campus_leisure
-        start_time, end_time = "16:30", "17:30"
-        slot_type = "campus_leisure"
+    default_start = "12:00" if cat == "lunch" else ("07:30" if cat == "breakfast" else ("18:00" if cat == "dinner" else "15:00"))
+    start_time = curr_slot.get("start_time") or default_start
+    end_time = add_time_hours(start_time, duration)
 
-    loc_id = activity.location_id or "loc_pine_restaurant"
+    slot_type = "lunch" if cat == "lunch" else ("dorm" if cat == "dorm_leisure" else ("breakfast" if cat == "breakfast" else ("dinner" if cat == "dinner" else "campus_leisure")))
+    loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else "loc_dorm_boy9")
     loc_name = activity.location_name or "校園活動地點"
 
-    intent_text = chosen_opt.get("intent_hint", activity.title) if chosen_opt else activity.title
+    intent_text = req.custom_title or (chosen_opt.get("intent_hint", activity.title) if chosen_opt else activity.title)
 
     new_slot = {
         "day": day,
         "slot": f"dynamic_{cat}_{session.current_turn}",
-        "title": f"【{activity.title}】{intent_text[:16]}",
+        "title": f"【{activity.title}】{intent_text[:18]} ({duration}小時)",
         "type": slot_type,
         "location_id": loc_id,
         "location_name": loc_name,
         "start_time": start_time,
         "end_time": end_time,
         "display_time": f"{start_time} ~ {end_time}",
-        "time_label": f"週{['一','二','三','四','五'][day-1]} {start_time}~{end_time}",
+        "time_label": f"週{['一','二','三','四','五'][day-1]} {start_time}",
     }
 
-    # Dynamically mark into weekly_schedule
+    # If the current slot is a prompt checkpoint (lunch_prompt or leisure_prompt), replace it directly
     updated_schedule = list(session.weekly_schedule or [])
-    insert_idx = min(curr_turn + 1, len(updated_schedule))
-    updated_schedule.insert(insert_idx, new_slot)
+    if curr_slot.get("type") in ("lunch_prompt", "leisure_prompt"):
+        updated_schedule[curr_turn] = new_slot
+    else:
+        updated_schedule.append(new_slot)
+
+    # Strictly sort the schedule by (day, start_time) to ensure no timeline disorder
+    updated_schedule.sort(key=lambda s: (s.get("day", 1), s.get("start_time") or "00:00"))
     session.weekly_schedule = updated_schedule
 
+    # Locate new_slot's new index in sorted schedule
+    try:
+        new_turn_idx = updated_schedule.index(new_slot)
+        session.current_turn = new_turn_idx
+    except ValueError:
+        pass
+
     # Update history log
-    log_entry = f"進行了【{activity.title}】：{intent_text}"
+    log_entry = f"進行了【{activity.title}】({duration}小時)：{intent_text}"
     session.history_logs = (session.history_logs or []) + [log_entry]
 
     if loc_id and loc_id not in (session.visited_locs or []):
@@ -223,6 +255,67 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         weekly_schedule=[ScheduleSlot(**s) for s in updated_schedule],
         stats=session.stats,
         delta_stats=applied_effects,
+        current_location_id=loc_id,
+        current_location_name=loc_name
+    )
+
+@router.post("/pre-plan-tomorrow", response_model=SimPrePlanResponse)
+async def pre_plan_tomorrow(req: SimPrePlanRequest, db: Session = Depends(get_db)):
+    session = db.query(GameSession).filter(GameSession.session_id == req.session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="找不到指定的遊戲工作階段")
+
+    active_model, trigger_prob = get_system_config(db)
+    updated_schedule = list(session.weekly_schedule or [])
+
+    # Insert pre-planned slots for target_day
+    for slot_data in req.slots:
+        st = slot_data.get("start_time", "08:00")
+        dur = int(slot_data.get("duration_hours", 1))
+        et = slot_data.get("end_time") or add_time_hours(st, dur)
+        new_slot = {
+            "day": req.target_day,
+            "slot": f"preplan_{req.target_day}_{st}",
+            "title": slot_data.get("title", "預排活動"),
+            "type": slot_data.get("type", "campus_leisure"),
+            "location_id": slot_data.get("location_id", "loc_pine_restaurant"),
+            "location_name": slot_data.get("location_name", "校園設施"),
+            "start_time": st,
+            "end_time": et,
+            "display_time": f"{st} ~ {et}",
+            "time_label": f"週{['一','二','三','四','五'][req.target_day-1]} {st}",
+        }
+        updated_schedule.append(new_slot)
+
+    # Strictly sort entire schedule by (day, start_time)
+    updated_schedule.sort(key=lambda s: (s.get("day", 1), s.get("start_time") or "00:00"))
+    session.weekly_schedule = updated_schedule
+
+    # Find the target day's first event index to start tomorrow
+    target_idx = session.current_turn + 1
+    for idx, s in enumerate(updated_schedule):
+        if s.get("day") == req.target_day:
+            target_idx = idx
+            break
+
+    session.current_turn = min(target_idx, max(0, len(updated_schedule) - 1))
+
+    # Generate next turn story for tomorrow morning
+    story, _, loc_id, loc_name = await sim_engine.generate_turn_content(
+        db, session, active_model, trigger_prob
+    )
+    if loc_id and loc_id not in (session.visited_locs or []):
+        session.visited_locs = (session.visited_locs or []) + [loc_id]
+
+    db.commit()
+
+    return SimPrePlanResponse(
+        session_id=session.session_id,
+        message=f"已成功為週{['一','二','三','四','五'][req.target_day-1]}預排行程並展開新的一天！",
+        current_turn=session.current_turn,
+        weekly_schedule=[ScheduleSlot(**s) for s in updated_schedule],
+        stats=session.stats,
+        story=story,
         current_location_id=loc_id,
         current_location_name=loc_name
     )

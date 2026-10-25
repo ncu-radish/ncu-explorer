@@ -55,7 +55,13 @@ export const simApi = {
       method: "POST",
       body: JSON.stringify({ session_id: sessionId }),
     }),
-  triggerActivity: (sessionId: string, activityId: string, optionKey: string = "A") =>
+  triggerActivity: (
+    sessionId: string,
+    activityId: string,
+    optionKey: string = "A",
+    durationHours: number = 1,
+    customTitle?: string
+  ) =>
     fetchApi<{
       session_id: string;
       message: string;
@@ -71,6 +77,26 @@ export const simApi = {
         session_id: sessionId,
         activity_id: activityId,
         option_key: optionKey,
+        duration_hours: durationHours,
+        custom_title: customTitle || undefined,
+      }),
+    }),
+  prePlanTomorrow: (sessionId: string, targetDay: number, slots: any[]) =>
+    fetchApi<{
+      session_id: string;
+      message: string;
+      current_turn: number;
+      weekly_schedule: any[];
+      stats: any;
+      story?: any;
+      current_location_id?: string;
+      current_location_name?: string;
+    }>("/sim/pre-plan-tomorrow", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        target_day: targetDay,
+        slots,
       }),
     }),
 };

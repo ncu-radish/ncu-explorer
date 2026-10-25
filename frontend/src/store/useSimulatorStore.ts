@@ -44,6 +44,8 @@ interface SimulatorState {
   playerProfile: any | null;
   weeklySchedule: ScheduleSlot[];
   currentTurn: number;
+  currentTime: string;
+  currentDay: number;
   stats: Stats;
   story: StoryState | null;
   currentLocationId: string | null;
@@ -56,7 +58,13 @@ interface SimulatorState {
 
   startSimulation: (userInput: string, department?: string, grade?: number) => Promise<void>;
   chooseOption: (optionKey: string) => Promise<void>;
-  triggerDynamicActivity: (activityId: string, optionKey?: string) => Promise<any>;
+  triggerDynamicActivity: (
+    activityId: string,
+    optionKey?: string,
+    durationHours?: number,
+    customTitle?: string
+  ) => Promise<any>;
+  prePlanTomorrow: (targetDay: number, slots: any[]) => Promise<any>;
   fetchSummary: () => Promise<void>;
   resetSimulation: () => void;
 }
@@ -66,6 +74,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   playerProfile: null,
   weeklySchedule: [],
   currentTurn: 0,
+  currentTime: "08:00",
+  currentDay: 1,
   stats: { stamina: 80, study: 50, social: 50, money: 1500 },
   story: null,
   currentLocationId: null,
@@ -85,6 +95,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         playerProfile: data.player_profile,
         weeklySchedule: data.weekly_schedule,
         currentTurn: data.current_turn,
+        currentTime: data.current_time || "08:00",
+        currentDay: data.current_day || 1,
         stats: data.stats,
         story: data.current_story,
         currentLocationId: data.current_location_id,
@@ -108,6 +120,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       if (data.is_game_over) {
         set({
           isGameOver: true,
+          currentTime: data.current_time || "22:00",
+          currentDay: data.current_day || 5,
           stats: data.stats,
           weeklySchedule: data.weekly_schedule || get().weeklySchedule,
           isLoading: false,
@@ -116,6 +130,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       } else {
         set({
           currentTurn: data.current_turn,
+          currentTime: data.current_time || get().currentTime,
+          currentDay: data.current_day || get().currentDay,
           stats: data.stats,
           story: data.story,
           currentLocationId: data.current_location_id,
@@ -129,16 +145,24 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     }
   },
 
-  triggerDynamicActivity: async (activityId: string, optionKey: string = "A") => {
+  triggerDynamicActivity: async (
+    activityId: string,
+    optionKey: string = "A",
+    durationHours: number = 1,
+    customTitle?: string
+  ) => {
     const { sessionId } = get();
     if (!sessionId) return;
 
     set({ isLoading: true, error: null });
     try {
-      const res = await simApi.triggerActivity(sessionId, activityId, optionKey);
+      const res = await simApi.triggerActivity(sessionId, activityId, optionKey, durationHours, customTitle);
+      const currSlot = res.marked_slot;
       set({
         weeklySchedule: res.weekly_schedule,
         stats: res.stats,
+        currentTime: currSlot?.start_time || get().currentTime,
+        currentDay: currSlot?.day || get().currentDay,
         currentLocationId: res.current_location_id || get().currentLocationId,
         currentLocationName: res.current_location_name || get().currentLocationName,
         isLoading: false,
@@ -146,6 +170,32 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       return res;
     } catch (err: any) {
       set({ error: err.message || "觸發活動失敗", isLoading: false });
+      throw err;
+    }
+  },
+
+  prePlanTomorrow: async (targetDay: number, slots: any[]) => {
+    const { sessionId } = get();
+    if (!sessionId) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const res = await simApi.prePlanTomorrow(sessionId, targetDay, slots);
+      const currSlot = res.weekly_schedule?.[res.current_turn];
+      set({
+        currentTurn: res.current_turn,
+        weeklySchedule: res.weekly_schedule,
+        stats: res.stats,
+        story: res.story,
+        currentTime: currSlot?.start_time || "08:00",
+        currentDay: currSlot?.day || targetDay,
+        currentLocationId: res.current_location_id || get().currentLocationId,
+        currentLocationName: res.current_location_name || get().currentLocationName,
+        isLoading: false,
+      });
+      return res;
+    } catch (err: any) {
+      set({ error: err.message || "預排明日活動失敗", isLoading: false });
       throw err;
     }
   },
@@ -168,6 +218,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       playerProfile: null,
       weeklySchedule: [],
       currentTurn: 0,
+      currentTime: "08:00",
+      currentDay: 1,
       stats: { stamina: 80, study: 50, social: 50, money: 1500 },
       story: null,
       currentLocationId: null,

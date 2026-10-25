@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Compass, RotateCcw, MapPin, Maximize2, ArrowLeft } from "lucide-react";
+import { Compass, RotateCcw, MapPin, Maximize2, ArrowLeft, CalendarDays } from "lucide-react";
 import Link from "next/link";
-import { useSimulatorStore } from "@/store/useSimulatorStore";
+import { useSimulatorStore, ScheduleSlot } from "@/store/useSimulatorStore";
 import { OnboardingModal } from "@/components/simulator/OnboardingModal";
 import { StatsBar } from "@/components/simulator/StatsBar";
 import { WeeklySchedule } from "@/components/simulator/WeeklySchedule";
 import { StoryDialog } from "@/components/simulator/StoryDialog";
 import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
-import { DynamicActivityBar } from "@/components/simulator/DynamicActivityBar";
+import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
+import { PrePlanModal } from "@/components/simulator/PrePlanModal";
+import { adminApi, CampusActivity } from "@/lib/api";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -27,23 +29,14 @@ const CampusScene = dynamic(
 );
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
-const SLOTS_MAP: Record<string, string> = {
-  slot_1: "晨光早課 (08:00~10:00)",
-  slot_2: "上午主修 (10:00~12:00)",
-  slot_3: "午膳漫步 (12:00~13:00)",
-  slot_4: "午後專修 (13:00~15:00)",
-  slot_5: "下晝研討 (15:00~17:00)",
-  slot_6: "晚間校園 (18:00~21:00)",
-  morning: "上午時段",
-  afternoon: "下午時段",
-  evening: "晚間時段",
-};
 
 export default function SimulatorPage() {
   const {
     sessionId,
     weeklySchedule,
     currentTurn,
+    currentTime,
+    currentDay,
     stats,
     story,
     currentLocationId,
@@ -51,15 +44,40 @@ export default function SimulatorPage() {
     isGameOver,
     isLoading,
     chooseOption,
+    triggerDynamicActivity,
+    prePlanTomorrow,
     resetSimulation,
   } = useSimulatorStore();
 
   const currentSlotInfo = weeklySchedule[currentTurn] || {};
-  const dayName = DAYS[Math.max(0, Math.min(4, (currentSlotInfo.day || 1) - 1))];
-  const slotName = currentSlotInfo.display_time || currentSlotInfo.time_label || SLOTS_MAP[currentSlotInfo.slot || "slot_1"] || "當前時段";
+  const activeDay = currentSlotInfo.day || currentDay || 1;
+  const dayName = DAYS[Math.max(0, Math.min(4, activeDay - 1))];
+  const slotTime = currentSlotInfo.start_time || currentTime || "08:00";
+  const slotName = currentSlotInfo.display_time || `${slotTime}`;
   const totalTurns = weeklySchedule.length || 30;
 
   const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
+
+  // Activity Database State
+  const [activities, setActivities] = useState<CampusActivity[]>([]);
+
+  // Modal States
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityCategory, setActivityCategory] = useState<"lunch" | "dorm_leisure" | "campus_leisure">("lunch");
+
+  const [prePlanModalOpen, setPrePlanModalOpen] = useState(false);
+  const [prePlanTargetDay, setPrePlanTargetDay] = useState<number>(2);
+
+  // Load backend activities
+  useEffect(() => {
+    adminApi.getActivities().then((res) => {
+      if (res && res.length > 0) {
+        setActivities(res);
+      }
+    }).catch(() => {
+      // Fallback handled in modal
+    });
+  }, []);
 
   useEffect(() => {
     const locId = currentLocationId || currentSlotInfo?.location_id;
@@ -68,6 +86,74 @@ export default function SimulatorPage() {
     }
   }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
 
+  // Handle options with two-phase workflow
+  const handleChooseOption = async (optionKey: string) => {
+    const slotType = currentSlotInfo.type;
+
+    // Phase 1: 12:00 Lunch prompt
+    if (slotType === "lunch_prompt") {
+      if (optionKey === "A") {
+        // User said YES to lunch -> open lunch selector
+        setActivityCategory("lunch");
+        setActivityModalOpen(true);
+        return;
+      }
+      // User said NO -> skip lunch and advance
+      await chooseOption(optionKey);
+      return;
+    }
+
+    // Phase 2: Leisure prompt (after classes or gap)
+    if (slotType === "leisure_prompt") {
+      if (optionKey === "A") {
+        // User chose to return to dorm -> open dorm leisure selector (1~3 hrs)
+        setActivityCategory("dorm_leisure");
+        setActivityModalOpen(true);
+        return;
+      }
+      if (optionKey === "B") {
+        // User chose campus leisure -> open campus activity selector (1~3 hrs)
+        setActivityCategory("campus_leisure");
+        setActivityModalOpen(true);
+        return;
+      }
+      // User chose C (skip) -> advance
+      await chooseOption(optionKey);
+      return;
+    }
+
+    // Phase 3: Day End prompt (21:00)
+    if (slotType === "day_end") {
+      if (optionKey === "A") {
+        // Open Pre-plan Tomorrow Modal
+        const nextDay = Math.min(5, (currentSlotInfo.day || 1) + 1);
+        setPrePlanTargetDay(nextDay);
+        setPrePlanModalOpen(true);
+        return;
+      }
+      // Skip pre-plan and advance into tomorrow
+      await chooseOption(optionKey);
+      return;
+    }
+
+    // Normal story turns
+    await chooseOption(optionKey);
+  };
+
+  // Activity Modal Confirm Callback
+  const handleConfirmActivity = async (
+    activityId: string,
+    optionKey: string,
+    durationHours: number,
+    customTitle?: string
+  ) => {
+    await triggerDynamicActivity(activityId, optionKey, durationHours, customTitle);
+  };
+
+  // Pre-Plan Tomorrow Confirm Callback
+  const handleConfirmPrePlan = async (targetDay: number, slots: any[]) => {
+    await prePlanTomorrow(targetDay, slots);
+  };
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-4 sm:gap-5">
@@ -76,6 +162,26 @@ export default function SimulatorPage() {
 
       {/* Week End Summary Dialog */}
       <SummaryModal isOpen={isGameOver} />
+
+      {/* Activity Selection Modal (Lunch / Dorm Leisure / Campus Leisure) */}
+      <ActivitySelectionModal
+        isOpen={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        category={activityCategory}
+        activities={activities}
+        onConfirm={handleConfirmActivity}
+        isLoading={isLoading}
+      />
+
+      {/* Pre-Plan Tomorrow Modal */}
+      <PrePlanModal
+        isOpen={prePlanModalOpen}
+        onClose={() => setPrePlanModalOpen(false)}
+        targetDay={prePlanTargetDay}
+        existingSchedule={weeklySchedule}
+        onConfirm={handleConfirmPrePlan}
+        isLoading={isLoading}
+      />
 
       {/* Top Simulator Control Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-stone-200">
@@ -105,6 +211,20 @@ export default function SimulatorPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Pre-plan button */}
+          <button
+            onClick={() => {
+              const nextDay = Math.min(5, (currentSlotInfo.day || 1) + 1);
+              setPrePlanTargetDay(nextDay);
+              setPrePlanModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+            title="預先規劃明日行程"
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+            <span>預排明日活動</span>
+          </button>
+
           <Link
             href="/explore"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs transition-colors border border-stone-300 shadow-xs"
@@ -136,13 +256,11 @@ export default function SimulatorPage() {
         slot={currentSlotInfo}
         currentTurn={currentTurn}
         totalTurns={totalTurns}
+        isLoading={isLoading}
         onFocusLocation={() => {
           if (currentLocationId) setFocusedLoc(currentLocationId);
         }}
       />
-
-      {/* Dynamic Campus Activities Bar (Breakfast, Lunch, Dinner, Dorm, Campus Leisure) */}
-      <DynamicActivityBar />
 
       {/* Main Game Interface: Left Calendar + Right Narrative & 3D PiP */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
@@ -181,7 +299,7 @@ export default function SimulatorPage() {
             locationName={currentLocationName || "中大校園"}
             slot={currentSlotInfo}
             isLoading={isLoading}
-            onChoose={(key) => chooseOption(key)}
+            onChoose={handleChooseOption}
             onFocusLocation={() => {
               if (currentLocationId) setFocusedLoc(currentLocationId);
             }}

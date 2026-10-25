@@ -35,6 +35,8 @@ class SimStartResponse(BaseModel):
     player_profile: dict[str, Any]
     weekly_schedule: list[ScheduleSlot]
     current_turn: int
+    current_time: str | None = "08:00"
+    current_day: int | None = 1
     stats: dict[str, int]
     current_story: TurnGenerationSchema
     current_location_id: str | None = None
@@ -47,6 +49,8 @@ class SimNextTurnRequest(BaseModel):
 class SimNextTurnResponse(BaseModel):
     session_id: str
     current_turn: int
+    current_time: str | None = None
+    current_day: int | None = None
     is_game_over: bool
     stats: dict[str, int]
     delta_stats: dict[str, int]
@@ -58,8 +62,10 @@ class SimNextTurnResponse(BaseModel):
 
 class SimTriggerActivityRequest(BaseModel):
     session_id: str
-    activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, etc.
+    activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, act_campus_leisure
     option_key: str = "A"  # A, B, or C
+    duration_hours: int = 1  # 1, 2, or 3 hours
+    custom_title: str | None = None
 
 
 class SimTriggerActivityResponse(BaseModel):
@@ -69,6 +75,23 @@ class SimTriggerActivityResponse(BaseModel):
     weekly_schedule: list[ScheduleSlot]
     stats: dict[str, int]
     delta_stats: dict[str, int]
+    current_location_id: str | None = None
+    current_location_name: str | None = None
+
+
+class SimPrePlanRequest(BaseModel):
+    session_id: str
+    target_day: int
+    slots: list[dict[str, Any]]
+
+
+class SimPrePlanResponse(BaseModel):
+    session_id: str
+    message: str
+    current_turn: int
+    weekly_schedule: list[ScheduleSlot]
+    stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None
 
