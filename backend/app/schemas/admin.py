@@ -40,8 +40,15 @@ class RandomEventDTO(BaseModel):
     title: str
     is_active: bool
     weight: int
+    trigger_rate: float = 0.5
     cond_days: list[int] | None = None
     cond_slots: list[str] | None = None
+    cond_time_start: str | None = None
+    cond_time_end: str | None = None
+    cond_activity_type: str | None = None
+    cond_activity_title: str | None = None
+    cond_prev_activity: str | None = None
+    cond_prev_event_id: str | None = None
     cond_location: str | None = None
     cond_min_stamina: int
     cond_max_stamina: int
@@ -56,8 +63,15 @@ class RandomEventCreate(BaseModel):
     title: str
     is_active: bool = True
     weight: int = 10
+    trigger_rate: float = 0.5
     cond_days: list[int] | None = None
     cond_slots: list[str] | None = None
+    cond_time_start: str | None = None
+    cond_time_end: str | None = None
+    cond_activity_type: str | None = None
+    cond_activity_title: str | None = None
+    cond_prev_activity: str | None = None
+    cond_prev_event_id: str | None = None
     cond_location: str | None = None
     cond_min_stamina: int = 0
     cond_max_stamina: int = 100
@@ -68,8 +82,15 @@ class RandomEventUpdate(BaseModel):
     title: str | None = None
     is_active: bool | None = None
     weight: int | None = None
+    trigger_rate: float | None = None
     cond_days: list[int] | None = None
     cond_slots: list[str] | None = None
+    cond_time_start: str | None = None
+    cond_time_end: str | None = None
+    cond_activity_type: str | None = None
+    cond_activity_title: str | None = None
+    cond_prev_activity: str | None = None
+    cond_prev_event_id: str | None = None
     cond_location: str | None = None
     cond_min_stamina: int | None = None
     cond_max_stamina: int | None = None

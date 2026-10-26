@@ -2832,6 +2832,114 @@
           }
         }
       ]
+    },
+    {
+      "id": "evt_lunch_crowd",
+      "title": "中午松果餐廳排隊大塞車",
+      "is_active": true,
+      "weight": 20,
+      "trigger_rate": 0.75,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning", "afternoon"],
+      "cond_time_start": "12:00",
+      "cond_time_end": "13:30",
+      "cond_activity_type": "dining",
+      "cond_activity_title": null,
+      "cond_prev_activity": null,
+      "cond_prev_event_id": null,
+      "cond_location": null,
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：正值中午 12 點用餐尖峰時段，你來到學餐準備填飽肚子，赫然發現排隊人龍已經一路排到了門口，每一攤都至少要等 20 分鐘以上！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "耐心跟著大家排隊，趁等待時間滑手機看課程論壇",
+          "effects": { "stamina": -5, "study": 5, "social": 0, "money": -85 }
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "果斷放棄排隊熱門攤位，轉戰旁邊不用等的小吃或便利商店飯糰",
+          "effects": { "stamina": 5, "study": 0, "social": 0, "money": -49 }
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "巧遇剛買好兩份外帶的熱心同學，商量分一份現成分食兼交流情報",
+          "effects": { "stamina": 15, "study": 0, "social": 15, "money": -80 }
+        }
+      ]
+    },
+    {
+      "id": "evt_post_pe_soreness",
+      "title": "體育運動後乳酸大爆發",
+      "is_active": true,
+      "weight": 25,
+      "trigger_rate": 0.65,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning", "afternoon", "evening"],
+      "cond_time_start": null,
+      "cond_time_end": null,
+      "cond_activity_type": null,
+      "cond_activity_title": null,
+      "cond_prev_activity": "體育",
+      "cond_prev_event_id": null,
+      "cond_location": null,
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 80,
+      "event_prompt": "突發事件：稍早劇烈的體育課或球類運動讓你的雙腿與手臂開始傳來陣陣劇烈的乳酸堆積痠痛，走起路來步履蹣跚！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "前往自動販賣機投幣買運動飲料補充電解質，並在一旁長椅做深層拉筋伸展",
+          "effects": { "stamina": 10, "study": 0, "social": 0, "money": -30 }
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "咬緊牙關當作耐力訓練，堅持走完校園步道回到教室",
+          "effects": { "stamina": -10, "study": 10, "social": 5, "money": 0 }
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "直接在社群平台發限動哀嚎全身痠痛，釣出一群同堂課同學相互取暖",
+          "effects": { "stamina": 0, "study": 0, "social": 12, "money": 0 }
+        }
+      ]
+    },
+    {
+      "id": "evt_squirrel_revenge",
+      "title": "百花川胖松鼠的逆襲結盟",
+      "is_active": true,
+      "weight": 18,
+      "trigger_rate": 0.6,
+      "cond_days": [1, 2, 3, 4, 5],
+      "cond_slots": ["morning", "afternoon"],
+      "cond_time_start": null,
+      "cond_time_end": null,
+      "cond_activity_type": null,
+      "cond_activity_title": null,
+      "cond_prev_activity": null,
+      "cond_prev_event_id": "evt_squirrel_attack",
+      "cond_location": "loc_park_creek",
+      "cond_min_stamina": 0,
+      "cond_max_stamina": 100,
+      "event_prompt": "突發事件：當你再度經過百花川步道時，上次偷襲你的那隻胖松鼠竟然帶了兩隻同夥在樹枝上居高臨下盯著你，似乎在謀劃新的搶劫作戰！",
+      "preset_options": [
+        {
+          "option_key": "A",
+          "intent_hint": "主動拿出預備好的堅果餅乾以德服人，簽訂互不侵犯校園和平條約",
+          "effects": { "stamina": 5, "study": 0, "social": 15, "money": -35 }
+        },
+        {
+          "option_key": "B",
+          "intent_hint": "迅速撐開雨傘當作防禦護盾，在三隻松鼠的注目禮下優雅通過",
+          "effects": { "stamina": 0, "study": 5, "social": 5, "money": 0 }
+        },
+        {
+          "option_key": "C",
+          "intent_hint": "拿出手機近距離錄下「中大松鼠幫結盟實況」，影片在學生論壇瞬間爆紅",
+          "effects": { "stamina": -5, "study": 0, "social": 25, "money": 0 }
+        }
+      ]
     }
   ],
   "system_config": {

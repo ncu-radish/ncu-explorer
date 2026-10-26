@@ -94,8 +94,21 @@ function EventsContent() {
   // ==================== Random Events State ====================
   const [randomEvents, setRandomEvents] = useState<any[]>([]);
   const [selectedRandomEvent, setSelectedRandomEvent] = useState<any | null>(null);
+  const [isCreatingNewRandomEvent, setIsCreatingNewRandomEvent] = useState(false);
+  const [reId, setReId] = useState("");
   const [reTitle, setReTitle] = useState("");
   const [reWeight, setReWeight] = useState(15);
+  const [reTriggerRate, setReTriggerRate] = useState(0.5);
+  const [reCondTimeStart, setReCondTimeStart] = useState("");
+  const [reCondTimeEnd, setReCondTimeEnd] = useState("");
+  const [reCondActivityType, setReCondActivityType] = useState("");
+  const [reCondActivityTitle, setReCondActivityTitle] = useState("");
+  const [reCondPrevActivity, setReCondPrevActivity] = useState("");
+  const [reCondPrevEventId, setReCondPrevEventId] = useState("");
+  const [reCondLocation, setReCondLocation] = useState("");
+  const [reCondMinStamina, setReCondMinStamina] = useState(0);
+  const [reCondMaxStamina, setReCondMaxStamina] = useState(100);
+  const [reIsActive, setReIsActive] = useState(true);
   const [rePrompt, setRePrompt] = useState("");
   const [reOptA, setReOptA] = useState("");
   const [reOptB, setReOptB] = useState("");
@@ -131,13 +144,51 @@ function EventsContent() {
   };
 
   const selectRandomEventForEdit = (ev: any) => {
+    setIsCreatingNewRandomEvent(false);
     setSelectedRandomEvent(ev);
+    setReId(ev.id);
     setReTitle(ev.title);
-    setReWeight(ev.weight);
-    setRePrompt(ev.event_prompt);
+    setReWeight(ev.weight ?? 15);
+    setReTriggerRate(ev.trigger_rate ?? 0.5);
+    setReCondTimeStart(ev.cond_time_start || "");
+    setReCondTimeEnd(ev.cond_time_end || "");
+    setReCondActivityType(ev.cond_activity_type || "");
+    setReCondActivityTitle(ev.cond_activity_title || "");
+    setReCondPrevActivity(ev.cond_prev_activity || "");
+    setReCondPrevEventId(ev.cond_prev_event_id || "");
+    setReCondLocation(ev.cond_location || "");
+    setReCondMinStamina(ev.cond_min_stamina ?? 0);
+    setReCondMaxStamina(ev.cond_max_stamina ?? 100);
+    setReIsActive(ev.is_active ?? true);
+    setRePrompt(ev.event_prompt || "");
     setReOptA(ev.preset_options?.[0]?.intent_hint || "");
     setReOptB(ev.preset_options?.[1]?.intent_hint || "");
     setReOptC(ev.preset_options?.[2]?.intent_hint || "");
+    setReSandboxStory(null);
+  };
+
+  const handleStartCreateRandomEvent = () => {
+    setIsCreatingNewRandomEvent(true);
+    setSelectedRandomEvent(null);
+    const newId = `evt_${Date.now().toString(36)}`;
+    setReId(newId);
+    setReTitle("新突發事件");
+    setReWeight(15);
+    setReTriggerRate(0.6);
+    setReCondTimeStart("");
+    setReCondTimeEnd("");
+    setReCondActivityType("");
+    setReCondActivityTitle("");
+    setReCondPrevActivity("");
+    setReCondPrevEventId("");
+    setReCondLocation("");
+    setReCondMinStamina(0);
+    setReCondMaxStamina(100);
+    setReIsActive(true);
+    setRePrompt("突發事件：你在校園中遇到了突發狀況...");
+    setReOptA("冷靜應對，採取穩健對策");
+    setReOptB("尋求身邊同學或室友協助");
+    setReOptC("隨機應變，嘗試新選擇");
     setReSandboxStory(null);
   };
 
@@ -279,24 +330,74 @@ function EventsContent() {
   // ==================== Random Events Helpers ====================
 
   const handleSaveRandomEvent = async () => {
-    if (!selectedRandomEvent) return;
+    if (!isCreatingNewRandomEvent && !selectedRandomEvent) return;
     try {
       const updatedOptions = [
-        { option_key: "A", intent_hint: reOptA, effects: selectedRandomEvent.preset_options?.[0]?.effects || {} },
-        { option_key: "B", intent_hint: reOptB, effects: selectedRandomEvent.preset_options?.[1]?.effects || {} },
-        { option_key: "C", intent_hint: reOptC, effects: selectedRandomEvent.preset_options?.[2]?.effects || {} },
+        {
+          option_key: "A",
+          intent_hint: reOptA || "全力以赴應對",
+          effects: selectedRandomEvent?.preset_options?.[0]?.effects || { stamina: -5, study: 5, social: 0, money: 0 },
+        },
+        {
+          option_key: "B",
+          intent_hint: reOptB || "尋求同學或室友協助",
+          effects: selectedRandomEvent?.preset_options?.[1]?.effects || { stamina: 5, study: 0, social: 5, money: 0 },
+        },
+        {
+          option_key: "C",
+          intent_hint: reOptC || "隨機應變，冒險嘗試",
+          effects: selectedRandomEvent?.preset_options?.[2]?.effects || { stamina: 0, study: 0, social: 10, money: -30 },
+        },
       ];
-      await adminApi.updateEvent(selectedRandomEvent.id, {
+
+      const payload = {
         title: reTitle,
         weight: reWeight,
+        trigger_rate: reTriggerRate,
+        cond_time_start: reCondTimeStart.trim() || null,
+        cond_time_end: reCondTimeEnd.trim() || null,
+        cond_activity_type: reCondActivityType || null,
+        cond_activity_title: reCondActivityTitle.trim() || null,
+        cond_prev_activity: reCondPrevActivity.trim() || null,
+        cond_prev_event_id: reCondPrevEventId || null,
+        cond_location: reCondLocation || null,
+        cond_min_stamina: reCondMinStamina,
+        cond_max_stamina: reCondMaxStamina,
+        is_active: reIsActive,
         event_prompt: rePrompt,
         preset_options: updatedOptions,
-      });
-      setReSaveMessage("突發事件已成功更新！");
+      };
+
+      if (isCreatingNewRandomEvent) {
+        const created = await adminApi.createEvent({
+          id: reId.trim() || `evt_${Date.now().toString(36)}`,
+          ...payload,
+        });
+        setReSaveMessage("🎉 新增突發事件成功！");
+        setIsCreatingNewRandomEvent(false);
+        setSelectedRandomEvent(created);
+      } else if (selectedRandomEvent) {
+        await adminApi.updateEvent(selectedRandomEvent.id, payload);
+        setReSaveMessage("突發事件已成功更新！");
+      }
       setTimeout(() => setReSaveMessage(null), 3000);
       await loadRandomEvents();
     } catch (err: any) {
-      setReSaveMessage(`更新失敗: ${err.message}`);
+      setReSaveMessage(`儲存失敗: ${err.message}`);
+    }
+  };
+
+  const handleDeleteRandomEvent = async () => {
+    if (!selectedRandomEvent) return;
+    if (!confirm(`確定要刪除突發事件「${selectedRandomEvent.title}」嗎？`)) return;
+    try {
+      await adminApi.deleteEvent(selectedRandomEvent.id);
+      setReSaveMessage("已成功刪除該突發事件！");
+      setTimeout(() => setReSaveMessage(null), 3000);
+      setSelectedRandomEvent(null);
+      await loadRandomEvents();
+    } catch (err: any) {
+      setReSaveMessage(`刪除失敗: ${err.message}`);
     }
   };
 
@@ -311,7 +412,7 @@ function EventsContent() {
       const data = await adminApi.testSandbox({
         event_prompt: rePrompt || "突發狀況發生",
         preset_options: presetOptions,
-        location_id: selectedRandomEvent?.cond_location || "loc_park_creek",
+        location_id: reCondLocation || selectedRandomEvent?.cond_location || "loc_park_creek",
       });
       setReSandboxStory(data.generated_story);
     } catch (err) {
@@ -889,28 +990,75 @@ function EventsContent() {
       {activeTab === "random_events" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
           {/* Left Column: Events List (4 cols) */}
-          <div className="lg:col-span-4 glass-panel p-4 rounded-3xl border border-white/10 flex flex-col gap-2 max-h-[750px] overflow-y-auto">
-            <span className="text-xs font-bold text-gray-300 mb-2 block">
-              突發事件庫清單 ({randomEvents.length})
-            </span>
+          <div className="lg:col-span-4 glass-panel p-4 rounded-3xl border border-white/10 flex flex-col gap-3 max-h-[820px] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <span className="text-xs font-bold text-gray-300">
+                突發事件庫清單 ({randomEvents.length})
+              </span>
+              <button
+                onClick={handleStartCreateRandomEvent}
+                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-[11px] cursor-pointer shadow-md shadow-cyan-500/20 flex items-center gap-1 transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                <span>新增事件</span>
+              </button>
+            </div>
+
             {randomEvents.map((ev) => {
-              const isSelected = selectedRandomEvent?.id === ev.id;
+              const isSelected = !isCreatingNewRandomEvent && selectedRandomEvent?.id === ev.id;
+              const trigRate = Math.round((ev.trigger_rate ?? 0.5) * 100);
               return (
                 <div
                   key={ev.id}
                   onClick={() => selectRandomEventForEdit(ev)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-1 ${
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
                     isSelected
                       ? "bg-blue-600/25 border-cyan-400 shadow-md shadow-blue-500/20"
                       : "bg-white/5 border-white/5 hover:border-white/15"
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-white">
-                    <span>{ev.title}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300">
-                      權重 {ev.weight}
-                    </span>
+                    <span className="truncate pr-2">{ev.title}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold">
+                        機率 {trigRate}%
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300">
+                        權重 {ev.weight}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Conditions summary badges */}
+                  <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                    {(ev.cond_time_start || ev.cond_time_end) && (
+                      <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 flex items-center gap-0.5">
+                        <Clock className="w-2.5 h-2.5" />
+                        {ev.cond_time_start || "00:00"}~{ev.cond_time_end || "24:00"}
+                      </span>
+                    )}
+                    {ev.cond_activity_type && (
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        活動:{ev.cond_activity_type}
+                      </span>
+                    )}
+                    {ev.cond_activity_title && (
+                      <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                        名稱:{ev.cond_activity_title}
+                      </span>
+                    )}
+                    {ev.cond_prev_activity && (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                        前置活動:{ev.cond_prev_activity}
+                      </span>
+                    )}
+                    {ev.cond_prev_event_id && (
+                      <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                        前置事件
+                      </span>
+                    )}
+                  </div>
+
                   <span className="text-[11px] text-gray-400 line-clamp-2">{ev.event_prompt}</span>
                 </div>
               );
@@ -919,45 +1067,341 @@ function EventsContent() {
 
           {/* Right Column: Event Editor & Live Sandbox (8 cols) */}
           <div className="lg:col-span-8 flex flex-col gap-5">
-            {selectedRandomEvent ? (
-              <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col gap-4">
+            {isCreatingNewRandomEvent || selectedRandomEvent ? (
+              <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col gap-5">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                  <h2 className="text-base font-bold text-white">編輯事件：{selectedRandomEvent.title}</h2>
-                  {reSaveMessage && (
-                    <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {reSaveMessage}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white">
+                      {isCreatingNewRandomEvent ? "✨ 新增自訂突發事件" : `編輯事件：${selectedRandomEvent?.title}`}
+                    </h2>
+                    {isCreatingNewRandomEvent && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                        NEW
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {reSaveMessage && (
+                      <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {reSaveMessage}
+                      </span>
+                    )}
+                    {!isCreatingNewRandomEvent && selectedRandomEvent && (
+                      <button
+                        onClick={handleDeleteRandomEvent}
+                        className="px-3 py-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-400 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        title="刪除此突發事件"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>刪除</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Title & Weight */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
+                {/* 1. 基本資訊 */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-4">
+                    <label className="block text-xs text-gray-400 mb-1">事件代碼 (ID)</label>
+                    <input
+                      type="text"
+                      disabled={!isCreatingNewRandomEvent}
+                      value={reId}
+                      onChange={(e) => setReId(e.target.value)}
+                      placeholder="例如 evt_library_exam"
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="sm:col-span-6">
                     <label className="block text-xs text-gray-400 mb-1">事件標題</label>
                     <input
                       type="text"
                       value={reTitle}
                       onChange={(e) => setReTitle(e.target.value)}
+                      placeholder="例如：中午松果餐廳排隊大塞車"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
                     />
                   </div>
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>抽籤權重 (1~100)</span>
-                      <span className="text-amber-400 font-mono font-bold">{reWeight}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="100"
-                      value={reWeight}
-                      onChange={(e) => setReWeight(parseInt(e.target.value))}
-                      className="w-full accent-amber-500 cursor-pointer"
-                    />
+                  <div className="sm:col-span-2 flex flex-col justify-center pt-3">
+                    <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={reIsActive}
+                        onChange={(e) => setReIsActive(e.target.checked)}
+                        className="rounded accent-cyan-500 cursor-pointer w-4 h-4"
+                      />
+                      <span>啟用事件</span>
+                    </label>
                   </div>
                 </div>
 
-                {/* Event Prompt */}
+                {/* 2. 獨立觸發機率與權重設定 */}
+                <div className="p-4 rounded-2xl bg-black/30 border border-white/10 flex flex-col gap-4">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-300">
+                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <span>觸發機率與抽籤權重配置</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {/* 觸發機率 Slider */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                        <span>專屬觸發機率 (trigger_rate)</span>
+                        <span className="text-cyan-400 font-mono font-bold text-sm">
+                          {Math.round(reTriggerRate * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={reTriggerRate}
+                        onChange={(e) => setReTriggerRate(parseFloat(e.target.value))}
+                        className="w-full accent-cyan-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-400 block mt-1">
+                        滿足下方設定條件時，此事件單獨觸發的機率（設為 100% 則滿足條件即必定觸發）
+                      </span>
+                    </div>
+
+                    {/* 抽籤權重 Slider */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                        <span>多事件競爭權重 (weight)</span>
+                        <span className="text-amber-400 font-mono font-bold text-sm">{reWeight}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="100"
+                        value={reWeight}
+                        onChange={(e) => setReWeight(parseInt(e.target.value))}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-400 block mt-1">
+                        當同一個時段有多個事件均通過觸發機率時，依此權重進行抽取
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. 觸發條件設定區 (Trigger Conditions) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-b from-blue-950/20 to-black/40 border border-blue-500/20 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                      <Filter className="w-4 h-4 text-blue-400" />
+                      <span>觸發條件設定（未填寫者代表無限制）</span>
+                    </div>
+                    <span className="text-[11px] text-gray-400">
+                      所有已填寫之條件須同時滿足
+                    </span>
+                  </div>
+
+                  {/* 條件一：在 OO:XX 時間 */}
+                  <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-gray-300 font-medium flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-blue-400" />
+                        <span>① 時間觸發範圍（在 OO:XX 時間內）</span>
+                      </label>
+                      {/* 快速填寫按鈕 */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => { setReCondTimeStart(""); setReCondTimeEnd(""); }}
+                          className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 cursor-pointer transition-colors"
+                        >
+                          全天不限
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setReCondTimeStart("07:30"); setReCondTimeEnd("09:00"); }}
+                          className="px-2 py-0.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-[10px] text-blue-300 cursor-pointer transition-colors"
+                        >
+                          早晨 (07:30~09:00)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setReCondTimeStart("12:00"); setReCondTimeEnd("13:30"); }}
+                          className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-[10px] text-emerald-300 cursor-pointer transition-colors"
+                        >
+                          午餐 (12:00~13:30)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setReCondTimeStart("17:30"); setReCondTimeEnd("19:30"); }}
+                          className="px-2 py-0.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-[10px] text-orange-300 cursor-pointer transition-colors"
+                        >
+                          晚餐 (17:30~19:30)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setReCondTimeStart("21:00"); setReCondTimeEnd("23:59"); }}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-[10px] text-indigo-300 cursor-pointer transition-colors"
+                        >
+                          深夜 (21:00~23:59)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">起始時間 (例如 12:00)</span>
+                        <input
+                          type="text"
+                          value={reCondTimeStart}
+                          onChange={(e) => setReCondTimeStart(e.target.value)}
+                          placeholder="例如 12:00 (留空不限)"
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">結束時間 (例如 13:30)</span>
+                        <input
+                          type="text"
+                          value={reCondTimeEnd}
+                          onChange={(e) => setReCondTimeEnd(e.target.value)}
+                          placeholder="例如 13:30 (留空不限)"
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 條件二：當前活動條件 (有甚麼活動) */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                    <label className="text-xs text-gray-300 font-medium flex items-center gap-1">
+                      <Utensils className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>② 當前進行之活動條件（當前有甚麼活動時觸發）</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">活動類型要求</span>
+                        <select
+                          value={reCondActivityType}
+                          onChange={(e) => setReCondActivityType(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                        >
+                          <option value="">不限活動類型（任何活動時段）</option>
+                          <option value="course">正式課程時段 (course)</option>
+                          <option value="club">社團課後活動 (club)</option>
+                          <option value="dining">用餐美食時段 (dining / lunch)</option>
+                          <option value="dorm">學生宿舍休閒 (dorm)</option>
+                          <option value="leisure">校園設施休閒 (leisure)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">當前活動名稱關鍵字</span>
+                        <input
+                          type="text"
+                          value={reCondActivityTitle}
+                          onChange={(e) => setReCondActivityTitle(e.target.value)}
+                          placeholder="例如：微積分、羽球、宵夜 (留空不限)"
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 條件三：先前活動條件 (先發生甚麼活動) */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                    <label className="text-xs text-gray-300 font-medium flex items-center gap-1">
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                      <span>③ 前置活動與歷史條件（先發生過甚麼活動或事件）</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">
+                          先前歷史中需曾進行的活動關鍵字
+                        </span>
+                        <input
+                          type="text"
+                          value={reCondPrevActivity}
+                          onChange={(e) => setReCondPrevActivity(e.target.value)}
+                          placeholder="例如：體育、系學會、午餐 (留空不限)"
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400"
+                        />
+                        <span className="text-[10px] text-gray-400 block mt-0.5">
+                          若填寫，玩家先前行程或日誌中必須包含該關鍵字才會觸發
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-400 block mb-1">
+                          先前需曾觸發的前置突發事件
+                        </span>
+                        <select
+                          value={reCondPrevEventId}
+                          onChange={(e) => setReCondPrevEventId(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                        >
+                          <option value="">無前置事件要求（可直接觸發）</option>
+                          {randomEvents.map((ev) => (
+                            <option key={ev.id} value={ev.id}>
+                              {ev.title} ({ev.id})
+                            </option>
+                          ))}
+                        </select>
+                        <span className="text-[10px] text-gray-400 block mt-0.5">
+                          可設定系列連續劇事件，例如必須先觸發松鼠搶劫後才觸發報恩
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 條件四：地點與體力要求 */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-1">限制館舍或地點</label>
+                        <select
+                          value={reCondLocation}
+                          onChange={(e) => setReCondLocation(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                        >
+                          <option value="">全校園任意地點不限</option>
+                          {PRESET_LOCATIONS.map((loc) => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name} ({loc.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-1">
+                          體力限制區間 ({reCondMinStamina} ~ {reCondMaxStamina})
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={reCondMinStamina}
+                            onChange={(e) => setReCondMinStamina(parseInt(e.target.value) || 0)}
+                            className="w-20 px-2 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white text-center font-mono"
+                          />
+                          <span className="text-gray-400 text-xs">至</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={reCondMaxStamina}
+                            onChange={(e) => setReCondMaxStamina(parseInt(e.target.value) || 100)}
+                            className="w-20 px-2 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white text-center font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Event Prompt */}
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">
                     餵給本地 LLM 的突發情境指令 (event_prompt)
@@ -966,11 +1410,12 @@ function EventsContent() {
                     value={rePrompt}
                     onChange={(e) => setRePrompt(e.target.value)}
                     rows={3}
+                    placeholder="例如：突發事件：正值中午 12 點用餐尖峰時段，你來到學餐準備填飽肚子，赫然發現排隊人龍已經一路排到了門口..."
                     className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"
                   />
                 </div>
 
-                {/* Option Hints */}
+                {/* 5. Option Hints */}
                 <div className="space-y-2">
                   <span className="text-xs text-gray-400 block font-medium">
                     三個預設選項意圖提示（由 LLM 潤飾為大學生生動語句）：
@@ -998,25 +1443,25 @@ function EventsContent() {
                   />
                 </div>
 
-                {/* Action Buttons */}
+                {/* 6. Action Buttons */}
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     onClick={handleSaveRandomEvent}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer shadow-md shadow-blue-500/20"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs cursor-pointer shadow-md shadow-blue-500/20 transition-all"
                   >
-                    儲存修改
+                    {isCreatingNewRandomEvent ? "建立並儲存事件" : "儲存事件修改"}
                   </button>
                   <button
                     onClick={handleTestRandomSandbox}
                     disabled={isReSandboxTesting}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold text-xs cursor-pointer shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold text-xs cursor-pointer shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all"
                   >
                     {isReSandboxTesting ? <Sparkles className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                     <span>★ AI 即時預覽沙盒測試</span>
                   </button>
                 </div>
 
-                {/* Live Sandbox Output Box */}
+                {/* 7. Live Sandbox Output Box */}
                 {reSandboxStory && (
                   <div className="mt-3 p-5 rounded-2xl glass-panel-glow border border-amber-500/30 bg-amber-500/5 flex flex-col gap-3">
                     <span className="text-xs font-mono uppercase text-amber-400 flex items-center gap-1.5 font-bold">
@@ -1040,8 +1485,9 @@ function EventsContent() {
                 )}
               </div>
             ) : (
-              <div className="glass-panel p-12 rounded-3xl text-center text-gray-500 text-sm">
-                請從左側清單選擇欲編輯之突發事件
+              <div className="glass-panel p-16 rounded-3xl text-center text-gray-400 text-sm border border-white/10 flex flex-col items-center justify-center gap-3">
+                <Zap className="w-10 h-10 text-gray-500" />
+                <p>請從左側清單選擇欲編輯之突發事件，或點擊「新增事件」自訂設定觸發條件與機率</p>
               </div>
             )}
           </div>

@@ -1047,6 +1047,111 @@ class SimEngine:
 
         return schedule
 
+    def evaluate_random_event_trigger(
+        self,
+        db: Session,
+        session: GameSession,
+        slot_info: dict[str, Any],
+        default_trigger_prob: float
+    ) -> RandomEvent | None:
+        """
+        評估並判定當前時段是否觸發突發事件：
+        1. 檢查體力、星期、時段、地點條件
+        2. 檢查時間範圍條件 (cond_time_start ~ cond_time_end，如 12:00 ~ 13:30)
+        3. 檢查當前活動類型 (cond_activity_type) 與活動名稱關鍵字 (cond_activity_title)
+        4. 檢查先前活動/歷史行程條件 (cond_prev_activity，如「體育」)
+        5. 檢查先前突發事件前置條件 (cond_prev_event_id)
+        6. 依據各事件設定的專屬 trigger_rate 判定是否通過擲骰
+        7. 符合且通過擲骰的多個事件依 weight 權重抽出一個
+        """
+        stamina = session.stats.get("stamina", 80) if session.stats else 80
+        turn = session.current_turn
+        day_num = slot_info.get("day", 1)
+        slot_name = slot_info.get("slot") or "morning"
+        start_t = slot_info.get("start_time") or "10:00"
+        act_type = str(slot_info.get("type") or "course").lower()
+        act_title = str(slot_info.get("title") or "").lower()
+        loc_id = slot_info.get("location_id") or ""
+
+        # 收集歷史活動名稱與日誌，供 cond_prev_activity 研判
+        past_activities: list[str] = []
+        if session.weekly_schedule and isinstance(session.weekly_schedule, list):
+            for past_slot in session.weekly_schedule[:turn]:
+                if isinstance(past_slot, dict):
+                    if past_slot.get("title"):
+                        past_activities.append(str(past_slot.get("title")).lower())
+                    if past_slot.get("type"):
+                        past_activities.append(str(past_slot.get("type")).lower())
+        for log in (session.history_logs or []):
+            past_activities.append(str(log).lower())
+
+        candidate_events = db.query(RandomEvent).filter(
+            RandomEvent.is_active == True,
+            RandomEvent.id.notin_(session.triggered_evts or []),
+            RandomEvent.cond_min_stamina <= stamina,
+            RandomEvent.cond_max_stamina >= stamina
+        ).all()
+
+        triggered_candidates: list[RandomEvent] = []
+        for ev in candidate_events:
+            # 1. 星期幾條件
+            if ev.cond_days and day_num not in ev.cond_days:
+                continue
+            # 2. 時段條件
+            if ev.cond_slots and slot_name not in ev.cond_slots:
+                continue
+            # 3. 特定館舍/地點條件
+            if ev.cond_location and ev.cond_location != loc_id:
+                continue
+            # 4. 特定時間範圍條件 (例如在 OO:XX 時間發生)
+            if ev.cond_time_start and start_t < ev.cond_time_start:
+                continue
+            if ev.cond_time_end and start_t > ev.cond_time_end:
+                continue
+            # 5. 當前活動類型條件 (course, club, dining, dorm, leisure)
+            if ev.cond_activity_type:
+                target_type = ev.cond_activity_type.lower()
+                matched = False
+                if target_type in act_type:
+                    matched = True
+                elif target_type == "dining" and any(k in act_type for k in ("lunch", "dinner", "dining", "food")):
+                    matched = True
+                elif target_type == "dorm" and ("dorm" in act_type):
+                    matched = True
+                elif target_type == "leisure" and any(k in act_type for k in ("leisure", "free", "campus")):
+                    matched = True
+                elif target_type == "course" and ("course" in act_type):
+                    matched = True
+                elif target_type == "club" and ("club" in act_type):
+                    matched = True
+                if not matched:
+                    continue
+            # 6. 當前活動名稱關鍵字條件 (例如 "微積分", "羽球")
+            if ev.cond_activity_title and ev.cond_activity_title.lower() not in act_title:
+                continue
+            # 7. 先前活動/歷史條件 (例如先發生體育活動、先參加系學會等)
+            if ev.cond_prev_activity:
+                prev_kw = ev.cond_prev_activity.lower()
+                if not any(prev_kw in p for p in past_activities):
+                    continue
+            # 8. 先前突發事件前置條件 (例如需先觸發特定前置事件)
+            if ev.cond_prev_event_id:
+                if ev.cond_prev_event_id not in (session.triggered_evts or []):
+                    continue
+
+            # 9. 專屬獨立觸發機率判定
+            event_prob = ev.trigger_rate if ev.trigger_rate is not None else default_trigger_prob
+            if random.random() <= event_prob:
+                triggered_candidates.append(ev)
+
+        if triggered_candidates:
+            weights = [max(1, e.weight) for e in triggered_candidates]
+            chosen = random.choices(triggered_candidates, weights=weights, k=1)[0]
+            session.triggered_evts = (session.triggered_evts or []) + [chosen.id]
+            return chosen
+
+        return None
+
     async def generate_turn_content(
         self,
         db: Session,
@@ -1065,7 +1170,6 @@ class SimEngine:
         slot_info = session.weekly_schedule[turn]
         day_num = slot_info.get("day", 1)
         day_str = DAY_NAMES[(day_num - 1) % len(DAY_NAMES)]
-        slot_name = slot_info.get("slot") or "morning"
         slot_str = slot_info.get("time_label") or slot_info.get("display_time") or "校園時段"
 
         loc_id = slot_info.get("location_id") or "bldg_general_edu"
@@ -1089,31 +1193,13 @@ class SimEngine:
         else:
             life_snippet = life_info.game_snippet if life_info else "微風徐徐吹過百花川與大草坪，下課鐘聲在校園迴盪。"
 
-        # 判定突發事件
-        chosen_event = None
-        if random.random() < trigger_prob:
-            stamina = session.stats.get("stamina", 80)
-            candidate_events = db.query(RandomEvent).filter(
-                RandomEvent.is_active == True,
-                RandomEvent.id.notin_(session.triggered_evts or []),
-                RandomEvent.cond_min_stamina <= stamina,
-                RandomEvent.cond_max_stamina >= stamina
-            ).all()
-
-            filtered = []
-            for ev in candidate_events:
-                if ev.cond_days and day_num not in ev.cond_days:
-                    continue
-                if ev.cond_slots and slot_name not in ev.cond_slots:
-                    continue
-                if ev.cond_location and ev.cond_location != loc_id:
-                    continue
-                filtered.append(ev)
-
-            if filtered:
-                weights = [e.weight for e in filtered]
-                chosen_event = random.choices(filtered, weights=weights, k=1)[0]
-                session.triggered_evts = (session.triggered_evts or []) + [chosen_event.id]
+        # 判定突發事件 (支援專屬觸發條件與各別觸發機率)
+        chosen_event = self.evaluate_random_event_trigger(
+            db=db,
+            session=session,
+            slot_info=slot_info,
+            default_trigger_prob=trigger_prob
+        )
 
         start_t = slot_info.get("start_time") or "10:00"
         is_night_time = (slot_info.get("type") == "day_end") or (start_t >= "21:00" or start_t < "05:00")
@@ -1121,7 +1207,7 @@ class SimEngine:
 
         if chosen_event:
             event_instruction = f"【突發狀況事件：{chosen_event.title}】\n{chosen_event.event_prompt}"
-            preset_options = chosen_event.preset_options
+            preset_options: list[dict[str, Any]] = list(chosen_event.preset_options or [])
         elif slot_info.get("type") == "lunch_prompt":
             event_instruction = "中午 12:00 到了，此時段沒有任何排定課程或活動。肚子漸漸餓了，系統詢問你是否要吃午餐？"
             preset_options = [

@@ -319,6 +319,156 @@ def test_multi_club_scheduling_no_conflicts():
     assert len(days_with_clubs) == len(set(days_with_clubs)), "同一天晚上不應重複排定多個社團"
 
 
+def test_evaluate_random_event_trigger_conditions_and_probability():
+    """驗證突發事件觸發條件 (時間範圍、活動類型、前置活動、前置事件) 與自訂觸發機率"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.core.database import Base
+    from app.models.tables import GameSession, RandomEvent
+
+    test_engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    TestingSession = sessionmaker(bind=test_engine)
+    db = TestingSession()
+
+    # 1. 建立測試用事件庫
+    evt_lunch = RandomEvent(
+        id="evt_lunch_test",
+        title="午餐排隊事件",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,  # 100% 觸發
+        cond_time_start="12:00",
+        cond_time_end="13:30",
+        cond_activity_type="dining",
+        event_prompt="學餐大排長龍",
+        preset_options=[]
+    )
+    evt_pe = RandomEvent(
+        id="evt_pe_test",
+        title="體育課後痠痛",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,
+        cond_prev_activity="體育",
+        event_prompt="肌肉好痠痛",
+        preset_options=[]
+    )
+    evt_seq = RandomEvent(
+        id="evt_seq_test",
+        title="松鼠續集",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,
+        cond_prev_event_id="evt_squirrel_attack",
+        event_prompt="松鼠又來了",
+        preset_options=[]
+    )
+    evt_zero_rate = RandomEvent(
+        id="evt_zero_test",
+        title="零機率事件",
+        is_active=True,
+        weight=10,
+        trigger_rate=0.0,
+        event_prompt="絕不觸發",
+        preset_options=[]
+    )
+    db.add_all([evt_lunch, evt_pe, evt_seq, evt_zero_rate])
+    db.commit()
+
+    # (A) 12:15 用餐時間 -> 應命中 evt_lunch
+    session_a = GameSession(
+        session_id="test_sess_1",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_lunch = {
+        "start_time": "12:15",
+        "end_time": "13:00",
+        "type": "dining",
+        "title": "午餐時段",
+        "day": 1
+    }
+    result_a = sim_engine.evaluate_random_event_trigger(db, session_a, slot_lunch, default_trigger_prob=0.5)
+    assert result_a is not None
+    assert result_a.id == "evt_lunch_test"
+    assert "evt_lunch_test" in session_a.triggered_evts
+
+    # (B) 非 12:00~13:30 時間 (如 14:00) 且為 course -> 不應命中 evt_lunch
+    session_b = GameSession(
+        session_id="test_sess_2",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_afternoon = {
+        "start_time": "14:00",
+        "end_time": "16:00",
+        "type": "course",
+        "title": "企業管理",
+        "day": 1
+    }
+    result_b = sim_engine.evaluate_random_event_trigger(db, session_b, slot_afternoon, default_trigger_prob=0.5)
+    assert result_b is None
+
+    # (C) 前置活動條件：先前歷史中曾參加過「體育」 -> 應命中 evt_pe
+    session_c = GameSession(
+        session_id="test_sess_3",
+        player_profile={},
+        weekly_schedule=[{"title": "大一體育 (羽球)", "type": "course"}],
+        current_turn=1,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=["體育課結束"]
+    )
+    result_c = sim_engine.evaluate_random_event_trigger(db, session_c, slot_afternoon, default_trigger_prob=0.5)
+    assert result_c is not None
+    assert result_c.id == "evt_pe_test"
+
+    # (D) 前置事件條件：先前發生過 evt_squirrel_attack -> 應命中 evt_seq
+    session_d = GameSession(
+        session_id="test_sess_4",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=["evt_squirrel_attack"],
+        history_logs=[]
+    )
+    result_d = sim_engine.evaluate_random_event_trigger(db, session_d, slot_afternoon, default_trigger_prob=0.5)
+    assert result_d is not None
+    assert result_d.id == "evt_seq_test"
+
+    # (E) 零機率事件 (trigger_rate=0.0) 絕不觸發
+    db.query(RandomEvent).filter(RandomEvent.id.in_(["evt_lunch_test", "evt_pe_test", "evt_seq_test"])).delete()
+    db.commit()
+    session_e = GameSession(
+        session_id="test_sess_5",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    result_e = sim_engine.evaluate_random_event_trigger(db, session_e, slot_afternoon, default_trigger_prob=0.5)
+    assert result_e is None
+
+
+
 
 
 
