@@ -78,6 +78,15 @@ class CampusLifeInfo(Base):
     game_snippet = Column(String(255), nullable=False)
     content_md = Column(Text, nullable=False)
 
+    @property
+    def content_html(self) -> str:
+        # Keep DB column stable while exposing HTML-focused field name.
+        return self.content_md
+
+    @content_html.setter
+    def content_html(self, value: str) -> None:
+        self.content_md = value
+
     location = relationship("CampusLocation", back_populates="life_infos")
 
 

@@ -154,15 +154,19 @@ def seed_database():
 
         # 4. 百科飲食交通生活細節
         print("4. 匯入校園生活百科...")
+        db.query(CampusLifeInfo).filter(CampusLifeInfo.info_type == "food").delete(synchronize_session=False)
         for info in data.get("campus_life_info", []):
             if not db.query(CampusLifeInfo).filter(CampusLifeInfo.title == info["title"]).first():
+                content_html = info.get("content_html") or info.get("content_md")
+                if not content_html:
+                    continue
                 db.add(CampusLifeInfo(
                     info_type=info["info_type"],
                     title=info["title"],
                     location_id=info.get("location_id"),
                     tags=info["tags"],
                     game_snippet=info["game_snippet"],
-                    content_md=info["content_md"]
+                    content_md=content_html
                 ))
         db.commit()
 

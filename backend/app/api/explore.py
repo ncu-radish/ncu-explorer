@@ -178,7 +178,7 @@ def get_location_detail(loc_id: str, db: Session = Depends(get_db)):
             "title": i.title,
             "tags": i.tags,
             "game_snippet": i.game_snippet,
-            "content_md": i.content_md,
+            "content_html": i.content_html,
         }
         for i in loc.life_infos
     ]
