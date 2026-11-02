@@ -543,123 +543,128 @@ def test_evaluate_random_event_trigger_conditions_and_probability():
 
 
 
-@pytest.mark.asyncio
-async def test_random_event_choice_attend_vs_skip():
+def test_random_event_choice_attend_vs_skip():
     """驗證突發事件選擇立刻去上課時不跳過原定課程，選擇放假才跳過"""
-    from app.schemas.sim import SimNextTurnRequest
-    from app.api.sim import next_turn
-    from app.models.tables import GameSession, RandomEvent
+    import asyncio
+
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
+    from app.api.sim import next_turn
     from app.core.database import Base
+    from app.models.tables import GameSession
+    from app.schemas.sim import SimNextTurnRequest
 
-    test_engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(test_engine)
-    TestingSession = sessionmaker(bind=test_engine)
-    db = TestingSession()
+    async def run_test():
+        test_engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(test_engine)
+        TestingSession = sessionmaker(bind=test_engine)
+        db = TestingSession()
 
-    schedule = [
-        {"day": 1, "slot": "09:00", "start_time": "09:00", "end_time": "11:50", "type": "course", "title": "會計學（必修）"},
-        {"day": 1, "slot": "12:00", "start_time": "12:00", "end_time": "13:00", "type": "lunch_prompt", "title": "午餐時間"}
-    ]
+        schedule = [
+            {"day": 1, "slot": "09:00", "start_time": "09:00", "end_time": "11:50", "type": "course", "title": "會計學（必修）"},
+            {"day": 1, "slot": "12:00", "start_time": "12:00", "end_time": "13:00", "type": "lunch_prompt", "title": "午餐時間"}
+        ]
 
-    # 模擬突發事件「早八生死時速危機」作用中
-    session = GameSession(
-        session_id="test_sess_attend",
-        player_profile={
+        # 模擬突發事件「早八生死時速危機」作用中
+        session = GameSession(
+            session_id="test_sess_attend",
+            player_profile={
+                "active_random_event": {
+                    "id": "evt_late_wakeup",
+                    "title": "早八生死時速危機",
+                    "turn": 0,
+                    "effects_map": {"A": {"stamina": -20, "study": 15}, "C": {"stamina": 25, "study": -20}},
+                    "options_meta": {
+                        "A": {"option_key": "A", "intent_hint": "睡衣套上外套不刷牙洗臉抓起書包，開啟百米衝刺模式衝進教室"},
+                        "C": {"option_key": "C", "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假"}
+                    }
+                }
+            },
+            weekly_schedule=schedule,
+            current_turn=0,
+            stats={"stamina": 80, "study": 50, "social": 50, "money": 1500},
+            visited_locs=[],
+            triggered_evts=[],
+            history_logs=[]
+        )
+        db.add(session)
+        db.commit()
+
+        # 1. 選擇方案 A（衝進教室上課） -> 不跳過！current_turn 保持 0，進入會計學
+        resp_a = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="A"), db=db)
+        assert resp_a.current_turn == 0
+        assert "成功趕赴" in session.history_logs[-1]
+
+        # 2. 若在此時選擇方案 C（自主放假） -> 跳過！current_turn 推進為 1
+        session.current_turn = 0
+        session.player_profile = {
             "active_random_event": {
                 "id": "evt_late_wakeup",
                 "title": "早八生死時速危機",
                 "turn": 0,
-                "effects_map": {"A": {"stamina": -20, "study": 15}, "C": {"stamina": 25, "study": -20}},
+                "effects_map": {"C": {"stamina": 25, "study": -20}},
                 "options_meta": {
-                    "A": {"option_key": "A", "intent_hint": "睡衣套上外套不刷牙洗臉抓起書包，開啟百米衝刺模式衝進教室"},
                     "C": {"option_key": "C", "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假"}
                 }
             }
-        },
-        weekly_schedule=schedule,
-        current_turn=0,
-        stats={"stamina": 80, "study": 50, "social": 50, "money": 1500},
-        visited_locs=[],
-        triggered_evts=[],
-        history_logs=[]
-    )
-    db.add(session)
-    db.commit()
-
-    # 1. 選擇方案 A（衝進教室上課） -> 不跳過！current_turn 保持 0，進入會計學
-    resp_a = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="A"), db=db)
-    assert resp_a.current_turn == 0
-    assert "成功趕赴" in session.history_logs[-1]
-
-    # 2. 若在此時選擇方案 C（自主放假） -> 跳過！current_turn 推進為 1
-    session.current_turn = 0
-    session.player_profile = {
-        "active_random_event": {
-            "id": "evt_late_wakeup",
-            "title": "早八生死時速危機",
-            "turn": 0,
-            "effects_map": {"C": {"stamina": 25, "study": -20}},
-            "options_meta": {
-                "C": {"option_key": "C", "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假"}
-            }
         }
-    }
-    db.commit()
+        db.commit()
 
-    resp_c = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
-    assert resp_c.current_turn == 1
-    assert "放棄或跳過" in session.history_logs[-1]
-    assert resp_c.weekly_schedule[0].is_skipped is True
-    assert "跳過" in (resp_c.weekly_schedule[0].skip_reason or "")
+        resp_c = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
+        assert resp_c.current_turn == 1
+        assert "放棄或跳過" in session.history_logs[-1]
+        assert resp_c.weekly_schedule[0].is_skipped is True
+        assert "跳過" in (resp_c.weekly_schedule[0].skip_reason or "")
 
-    # 3. 測試進階 time_action: "jump_to_time" -> 跳至 12:00 (turn 1)
-    session.current_turn = 0
-    session.player_profile = {
-        "active_random_event": {
-            "id": "evt_late_wakeup",
-            "title": "早八生死時速危機",
-            "turn": 0,
-            "effects_map": {"C": {"stamina": 25, "study": -20}},
-            "options_meta": {
-                "C": {
-                    "option_key": "C",
-                    "intent_hint": "心一橫把棉被拉過頭頂自主放假",
-                    "time_action": "jump_to_time",
-                    "target_time": "12:00"
+        # 3. 測試進階 time_action: "jump_to_time" -> 跳至 12:00 (turn 1)
+        session.current_turn = 0
+        session.player_profile = {
+            "active_random_event": {
+                "id": "evt_late_wakeup",
+                "title": "早八生死時速危機",
+                "turn": 0,
+                "effects_map": {"C": {"stamina": 25, "study": -20}},
+                "options_meta": {
+                    "C": {
+                        "option_key": "C",
+                        "intent_hint": "心一橫把棉被拉過頭頂自主放假",
+                        "time_action": "jump_to_time",
+                        "target_time": "12:00"
+                    }
                 }
             }
         }
-    }
-    db.commit()
+        db.commit()
 
-    resp_jump = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
-    assert resp_jump.current_turn == 1
-    assert resp_jump.current_time == "12:00"
-    assert resp_jump.weekly_schedule[0].is_skipped is True
-    assert "早八生死時速危機" in (resp_jump.weekly_schedule[0].skip_reason or "")
+        resp_jump = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
+        assert resp_jump.current_turn == 1
+        assert resp_jump.current_time == "12:00"
+        assert resp_jump.weekly_schedule[0].is_skipped is True
+        assert "早八生死時速危機" in (resp_jump.weekly_schedule[0].skip_reason or "")
 
-    # 4. 測試進階 time_action: "add_hours" -> 慢慢梳洗 1 小時後進入會計學 (09:00 + 1h = 10:00 < 11:50)
-    session.current_turn = 0
-    session.player_profile = {
-        "active_random_event": {
-            "id": "evt_late_wakeup",
-            "title": "早八生死時速危機",
-            "turn": 0,
-            "effects_map": {"B": {"stamina": 5, "study": 10}},
-            "options_meta": {
-                "B": {
-                    "option_key": "B",
-                    "intent_hint": "私訊室友幫忙代簽到，自己慢慢梳洗出門",
-                    "time_action": "add_hours",
-                    "duration_hours": 1.0
+        # 4. 測試進階 time_action: "add_hours" -> 慢慢梳洗 1 小時後進入會計學 (09:00 + 1h = 10:00 < 11:50)
+        session.current_turn = 0
+        session.player_profile = {
+            "active_random_event": {
+                "id": "evt_late_wakeup",
+                "title": "早八生死時速危機",
+                "turn": 0,
+                "effects_map": {"B": {"stamina": 5, "study": 10}},
+                "options_meta": {
+                    "B": {
+                        "option_key": "B",
+                        "intent_hint": "私訊室友幫忙代簽到，自己慢慢梳洗出門",
+                        "time_action": "add_hours",
+                        "duration_hours": 1.0
+                    }
                 }
             }
         }
-    }
-    db.commit()
+        db.commit()
 
-    resp_add = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="B"), db=db)
-    assert resp_add.current_turn == 0
-    assert resp_add.current_time == "10:00"
+        resp_add = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="B"), db=db)
+        assert resp_add.current_turn == 0
+        assert resp_add.current_time == "10:00"
+
+    asyncio.run(run_test())

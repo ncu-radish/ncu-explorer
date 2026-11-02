@@ -1124,8 +1124,8 @@ class SimEngine:
             if ev.cond_days and day_num not in ev.cond_days:
                 continue
             # 2. 時段條件 (支援 morning/afternoon/evening 語意判定與具體 slot 鍵名)
-            if ev.cond_slots:
-                if not any(cs.lower() in slot_categories for cs in ev.cond_slots):
+            if ev.cond_slots and isinstance(ev.cond_slots, list):
+                if not any(str(cs).lower() in slot_categories for cs in ev.cond_slots):
                     continue
             # 3. 特定館舍/地點條件
             if ev.cond_location and ev.cond_location != loc_id:

@@ -1,7 +1,7 @@
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -31,8 +31,8 @@ def sync_active_event(session: GameSession, story: Any, effects_map: dict[str, A
         raw_options = {}
         if db:
             ev = db.query(RandomEvent).filter(RandomEvent.id == story.event_id).first()
-            if ev and ev.preset_options:
-                raw_options = {o.get("option_key"): o for o in ev.preset_options}
+            if ev and isinstance(ev.preset_options, list):
+                raw_options = {o.get("option_key"): o for o in ev.preset_options if isinstance(o, dict)}
         for opt in (getattr(story, "options", []) or []):
             raw = raw_options.get(opt.option_key, {})
             eff = raw.get("effects") or effects_map.get(opt.option_key, {})
