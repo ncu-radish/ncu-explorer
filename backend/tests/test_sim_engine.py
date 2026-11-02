@@ -467,6 +467,75 @@ def test_evaluate_random_event_trigger_conditions_and_probability():
     result_e = sim_engine.evaluate_random_event_trigger(db, session_e, slot_afternoon, default_trigger_prob=0.5)
     assert result_e is None
 
+    # (F) 早晨時段語意匹配：cond_slots=["morning"] 搭配早八課程 slot="08:00" 或鬧鐘 slot="alarm_1_07:30"
+    evt_morning = RandomEvent(
+        id="evt_late_wakeup",
+        title="早八生死時速危機",
+        is_active=True,
+        weight=20,
+        trigger_rate=1.0,  # 100% 觸發
+        cond_slots=["morning"],
+        cond_days=[1, 2, 3, 4, 5],
+        cond_min_stamina=0,
+        cond_max_stamina=100,  # 支援一般與高體力
+        event_prompt="鬧鐘沒響！驚醒發現已經 07:52！",
+        preset_options=[]
+    )
+    db.add(evt_morning)
+    db.commit()
+
+    # (F1) 早八必修課時段 (slot="08:00", start_time="08:00", stamina=90) -> 必定觸發
+    session_morning_course = GameSession(
+        session_id="test_sess_morning_course",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 90},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_morning_course = {
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "slot": "08:00",
+        "type": "course",
+        "title": "計算機概論",
+        "day": 1
+    }
+    result_morning_course = sim_engine.evaluate_random_event_trigger(
+        db, session_morning_course, slot_morning_course, default_trigger_prob=0.5
+    )
+    assert result_morning_course is not None
+    assert result_morning_course.id == "evt_late_wakeup"
+    assert "evt_late_wakeup" in session_morning_course.triggered_evts
+
+    # (F2) 鬧鐘起床時段 (slot="alarm_1_07:30", start_time="07:30", stamina=85) -> 必定觸發
+    session_alarm = GameSession(
+        session_id="test_sess_alarm",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 85},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_alarm = {
+        "start_time": "07:30",
+        "end_time": "08:00",
+        "slot": "alarm_1_07:30",
+        "type": "alarm",
+        "title": "⏰ 鬧鐘響起 · 晨起梳洗 (07:30)",
+        "day": 1
+    }
+    result_alarm = sim_engine.evaluate_random_event_trigger(
+        db, session_alarm, slot_alarm, default_trigger_prob=0.5
+    )
+    assert result_alarm is not None
+    assert result_alarm.id == "evt_late_wakeup"
+
+
 
 
 

@@ -8,6 +8,9 @@ class OptionItem(BaseModel):
 class TurnGenerationSchema(BaseModel):
     narrative: str = Field(description="100至150字的第二人稱（你）校園情境描述，需自然融入當前時段、地點特色、課程與突發狀況")
     options: list[OptionItem] = Field(description="固定包含 A, B, C 三個選項")
+    is_random_event: bool = Field(default=False, description="是否為突發事件")
+    event_id: str | None = Field(default=None, description="突發事件 ID")
+    event_title: str | None = Field(default=None, description="突發事件標題")
 
 class OnboardingParseSchema(BaseModel):
     department: str = Field(default="資訊管理學系", description="就讀系所中文全名，如：資訊管理學系、資訊工程學系")

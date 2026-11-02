@@ -128,6 +128,11 @@ export default function SimulatorPage() {
 
   // Handle options with two-phase workflow
   const handleChooseOption = async (optionKey: string) => {
+    // 突發事件為獨立偶發事件，不進入常規 lunch/leisure/sleep 攔截器，直接向後端提交抉擇
+    if (story?.is_random_event) {
+      await executeWithTimeFlow(() => chooseOption(optionKey));
+      return;
+    }
     const slotType = currentSlotInfo.type;
 
     // Phase 1: 12:00 Lunch prompt

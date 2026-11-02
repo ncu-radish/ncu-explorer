@@ -2690,7 +2690,8 @@
       ],
       "cond_location": null,
       "cond_min_stamina": 0,
-      "cond_max_stamina": 40,
+      "cond_max_stamina": 100,
+      "trigger_rate": 1.0,
       "event_prompt": "突發事件：鬧鐘響了十次你都沒醒，猛然睜眼發現現在已經是 07:52！距離八點整的必修課點名只剩 8 分鐘！",
       "preset_options": [
         {

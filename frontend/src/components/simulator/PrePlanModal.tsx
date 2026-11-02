@@ -99,14 +99,20 @@ export function PrePlanModal({
     const slots: any[] = [];
 
     if (enableBreakfast) {
+      // Breakfast starts 30 min after alarm (after grooming), ends 30 min later
+      const [alarmH, alarmM] = alarmTime.split(":").map(Number);
+      const bfStartMins = alarmH * 60 + alarmM + 30;
+      const bfEndMins = bfStartMins + 30;
+      const bfStart = `${String(Math.floor(bfStartMins / 60)).padStart(2, "0")}:${String(bfStartMins % 60).padStart(2, "0")}`;
+      const bfEnd = `${String(Math.floor(bfEndMins / 60)).padStart(2, "0")}:${String(bfEndMins % 60).padStart(2, "0")}`;
       slots.push({
         title: `【早餐】${breakfastChoice}`,
         type: "breakfast",
         location_id: "loc_pine_restaurant",
         location_name: "松果餐廳早餐部",
-        start_time: alarmTime <= "07:30" ? "07:30" : alarmTime,
-        end_time: "08:30",
-        duration_hours: 1,
+        start_time: bfStart,
+        end_time: bfEnd,
+        duration_hours: 0.5,
       });
     }
 

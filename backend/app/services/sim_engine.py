@@ -1085,21 +1085,48 @@ class SimEngine:
         for log in (session.history_logs or []):
             past_activities.append(str(log).lower())
 
+        # 解析當前時段所屬的語意分類集合 (如 morning, afternoon, evening)
+        slot_categories = {slot_name.lower()}
+        if ":" in start_t:
+            try:
+                parts = start_t.split(":")
+                hour = int(parts[0])
+                minute = int(parts[1])
+                time_mins = hour * 60 + minute
+                if 5 * 60 <= time_mins < 12 * 60:
+                    slot_categories.add("morning")
+                elif 12 * 60 <= time_mins < 17 * 60:
+                    slot_categories.add("afternoon")
+                else:
+                    slot_categories.add("evening")
+            except Exception:
+                pass
+
+        s_lower = slot_name.lower()
+        if any(k in s_lower for k in ("morning", "breakfast", "alarm", "wake", "早")):
+            slot_categories.add("morning")
+        if any(k in s_lower for k in ("noon", "lunch", "afternoon", "午")):
+            slot_categories.add("afternoon")
+        if any(k in s_lower for k in ("night", "dinner", "evening", "dorm", "晚", "宵夜")):
+            slot_categories.add("evening")
+
         candidate_events = db.query(RandomEvent).filter(
             RandomEvent.is_active == True,
-            RandomEvent.id.notin_(session.triggered_evts or []),
             RandomEvent.cond_min_stamina <= stamina,
             RandomEvent.cond_max_stamina >= stamina
         ).all()
+        # triggered_evts is kept for cond_prev_event_id chain checks,
+        # but no longer permanently excludes events (they can re-trigger each day).
 
         triggered_candidates: list[RandomEvent] = []
         for ev in candidate_events:
             # 1. 星期幾條件
             if ev.cond_days and day_num not in ev.cond_days:
                 continue
-            # 2. 時段條件
-            if ev.cond_slots and slot_name not in ev.cond_slots:
-                continue
+            # 2. 時段條件 (支援 morning/afternoon/evening 語意判定與具體 slot 鍵名)
+            if ev.cond_slots:
+                if not any(cs.lower() in slot_categories for cs in ev.cond_slots):
+                    continue
             # 3. 特定館舍/地點條件
             if ev.cond_location and ev.cond_location != loc_id:
                 continue
@@ -1157,7 +1184,8 @@ class SimEngine:
         db: Session,
         session: GameSession,
         active_model: str,
-        trigger_prob: float
+        trigger_prob: float,
+        allow_random_event: bool = True
     ) -> tuple[TurnGenerationSchema, dict[str, Any], str | None, str | None]:
         """
         為當前 turn 生成情境與三個選項：
@@ -1194,12 +1222,14 @@ class SimEngine:
             life_snippet = life_info.game_snippet if life_info else "微風徐徐吹過百花川與大草坪，下課鐘聲在校園迴盪。"
 
         # 判定突發事件 (支援專屬觸發條件與各別觸發機率)
-        chosen_event = self.evaluate_random_event_trigger(
-            db=db,
-            session=session,
-            slot_info=slot_info,
-            default_trigger_prob=trigger_prob
-        )
+        chosen_event = None
+        if allow_random_event:
+            chosen_event = self.evaluate_random_event_trigger(
+                db=db,
+                session=session,
+                slot_info=slot_info,
+                default_trigger_prob=trigger_prob
+            )
 
         start_t = slot_info.get("start_time") or "10:00"
         is_night_time = (slot_info.get("type") == "day_end") or (start_t >= "21:00" or start_t < "05:00")
@@ -1342,7 +1372,7 @@ class SimEngine:
                 ]
 
         # Special handling for interactive prompt checkpoints: return crisp predefined narrative & options immediately
-        if slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end") or is_night_time:
+        if (slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end") or is_night_time) and not chosen_event:
             story = TurnGenerationSchema(
                 narrative=f"【{day_str} {slot_str}】{event_instruction}",
                 options=[
@@ -1364,9 +1394,16 @@ class SimEngine:
             )
             for i, opt in enumerate(preset_options)
         ]
+        if chosen_event:
+            fallback_narrative = f"【突發狀況：{chosen_event.title}】{chosen_event.event_prompt}"
+        else:
+            fallback_narrative = f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。"
         fallback_story = TurnGenerationSchema(
-            narrative=f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。",
-            options=fallback_options
+            narrative=fallback_narrative,
+            options=fallback_options,
+            is_random_event=bool(chosen_event),
+            event_id=chosen_event.id if chosen_event else None,
+            event_title=chosen_event.title if chosen_event else None
         )
 
         recent_hist = "、".join(session.history_logs[-2:]) if session.history_logs else "剛踏入中央大學展開第一週校園生活"
@@ -1400,7 +1437,12 @@ class SimEngine:
             logger.warning(f"Turn story generation failed, using fallback: {e}")
             story = fallback_story
 
-        effects_map = {opt["option_key"]: opt["effects"] for opt in preset_options}
+        if chosen_event:
+            story.is_random_event = True
+            story.event_id = chosen_event.id
+            story.event_title = chosen_event.title
+
+        effects_map = {opt["option_key"]: opt.get("effects", {}) for opt in preset_options}
         return story, effects_map, loc_id, loc_name
 
     def apply_choice_effects(

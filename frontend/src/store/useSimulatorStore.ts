@@ -30,6 +30,9 @@ export interface OptionItem {
 export interface StoryState {
   narrative: string;
   options: OptionItem[];
+  is_random_event?: boolean;
+  event_id?: string;
+  event_title?: string;
 }
 
 export interface Stats {

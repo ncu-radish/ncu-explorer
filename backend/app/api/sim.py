@@ -1,7 +1,9 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Any
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.database import get_db
 from app.models.tables import CampusActivity, CampusLocation, GameSession, SystemConfig
@@ -21,6 +23,28 @@ from app.schemas.sim import (
 from app.services.sim_engine import sim_engine
 
 router = APIRouter(prefix="/sim", tags=["Simulation"])
+
+def sync_active_event(session: GameSession, story: Any, effects_map: dict[str, Any]):
+    profile = dict(session.player_profile or {})
+    if getattr(story, "is_random_event", False) and getattr(story, "event_id", None):
+        options_meta = {}
+        for opt in (getattr(story, "options", []) or []):
+            options_meta[opt.option_key] = {
+                "option_key": opt.option_key,
+                "intent_hint": opt.display_text,
+                "effects": effects_map.get(opt.option_key, {})
+            }
+        profile["active_random_event"] = {
+            "id": story.event_id,
+            "title": story.event_title or "突發狀況",
+            "turn": session.current_turn,
+            "effects_map": effects_map,
+            "options_meta": options_meta
+        }
+    else:
+        profile.pop("active_random_event", None)
+    session.player_profile = profile
+    flag_modified(session, "player_profile")
 
 def get_system_config(db: Session):
     config = db.query(SystemConfig).first()
@@ -65,6 +89,7 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
     story, effects_map, loc_id, loc_name = await sim_engine.generate_turn_content(
         db, new_session, active_model, trigger_prob
     )
+    sync_active_event(new_session, story, effects_map)
 
     if loc_id and loc_id not in new_session.visited_locs:
         new_session.visited_locs = (new_session.visited_locs or []) + [loc_id]
@@ -136,41 +161,105 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
 
     active_model, trigger_prob = get_system_config(db)
 
-    # 1. 結算上一回合數值增減 (根據 option A/B/C)
-    effects_default = {
-        "A": {"stamina": -10, "study": 12, "social": 5, "money": 0},
-        "B": {"stamina": 10, "study": 0, "social": 0, "money": 0},
-        "C": {"stamina": -5, "study": 0, "social": 12, "money": -60}
-    }
-    applied_effects = sim_engine.apply_choice_effects(session, effects_default, req.option_key)
+    profile = dict(session.player_profile or {})
+    active_event = profile.get("active_random_event")
 
-    # 紀錄行動日誌
-    current_slot = session.weekly_schedule[session.current_turn]
-    log_entry = f"{current_slot.get('title', '行程')}：選擇了方案 {req.option_key}"
-    session.history_logs = (session.history_logs or []) + [log_entry]
+    # 檢查此回合是否是在處理突發事件
+    is_resolving_event = bool(active_event and active_event.get("turn") == session.current_turn)
 
-    # 2. 推進至下一回合
-    session.current_turn += 1
-
-    # 3. 檢查是否達一週終點
-    total_turns = len(session.weekly_schedule)
-    if session.current_turn >= total_turns:
-        db.commit()
-        return SimNextTurnResponse(
-            session_id=session.session_id,
-            current_turn=session.current_turn,
-            current_time="22:00",
-            current_day=5,
-            is_game_over=True,
-            stats=session.stats,
-            delta_stats=applied_effects,
-            story=None
+    if is_resolving_event:
+        # 1. 取得突發事件專屬效果
+        effects_map = active_event.get("effects_map", {})
+        effects_for_choice = effects_map.get(req.option_key) or {
+            "stamina": -10, "study": 10, "social": 0, "money": 0
+        }
+        applied_effects = sim_engine.apply_choice_effects(
+            session, {req.option_key: effects_for_choice}, req.option_key
         )
 
-    # 4. 生成下一回合故事與選項
-    story, _, loc_id, loc_name = await sim_engine.generate_turn_content(
-        db, session, active_model, trigger_prob
-    )
+        ev_title = active_event.get("title", "突發狀況")
+        current_slot = session.weekly_schedule[session.current_turn]
+        slot_title = current_slot.get("title", "排定行程")
+
+        options_meta = active_event.get("options_meta", {})
+        opt_info = options_meta.get(req.option_key, {})
+        opt_hint = opt_info.get("intent_hint", f"方案 {req.option_key}")
+
+        # 判斷是否為放棄/繼續睡等跳過行程的選項
+        skip_keywords = ("睡", "放假", "蹺課", "翹課", "放棄前進", "不去", "取消", "在家")
+        is_skipping_slot = any(k in opt_hint for k in skip_keywords)
+
+        # 突發事件已決策完畢，清除作用中的事件
+        profile.pop("active_random_event", None)
+        session.player_profile = profile
+        flag_modified(session, "player_profile")
+
+        if is_skipping_slot:
+            # 選擇跳過（如睡過頭自主放假）：推進至下一回合，跳過原定活動
+            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（放棄或跳過「{slot_title}」）"
+            session.history_logs = (session.history_logs or []) + [log_entry]
+            session.current_turn += 1
+
+            if session.current_turn >= len(session.weekly_schedule):
+                db.commit()
+                return SimNextTurnResponse(
+                    session_id=session.session_id,
+                    current_turn=session.current_turn,
+                    current_time="22:00",
+                    current_day=5,
+                    is_game_over=True,
+                    stats=session.stats,
+                    delta_stats=applied_effects,
+                    story=None
+                )
+
+            story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                db, session, active_model, trigger_prob, allow_random_event=True
+            )
+            sync_active_event(session, story, next_effects)
+        else:
+            # 選擇面對或前往（如套上衣服百米衝去教室）：不跳過活動！留在當前 turn，生成該活動情境
+            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（成功趕赴「{slot_title}」）"
+            session.history_logs = (session.history_logs or []) + [log_entry]
+
+            # current_turn 保持不變，進入原定行程（不重複觸發突發事件）
+            story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                db, session, active_model, trigger_prob, allow_random_event=False
+            )
+            sync_active_event(session, story, next_effects)
+
+    else:
+        # 常規行程推進
+        effects_default = {
+            "A": {"stamina": -10, "study": 12, "social": 5, "money": 0},
+            "B": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+            "C": {"stamina": -5, "study": 0, "social": 12, "money": -60}
+        }
+        applied_effects = sim_engine.apply_choice_effects(session, effects_default, req.option_key)
+
+        current_slot = session.weekly_schedule[session.current_turn]
+        log_entry = f"{current_slot.get('title', '行程')}：選擇了方案 {req.option_key}"
+        session.history_logs = (session.history_logs or []) + [log_entry]
+
+        session.current_turn += 1
+
+        if session.current_turn >= len(session.weekly_schedule):
+            db.commit()
+            return SimNextTurnResponse(
+                session_id=session.session_id,
+                current_turn=session.current_turn,
+                current_time="22:00",
+                current_day=5,
+                is_game_over=True,
+                stats=session.stats,
+                delta_stats=applied_effects,
+                story=None
+            )
+
+        story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+            db, session, active_model, trigger_prob, allow_random_event=True
+        )
+        sync_active_event(session, story, next_effects)
 
     if loc_id and loc_id not in (session.visited_locs or []):
         session.visited_locs = (session.visited_locs or []) + [loc_id]
@@ -356,9 +445,10 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     else:
         session.current_turn = next_turn_idx
         active_model, trigger_prob = get_system_config(db)
-        next_story, _, next_loc_id, next_loc_name = await sim_engine.generate_turn_content(
+        next_story, next_effects, next_loc_id, next_loc_name = await sim_engine.generate_turn_content(
             db, session, active_model, trigger_prob
         )
+        sync_active_event(session, next_story, next_effects)
         if next_loc_id and next_loc_id not in (session.visited_locs or []):
             session.visited_locs = (session.visited_locs or []) + [next_loc_id]
         next_slot = updated_schedule[session.current_turn]
@@ -443,8 +533,8 @@ async def pre_plan_tomorrow(req: SimPrePlanRequest, db: Session = Depends(get_db
             "location_id": "loc_dorm_boy9",
             "location_name": "學生宿舍",
             "start_time": alarm_t,
-            "end_time": add_time_hours(alarm_t, 1),
-            "display_time": f"{alarm_t} ~ {add_time_hours(alarm_t, 1)}",
+            "end_time": add_time_minutes(alarm_t, 30),
+            "display_time": f"{alarm_t} ~ {add_time_minutes(alarm_t, 30)}",
             "time_label": f"週{['一','二','三','四','五'][req.target_day-1]} {alarm_t}",
         })
 
@@ -484,9 +574,10 @@ async def pre_plan_tomorrow(req: SimPrePlanRequest, db: Session = Depends(get_db
     curr_day = next_slot.get("day", req.target_day)
 
     # Generate next turn story for tomorrow morning
-    story, _, loc_id, loc_name = await sim_engine.generate_turn_content(
+    story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
         db, session, active_model, trigger_prob
     )
+    sync_active_event(session, story, next_effects)
     if loc_id and loc_id not in (session.visited_locs or []):
         session.visited_locs = (session.visited_locs or []) + [loc_id]
 
