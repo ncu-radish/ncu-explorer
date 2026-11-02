@@ -31,7 +31,7 @@ class CampusLifeItem(BaseModel):
     location_name: str | None = None
     tags: list[str]
     game_snippet: str
-    content_md: str
+    content_html: str
 
     class Config:
         from_attributes = True

@@ -24,9 +24,38 @@ import { ClubExplorerView } from "@/components/clubs/ClubExplorerView";
 
 type CategoryId = "courses" | "transport" | "food" | "dorm" | "clubs";
 
+type FoodItem = {
+  id: number;
+  title: string;
+  location_id?: string | null;
+  location_name?: string | null;
+  tags: string[];
+  game_snippet: string;
+  content_html: string;
+};
+
+function sanitizeHtml(html: string) {
+  if (typeof window === "undefined") return "";
+
+  const allowedTags = new Set(["H2", "H3", "P", "UL", "OL", "LI", "STRONG", "EM", "BR"]);
+  const documentFragment = new DOMParser().parseFromString(html, "text/html");
+
+  documentFragment.body.querySelectorAll("*").forEach((element) => {
+    if (!allowedTags.has(element.tagName)) {
+      element.replaceWith(...Array.from(element.childNodes));
+      return;
+    }
+
+    Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+  });
+
+  return documentFragment.body.innerHTML;
+}
+
 export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
-  const [_lifeInfos, setLifeInfos] = useState<any[]>([]);
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [isFoodLoading, setIsFoodLoading] = useState(false);
   const [detailModal, setDetailModal] = useState<any | null>(null);
 
   useEffect(() => {
@@ -43,7 +72,12 @@ export default function ExplorePage() {
       }
     }
 
-    exploreApi.getLifeInfo().then(setLifeInfos).catch(console.error);
+    setIsFoodLoading(true);
+    exploreApi
+      .getLifeInfo("food")
+      .then((items) => setFoodItems(items as FoodItem[]))
+      .catch(console.error)
+      .finally(() => setIsFoodLoading(false));
   }, []);
 
   // Main Category Cards Configuration
@@ -149,34 +183,6 @@ export default function ExplorePage() {
     },
   ];
 
-  // Food static data
-  const foodItems = [
-    {
-      title: "後門早餐一條街",
-      desc: "緊鄰中央大學後門警衛亭，聚集多家早餐店：酥皮蛋餅、大份量炒泡麵與手工奶茶，早八必吃。",
-      tag: "早餐商圈",
-      location: "後門商圈",
-    },
-    {
-      title: "宵夜街人氣美食",
-      desc: "位於校園東側，深夜熱鬧的宵夜聚集地。碳烤雞排、現炸鹽酥雞、黑糖手工豆花與香酥地瓜球。",
-      tag: "宵夜食堂",
-      location: "宵夜街",
-    },
-    {
-      title: "松苑餐廳與男九舍餐廳",
-      desc: "校內用餐首選，提供平價自助餐、現切燒臘便當、日式丼飯、湯麵與素食專區。",
-      tag: "校內學餐",
-      location: "松苑 / 男九舍",
-    },
-    {
-      title: "校園便利超商與咖啡館",
-      desc: "女十四舍全家、總圖 7-ELEVEN、百花川路易莎咖啡，提供日常輕食、自習咖啡與提神飲品。",
-      tag: "咖啡超商",
-      location: "百花川 / 總圖",
-    },
-  ];
-
   // Dorm static data
   const dormItems = [
     {
@@ -216,10 +222,19 @@ export default function ExplorePage() {
             <h3 className="text-xl font-bold text-stone-900 mb-3">
               {detailModal.title || detailModal.name}
             </h3>
-            <div className="p-4 rounded-xl mb-5 bg-stone-50 border border-stone-200 text-sm text-stone-700 leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
-              {detailModal.content_md || detailModal.full_intro || detailModal.desc}
+            <div className="p-4 rounded-xl mb-5 bg-stone-50 border border-stone-200 text-sm text-stone-700 leading-relaxed max-h-80 overflow-y-auto">
+              {detailModal.content_html ? (
+                <div
+                  className="prose prose-sm max-w-none prose-headings:text-stone-900 prose-p:text-stone-700 prose-li:text-stone-700"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(detailModal.content_html) }}
+                />
+              ) : (
+                <div className="whitespace-pre-wrap">
+                  {detailModal.content_md || detailModal.full_intro || detailModal.desc}
+                </div>
+              )}
             </div>
-            {detailModal.location_id && (
+            {detailModal.location_id && detailModal.info_type !== "food" && (
               <Link
                 href={`/map?loc=${detailModal.location_id}`}
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-xs"
@@ -533,38 +548,49 @@ export default function ExplorePage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {foodItems.map((item, idx) => (
+              {isFoodLoading ? (
+                <div className="py-16 text-center text-xs text-stone-500">正在載入飲食資料...</div>
+              ) : foodItems.length === 0 ? (
+                <div className="py-16 text-center text-xs text-stone-500">目前沒有可顯示的飲食資料。</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {foodItems.map((item) => (
                   <div
-                    key={idx}
+                    key={item.id}
+                    onClick={() => setDetailModal(item)}
                     className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-medium border border-amber-200">
-                          {item.tag}
+                          {item.tags[0] || "飲食"}
                         </span>
                         <span className="text-xs text-stone-500 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-amber-600" /> {item.location}
+                          <MapPin className="w-3.5 h-3.5 text-amber-600" /> {item.location_name || "校園周邊"}
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-stone-900 mb-2">
                         {item.title}
                       </h3>
                       <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                        {item.desc}
+                        {item.game_snippet}
                       </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.tags.slice(0, 5).map((tag) => (
+                          <span key={tag} className="text-[11px] px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                      <span>可至 3D 地圖查看商圈位置</span>
-                      <Link href="/map" className="text-amber-700 font-semibold hover:underline">
-                        查看地圖 →
-                      </Link>
+                    <div className="pt-3 border-t border-stone-100 text-xs text-stone-500">
+                      <span>點擊查看完整店家資訊</span>
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
