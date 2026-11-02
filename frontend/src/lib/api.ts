@@ -55,6 +55,66 @@ export const simApi = {
       method: "POST",
       body: JSON.stringify({ session_id: sessionId }),
     }),
+  triggerActivity: (
+    sessionId: string,
+    activityId: string,
+    optionKey: string = "A",
+    durationHours: number = 1,
+    customTitle?: string,
+    durationMinutes?: number,
+    customEndTime?: string
+  ) =>
+    fetchApi<{
+      session_id: string;
+      message: string;
+      marked_slot: any;
+      weekly_schedule: any[];
+      stats: any;
+      delta_stats: any;
+      current_location_id?: string;
+      current_location_name?: string;
+    }>("/sim/trigger-activity", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        activity_id: activityId,
+        option_key: optionKey,
+        duration_hours: durationHours,
+        duration_minutes: durationMinutes,
+        custom_end_time: customEndTime,
+        custom_title: customTitle || undefined,
+      }),
+    }),
+  prePlanTomorrow: (
+    sessionId: string,
+    targetDay: number,
+    slots: any[],
+    sleepTime: string = "22:00",
+    alarmTime: string = "07:30"
+  ) =>
+    fetchApi<{
+      session_id: string;
+      message: string;
+      current_turn: number;
+      current_time?: string;
+      current_day?: number;
+      weekly_schedule: any[];
+      stats: any;
+      delta_stats?: any;
+      sleep_hours?: number;
+      story?: any;
+      current_location_id?: string;
+      current_location_name?: string;
+    }>("/sim/pre-plan-tomorrow", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        target_day: targetDay,
+        slots,
+        sleep_time: sleepTime,
+        alarm_time: alarmTime,
+      }),
+    }),
 };
 
 // Course Explorer API
@@ -232,6 +292,33 @@ export interface ClubCategorySummary {
   count: number;
 }
 
+export interface CampusActivityOption {
+  option_key: string;
+  intent_hint: string;
+  effects: {
+    stamina?: number;
+    study?: number;
+    social?: number;
+    money?: number;
+  };
+  marks_activity?: boolean;
+}
+
+export interface CampusActivity {
+  id: string;
+  title: string;
+  category: "breakfast" | "lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | string;
+  trigger_type: string;
+  trigger_timing: string;
+  trigger_mode: string;
+  location_id?: string | null;
+  location_name?: string | null;
+  is_active: boolean;
+  weight: number;
+  event_prompt: string;
+  preset_options: CampusActivityOption[];
+}
+
 // Explore & 3D Map API
 export const exploreApi = {
   getBuildings: (params?: { q?: string; category?: string }) => {
@@ -315,6 +402,35 @@ export const adminApi = {
     }),
   testSandbox: (data: { event_prompt: string; preset_options: any[]; location_id?: string }) =>
     fetchApi<any>("/admin/events/sandbox", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getActivities: () => fetchApi<CampusActivity[]>("/admin/activities"),
+  createActivity: (activityData: Partial<CampusActivity>) =>
+    fetchApi<CampusActivity>("/admin/activities", {
+      method: "POST",
+      body: JSON.stringify(activityData),
+    }),
+  updateActivity: (id: string, activityData: Partial<CampusActivity>) =>
+    fetchApi<CampusActivity>(`/admin/activities/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(activityData),
+    }),
+  deleteActivity: (id: string) =>
+    fetchApi<any>(`/admin/activities/${id}`, {
+      method: "DELETE",
+    }),
+  seedDefaultActivities: () =>
+    fetchApi<CampusActivity[]>("/admin/activities/seed-defaults", {
+      method: "POST",
+    }),
+  testActivitySandbox: (data: {
+    event_prompt: string;
+    preset_options: any[];
+    location_id?: string;
+    slot?: string;
+  }) =>
+    fetchApi<any>("/admin/activities/sandbox", {
       method: "POST",
       body: JSON.stringify(data),
     }),

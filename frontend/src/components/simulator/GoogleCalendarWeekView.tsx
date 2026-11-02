@@ -16,11 +16,11 @@ function parseMinutes(timeStr?: string): number {
 }
 
 function getEventStyle(slot: ScheduleSlot) {
-  if (slot.type === "dorm") {
+  if (slot.type === "breakfast") {
     return {
-      bg: "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800",
-      badge: "bg-slate-200 text-slate-700",
-      label: "宿舍生活",
+      bg: "bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-950",
+      badge: "bg-yellow-200 text-yellow-800",
+      label: "晨光早餐",
     };
   }
   if (slot.type === "lunch") {
@@ -28,6 +28,27 @@ function getEventStyle(slot: ScheduleSlot) {
       bg: "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900",
       badge: "bg-amber-200 text-amber-800",
       label: "午膳時光",
+    };
+  }
+  if (slot.type === "dinner") {
+    return {
+      bg: "bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-950",
+      badge: "bg-orange-200 text-orange-800",
+      label: "晚餐時光",
+    };
+  }
+  if (slot.type === "dorm") {
+    return {
+      bg: "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800",
+      badge: "bg-slate-200 text-slate-700",
+      label: "宿舍休閒",
+    };
+  }
+  if (slot.type === "campus_leisure") {
+    return {
+      bg: "bg-teal-50 hover:bg-teal-100 border-teal-300 text-teal-950",
+      badge: "bg-teal-200 text-teal-800",
+      label: "校園休閒",
     };
   }
   if (slot.type === "club") {
@@ -114,6 +135,10 @@ export function GoogleCalendarWeekView({
       1: [], 2: [], 3: [], 4: [], 5: []
     };
     schedule.forEach((slot, index) => {
+      // 隱藏內部未觸發的提問檢查點，只顯示正式活動與課堂行程
+      if (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") {
+        return;
+      }
       if (slot.day >= 1 && slot.day <= 5) {
         map[slot.day].push({ slot, index });
       }
@@ -197,6 +222,7 @@ export function GoogleCalendarWeekView({
                 {daySlots.map(({ slot, index }) => {
                   const isCurrent = index === currentTurn;
                   const isPast = index < currentTurn;
+                  const isSkipped = Boolean(slot.is_skipped);
                   const startM = parseMinutes(slot.start_time);
                   const endM = parseMinutes(slot.end_time);
                   const durationM = Math.max(35, endM - startM);
@@ -214,11 +240,13 @@ export function GoogleCalendarWeekView({
                         height: `${heightPercent}%`,
                       }}
                       className={`absolute left-0.5 right-0.5 rounded-lg border p-1 sm:p-1.5 flex flex-col justify-between transition-all cursor-pointer shadow-2xs overflow-hidden ${
-                        styleMeta.bg
+                        isSkipped
+                          ? "border-dashed border-rose-300 bg-stone-100/90 text-stone-500 opacity-70 hover:opacity-100"
+                          : styleMeta.bg
                       } ${
-                        isCurrent
+                        !isSkipped && isCurrent
                           ? "ring-2 ring-blue-500 bg-white shadow-md z-10 scale-[1.01]"
-                          : isPast
+                          : !isSkipped && isPast
                           ? "opacity-60 hover:opacity-100"
                           : "hover:shadow-xs"
                       }`}
@@ -227,9 +255,13 @@ export function GoogleCalendarWeekView({
                         {/* Event Header: Category badge & Time */}
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span
-                            className={`text-[8px] px-1 py-0.2 rounded font-semibold ${styleMeta.badge}`}
+                            className={`text-[8px] px-1 py-0.2 rounded font-semibold ${
+                              isSkipped
+                                ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                : styleMeta.badge
+                            }`}
                           >
-                            {styleMeta.label}
+                            {isSkipped ? "已跳過" : styleMeta.label}
                           </span>
                           <span className="text-[9px] font-mono opacity-75 truncate">
                             {slot.start_time}
@@ -237,7 +269,9 @@ export function GoogleCalendarWeekView({
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-[10px] sm:text-[11px] font-bold line-clamp-2 leading-tight">
+                        <h4 className={`text-[10px] sm:text-[11px] font-bold line-clamp-2 leading-tight ${
+                          isSkipped ? "line-through text-stone-400" : ""
+                        }`}>
                           {slot.title}
                         </h4>
                       </div>

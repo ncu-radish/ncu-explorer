@@ -10,8 +10,9 @@ def test_build_weekly_schedule_default():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    # Ensure ONLY courses and clubs exist; dorm, free, and lunch must be removed
-    assert all(s.type in ("course", "club") for s in schedule)
+    # Ensure ONLY valid courses, clubs, and checkpoints exist; dorm, free, and lunch must be removed
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
@@ -36,8 +37,8 @@ def test_build_weekly_schedule_freshman_im():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    # Ensure ONLY courses and clubs exist
-    assert all(s.type in ("course", "club") for s in schedule)
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
@@ -63,8 +64,8 @@ def test_build_weekly_schedule_sophomore():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    # Ensure ONLY courses and clubs exist
-    assert all(s.type in ("course", "club") for s in schedule)
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
@@ -89,8 +90,8 @@ def test_build_weekly_schedule_junior():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    # Ensure ONLY courses and clubs exist
-    assert all(s.type in ("course", "club") for s in schedule)
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
@@ -115,8 +116,8 @@ def test_build_weekly_schedule_senior():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    # Ensure ONLY courses and clubs exist
-    assert all(s.type in ("course", "club") for s in schedule)
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
 
@@ -161,8 +162,8 @@ def test_build_weekly_schedule_double_major():
         clubs=["熱音社"],
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    assert len(schedule) >= 3
-    assert all(s.type in ("course", "club") for s in schedule)
+    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    assert all(s.type in valid_types for s in schedule)
 
     # 驗證包含「雙主修必修」之課程標籤
     sec_courses = [s for s in schedule if s.type == "course" and s.course_category == "雙主修必修"]
@@ -318,6 +319,352 @@ def test_multi_club_scheduling_no_conflicts():
     assert len(days_with_clubs) == len(set(days_with_clubs)), "同一天晚上不應重複排定多個社團"
 
 
+def test_evaluate_random_event_trigger_conditions_and_probability():
+    """驗證突發事件觸發條件 (時間範圍、活動類型、前置活動、前置事件) 與自訂觸發機率"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.core.database import Base
+    from app.models.tables import GameSession, RandomEvent
+
+    test_engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(test_engine)
+    TestingSession = sessionmaker(bind=test_engine)
+    db = TestingSession()
+
+    # 1. 建立測試用事件庫
+    evt_lunch = RandomEvent(
+        id="evt_lunch_test",
+        title="午餐排隊事件",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,  # 100% 觸發
+        cond_time_start="12:00",
+        cond_time_end="13:30",
+        cond_activity_type="dining",
+        event_prompt="學餐大排長龍",
+        preset_options=[]
+    )
+    evt_pe = RandomEvent(
+        id="evt_pe_test",
+        title="體育課後痠痛",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,
+        cond_prev_activity="體育",
+        event_prompt="肌肉好痠痛",
+        preset_options=[]
+    )
+    evt_seq = RandomEvent(
+        id="evt_seq_test",
+        title="松鼠續集",
+        is_active=True,
+        weight=10,
+        trigger_rate=1.0,
+        cond_prev_event_id="evt_squirrel_attack",
+        event_prompt="松鼠又來了",
+        preset_options=[]
+    )
+    evt_zero_rate = RandomEvent(
+        id="evt_zero_test",
+        title="零機率事件",
+        is_active=True,
+        weight=10,
+        trigger_rate=0.0,
+        event_prompt="絕不觸發",
+        preset_options=[]
+    )
+    db.add_all([evt_lunch, evt_pe, evt_seq, evt_zero_rate])
+    db.commit()
+
+    # (A) 12:15 用餐時間 -> 應命中 evt_lunch
+    session_a = GameSession(
+        session_id="test_sess_1",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_lunch = {
+        "start_time": "12:15",
+        "end_time": "13:00",
+        "type": "dining",
+        "title": "午餐時段",
+        "day": 1
+    }
+    result_a = sim_engine.evaluate_random_event_trigger(db, session_a, slot_lunch, default_trigger_prob=0.5)
+    assert result_a is not None
+    assert result_a.id == "evt_lunch_test"
+    assert "evt_lunch_test" in session_a.triggered_evts
+
+    # (B) 非 12:00~13:30 時間 (如 14:00) 且為 course -> 不應命中 evt_lunch
+    session_b = GameSession(
+        session_id="test_sess_2",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_afternoon = {
+        "start_time": "14:00",
+        "end_time": "16:00",
+        "type": "course",
+        "title": "企業管理",
+        "day": 1
+    }
+    result_b = sim_engine.evaluate_random_event_trigger(db, session_b, slot_afternoon, default_trigger_prob=0.5)
+    assert result_b is None
+
+    # (C) 前置活動條件：先前歷史中曾參加過「體育」 -> 應命中 evt_pe
+    session_c = GameSession(
+        session_id="test_sess_3",
+        player_profile={},
+        weekly_schedule=[{"title": "大一體育 (羽球)", "type": "course"}],
+        current_turn=1,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=["體育課結束"]
+    )
+    result_c = sim_engine.evaluate_random_event_trigger(db, session_c, slot_afternoon, default_trigger_prob=0.5)
+    assert result_c is not None
+    assert result_c.id == "evt_pe_test"
+
+    # (D) 前置事件條件：先前發生過 evt_squirrel_attack -> 應命中 evt_seq
+    session_d = GameSession(
+        session_id="test_sess_4",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=["evt_squirrel_attack"],
+        history_logs=[]
+    )
+    result_d = sim_engine.evaluate_random_event_trigger(db, session_d, slot_afternoon, default_trigger_prob=0.5)
+    assert result_d is not None
+    assert result_d.id == "evt_seq_test"
+
+    # (E) 零機率事件 (trigger_rate=0.0) 絕不觸發
+    db.query(RandomEvent).filter(RandomEvent.id.in_(["evt_lunch_test", "evt_pe_test", "evt_seq_test"])).delete()
+    db.commit()
+    session_e = GameSession(
+        session_id="test_sess_5",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 80},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    result_e = sim_engine.evaluate_random_event_trigger(db, session_e, slot_afternoon, default_trigger_prob=0.5)
+    assert result_e is None
+
+    # (F) 早晨時段語意匹配：cond_slots=["morning"] 搭配早八課程 slot="08:00" 或鬧鐘 slot="alarm_1_07:30"
+    evt_morning = RandomEvent(
+        id="evt_late_wakeup",
+        title="早八生死時速危機",
+        is_active=True,
+        weight=20,
+        trigger_rate=1.0,  # 100% 觸發
+        cond_slots=["morning"],
+        cond_days=[1, 2, 3, 4, 5],
+        cond_min_stamina=0,
+        cond_max_stamina=100,  # 支援一般與高體力
+        event_prompt="鬧鐘沒響！驚醒發現已經 07:52！",
+        preset_options=[]
+    )
+    db.add(evt_morning)
+    db.commit()
+
+    # (F1) 早八必修課時段 (slot="08:00", start_time="08:00", stamina=90) -> 必定觸發
+    session_morning_course = GameSession(
+        session_id="test_sess_morning_course",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 90},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_morning_course = {
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "slot": "08:00",
+        "type": "course",
+        "title": "計算機概論",
+        "day": 1
+    }
+    result_morning_course = sim_engine.evaluate_random_event_trigger(
+        db, session_morning_course, slot_morning_course, default_trigger_prob=0.5
+    )
+    assert result_morning_course is not None
+    assert result_morning_course.id == "evt_late_wakeup"
+    assert "evt_late_wakeup" in session_morning_course.triggered_evts
+
+    # (F2) 鬧鐘起床時段 (slot="alarm_1_07:30", start_time="07:30", stamina=85) -> 必定觸發
+    session_alarm = GameSession(
+        session_id="test_sess_alarm",
+        player_profile={},
+        weekly_schedule=[],
+        current_turn=0,
+        stats={"stamina": 85},
+        visited_locs=[],
+        triggered_evts=[],
+        history_logs=[]
+    )
+    slot_alarm = {
+        "start_time": "07:30",
+        "end_time": "08:00",
+        "slot": "alarm_1_07:30",
+        "type": "alarm",
+        "title": "⏰ 鬧鐘響起 · 晨起梳洗 (07:30)",
+        "day": 1
+    }
+    result_alarm = sim_engine.evaluate_random_event_trigger(
+        db, session_alarm, slot_alarm, default_trigger_prob=0.5
+    )
+    assert result_alarm is not None
+    assert result_alarm.id == "evt_late_wakeup"
 
 
 
+
+
+
+
+
+
+def test_random_event_choice_attend_vs_skip():
+    """驗證突發事件選擇立刻去上課時不跳過原定課程，選擇放假才跳過"""
+    import asyncio
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.api.sim import next_turn
+    from app.core.database import Base
+    from app.models.tables import GameSession
+    from app.schemas.sim import SimNextTurnRequest
+
+    async def run_test():
+        test_engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(test_engine)
+        TestingSession = sessionmaker(bind=test_engine)
+        db = TestingSession()
+
+        schedule = [
+            {"day": 1, "slot": "09:00", "start_time": "09:00", "end_time": "11:50", "type": "course", "title": "會計學（必修）"},
+            {"day": 1, "slot": "12:00", "start_time": "12:00", "end_time": "13:00", "type": "lunch_prompt", "title": "午餐時間"}
+        ]
+
+        # 模擬突發事件「早八生死時速危機」作用中
+        session = GameSession(
+            session_id="test_sess_attend",
+            player_profile={
+                "active_random_event": {
+                    "id": "evt_late_wakeup",
+                    "title": "早八生死時速危機",
+                    "turn": 0,
+                    "effects_map": {"A": {"stamina": -20, "study": 15}, "C": {"stamina": 25, "study": -20}},
+                    "options_meta": {
+                        "A": {"option_key": "A", "intent_hint": "睡衣套上外套不刷牙洗臉抓起書包，開啟百米衝刺模式衝進教室"},
+                        "C": {"option_key": "C", "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假"}
+                    }
+                }
+            },
+            weekly_schedule=schedule,
+            current_turn=0,
+            stats={"stamina": 80, "study": 50, "social": 50, "money": 1500},
+            visited_locs=[],
+            triggered_evts=[],
+            history_logs=[]
+        )
+        db.add(session)
+        db.commit()
+
+        # 1. 選擇方案 A（衝進教室上課） -> 不跳過！current_turn 保持 0，進入會計學
+        resp_a = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="A"), db=db)
+        assert resp_a.current_turn == 0
+        assert "成功趕赴" in session.history_logs[-1]
+
+        # 2. 若在此時選擇方案 C（自主放假） -> 跳過！current_turn 推進為 1
+        session.current_turn = 0
+        session.player_profile = {
+            "active_random_event": {
+                "id": "evt_late_wakeup",
+                "title": "早八生死時速危機",
+                "turn": 0,
+                "effects_map": {"C": {"stamina": 25, "study": -20}},
+                "options_meta": {
+                    "C": {"option_key": "C", "intent_hint": "心一橫把棉被拉過頭頂，心想大學生總要體驗一次自主放假"}
+                }
+            }
+        }
+        db.commit()
+
+        resp_c = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
+        assert resp_c.current_turn == 1
+        assert "放棄或跳過" in session.history_logs[-1]
+        assert resp_c.weekly_schedule[0].is_skipped is True
+        assert "跳過" in (resp_c.weekly_schedule[0].skip_reason or "")
+
+        # 3. 測試進階 time_action: "jump_to_time" -> 跳至 12:00 (turn 1)
+        session.current_turn = 0
+        session.player_profile = {
+            "active_random_event": {
+                "id": "evt_late_wakeup",
+                "title": "早八生死時速危機",
+                "turn": 0,
+                "effects_map": {"C": {"stamina": 25, "study": -20}},
+                "options_meta": {
+                    "C": {
+                        "option_key": "C",
+                        "intent_hint": "心一橫把棉被拉過頭頂自主放假",
+                        "time_action": "jump_to_time",
+                        "target_time": "12:00"
+                    }
+                }
+            }
+        }
+        db.commit()
+
+        resp_jump = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="C"), db=db)
+        assert resp_jump.current_turn == 1
+        assert resp_jump.current_time == "12:00"
+        assert resp_jump.weekly_schedule[0].is_skipped is True
+        assert "早八生死時速危機" in (resp_jump.weekly_schedule[0].skip_reason or "")
+
+        # 4. 測試進階 time_action: "add_hours" -> 慢慢梳洗 1 小時後進入會計學 (09:00 + 1h = 10:00 < 11:50)
+        session.current_turn = 0
+        session.player_profile = {
+            "active_random_event": {
+                "id": "evt_late_wakeup",
+                "title": "早八生死時速危機",
+                "turn": 0,
+                "effects_map": {"B": {"stamina": 5, "study": 10}},
+                "options_meta": {
+                    "B": {
+                        "option_key": "B",
+                        "intent_hint": "私訊室友幫忙代簽到，自己慢慢梳洗出門",
+                        "time_action": "add_hours",
+                        "duration_hours": 1.0
+                    }
+                }
+            }
+        }
+        db.commit()
+
+        resp_add = await next_turn(SimNextTurnRequest(session_id="test_sess_attend", option_key="B"), db=db)
+        assert resp_add.current_turn == 0
+        assert resp_add.current_time == "10:00"
+
+    asyncio.run(run_test())

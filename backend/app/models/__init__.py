@@ -1,5 +1,7 @@
 from app.models.tables import (
     AdminUser,
+    Building,
+    CampusActivity,
     CampusLifeInfo,
     CampusLocation,
     ClubAndActivity,
@@ -18,4 +20,6 @@ __all__ = [
     "GameSession",
     "AdminUser",
     "SystemConfig",
+    "Building",
+    "CampusActivity",
 ]

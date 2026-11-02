@@ -1,19 +1,28 @@
 "use client";
 
-import { Clock, MapPin, CheckCircle2, ChevronRight, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Home } from "lucide-react";
+import { Clock, MapPin, CheckCircle2, ChevronRight, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Home, Coffee, Compass, AlertCircle, Ban } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 function getEventIcon(slot: ScheduleSlot) {
+  if (slot.type === "breakfast") {
+    return <Coffee className="w-4 h-4 text-amber-500" />;
+  }
+  if (slot.type === "lunch") {
+    return <Utensils className="w-4 h-4 text-amber-600" />;
+  }
+  if (slot.type === "dinner") {
+    return <Utensils className="w-4 h-4 text-orange-600" />;
+  }
   if (slot.type === "dorm") {
     if (slot.start_time && slot.start_time < "12:00") {
       return <Sunrise className="w-4 h-4 text-amber-500" />;
     }
     return <Moon className="w-4 h-4 text-indigo-500" />;
   }
-  if (slot.type === "lunch") {
-    return <Utensils className="w-4 h-4 text-amber-600" />;
+  if (slot.type === "campus_leisure") {
+    return <Compass className="w-4 h-4 text-teal-600" />;
   }
   if (slot.type === "club") {
     return <Music className="w-4 h-4 text-purple-600" />;
@@ -25,11 +34,20 @@ function getEventIcon(slot: ScheduleSlot) {
 }
 
 function getCategoryBadge(slot: ScheduleSlot) {
-  if (slot.type === "dorm") {
-    return { label: "宿舍生活", bg: "bg-slate-100 text-slate-700 border-slate-200" };
+  if (slot.type === "breakfast") {
+    return { label: "晨光早餐", bg: "bg-yellow-100 text-yellow-800 border-yellow-200" };
   }
   if (slot.type === "lunch") {
     return { label: "午膳時光", bg: "bg-amber-100 text-amber-700 border-amber-200" };
+  }
+  if (slot.type === "dinner") {
+    return { label: "晚餐時光", bg: "bg-orange-100 text-orange-800 border-orange-200" };
+  }
+  if (slot.type === "dorm") {
+    return { label: "宿舍休閒", bg: "bg-slate-100 text-slate-700 border-slate-200" };
+  }
+  if (slot.type === "campus_leisure") {
+    return { label: "校園休閒", bg: "bg-teal-100 text-teal-800 border-teal-200" };
   }
   if (slot.type === "club") {
     return { label: "社團活動", bg: "bg-purple-100 text-purple-700 border-purple-200" };
@@ -74,10 +92,25 @@ export function DailyTimelineView({
   const activeDay = currentSlot?.day || 1;
   const dayName = DAYS[Math.max(0, Math.min(4, activeDay - 1))];
 
-  // Filter slots for the current active day
+  // Filter and sort slots for the current active day strictly by start_time
   const todaySlots = schedule
     .map((slot, index) => ({ slot, index }))
-    .filter(({ slot }) => slot.day === activeDay);
+    .filter(({ slot, index }) => {
+      if (slot.day !== activeDay) return false;
+      // 隱藏未觸發的內部檢查點 (僅在是當前回合時才呈現或互動)
+      if (
+        (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") &&
+        index !== currentTurn
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = a.slot.start_time || "00:00";
+      const timeB = b.slot.start_time || "00:00";
+      return timeA.localeCompare(timeB);
+    });
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
@@ -106,11 +139,14 @@ export function DailyTimelineView({
         {todaySlots.map(({ slot, index }) => {
           const isCurrent = index === currentTurn;
           const isPast = index < currentTurn;
+          const isSkipped = Boolean(slot.is_skipped);
           const badge = getCategoryBadge(slot);
           const icon = getEventIcon(slot);
 
           let cardBorder = "border-stone-200 bg-stone-50/60";
-          if (isCurrent) {
+          if (isSkipped) {
+            cardBorder = "border-dashed border-rose-300 bg-rose-50/25 opacity-75";
+          } else if (isCurrent) {
             cardBorder = "ring-2 ring-blue-500 bg-white shadow-md border-blue-300 scale-[1.01]";
           } else if (isPast) {
             cardBorder = "border-stone-200 bg-stone-50/40 opacity-70";
@@ -137,23 +173,37 @@ export function DailyTimelineView({
                   <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.bg}`}>
                     {badge.label}
                   </span>
-                  {isCurrent && (
+                  {isSkipped ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full shadow-2xs">
+                      <Ban className="w-3 h-3 text-rose-600" />
+                      已跳過
+                    </span>
+                  ) : isCurrent ? (
                     <span className="flex items-center gap-1 text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full animate-pulse shadow-xs">
                       進行中
                     </span>
-                  )}
-                  {isPast && (
+                  ) : isPast ? (
                     <span className="text-stone-400" title="已完成">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
               {/* Event Title */}
-              <h4 className="text-sm font-bold text-stone-900 mb-1.5 leading-snug">
+              <h4 className={`text-sm font-bold mb-1.5 leading-snug ${
+                isSkipped ? "line-through text-stone-500" : "text-stone-900"
+              }`}>
                 {slot.title}
               </h4>
+
+              {/* Skipped Reason Badge */}
+              {isSkipped && slot.skip_reason && (
+                <div className="mb-2 px-2 py-1 rounded-md bg-rose-50 border border-rose-200 flex items-center gap-1.5 text-xs text-rose-700">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                  <span className="font-medium">{slot.skip_reason}</span>
+                </div>
+              )}
 
               {/* Bottom Meta: Location, Instructor, Credits */}
               <div className="flex flex-wrap items-center justify-between text-xs text-stone-500 gap-1.5 pt-1.5 border-t border-stone-100">

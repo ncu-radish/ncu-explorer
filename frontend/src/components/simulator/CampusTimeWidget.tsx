@@ -1,81 +1,180 @@
 "use client";
 
-import { Clock, Calendar, MapPin, Moon, Sun, Sunrise, Sunset, Utensils, Music, Home } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Clock, MapPin, Play, Pause, Sparkles, FastForward } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
+
+function timeToMinutes(t: string): number {
+  if (!t) return 480;
+  const parts = t.split(":");
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || "0", 10);
+}
+
+function minutesToTime(m: number): string {
+  const total = Math.max(0, Math.floor(m));
+  const h = Math.floor(total / 60) % 24;
+  const mins = total % 60;
+  return `${h.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+interface CampusTimeWidgetProps {
+  slot?: ScheduleSlot | null;
+  currentTurn: number;
+  totalTurns: number;
+  isFlowing?: boolean;
+  flowFromTime?: string;
+  flowToTime?: string;
+  onFlowComplete?: () => void;
+  onSkip?: () => void;
+  onFocusLocation?: () => void;
+}
 
 export function CampusTimeWidget({
   slot,
   currentTurn,
   totalTurns,
+  isFlowing = false,
+  flowFromTime = "08:00",
+  flowToTime = "12:00",
+  onFlowComplete,
+  onSkip,
   onFocusLocation,
-}: {
-  slot?: ScheduleSlot | null;
-  currentTurn: number;
-  totalTurns: number;
-  onFocusLocation?: () => void;
-}) {
+}: CampusTimeWidgetProps) {
+  const dayIndex = Math.max(0, Math.min(4, ((slot?.day || 1) - 1)));
+  const dayName = DAYS[dayIndex];
+
+  const staticTimeStr = slot?.start_time || "08:00";
+  const [clockMinutes, setClockMinutes] = useState<number>(() => timeToMinutes(staticTimeStr));
+
+  const animFrameRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number>(0);
+
+  // If not flowing, strictly freeze clock at current slot start time
+  useEffect(() => {
+    if (!isFlowing) {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      setClockMinutes(timeToMinutes(staticTimeStr));
+    }
+  }, [isFlowing, staticTimeStr]);
+
+  // When isFlowing is true, linearly tick from flowFromTime to flowToTime (1 min every 10ms)
+  useEffect(() => {
+    if (isFlowing) {
+      const fromMin = timeToMinutes(flowFromTime);
+      const toMin = Math.max(fromMin + 30, timeToMinutes(flowToTime));
+      let cur = fromMin;
+      setClockMinutes(cur);
+      lastTickRef.current = performance.now();
+
+      const step = (now: number) => {
+        // Advance 1 minute linearly every 10ms (approx. 100 minutes/sec smooth linear progression)
+        if (now - lastTickRef.current >= 40) {
+          cur += 1;
+          lastTickRef.current = now;
+          setClockMinutes(cur);
+        }
+
+        if (cur < toMin) {
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          setClockMinutes(toMin);
+          animFrameRef.current = null;
+          if (onFlowComplete) {
+            onFlowComplete();
+          }
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(step);
+
+      return () => {
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+      };
+    }
+  }, [isFlowing, flowFromTime, flowToTime, onFlowComplete]);
+
   if (!slot) return null;
 
-  const dayName = DAYS[Math.max(0, Math.min(4, (slot.day || 1) - 1))];
-  const startTime = slot.start_time || "08:00";
-  const displayTime = slot.display_time || slot.time_label || startTime;
-
-  // Compute status icon and atmosphere label
-  let timeIcon = <Sun className="w-4 h-4 text-amber-500" />;
-  let atmosphereLabel = "日間課程時段";
-  let atmosphereBadge = "bg-amber-50 text-amber-800 border-amber-200";
-
-  if (slot.type === "dorm") {
-    if (startTime < "12:00") {
-      timeIcon = <Sunrise className="w-4 h-4 text-orange-500" />;
-      atmosphereLabel = "晨光起居 · 宿舍時光";
-      atmosphereBadge = "bg-orange-50 text-orange-800 border-orange-200";
-    } else {
-      timeIcon = <Moon className="w-4 h-4 text-indigo-500" />;
-      atmosphereLabel = "夜幕深垂 · 宿舍生活";
-      atmosphereBadge = "bg-indigo-50 text-indigo-800 border-indigo-200";
-    }
-  } else if (slot.type === "lunch") {
-    timeIcon = <Utensils className="w-4 h-4 text-emerald-500" />;
-    atmosphereLabel = "午膳漫步 · 校園美食";
-    atmosphereBadge = "bg-emerald-50 text-emerald-800 border-emerald-200";
-  } else if (slot.type === "club") {
-    timeIcon = <Music className="w-4 h-4 text-purple-500" />;
-    atmosphereLabel = "社團交流 · 夜色微涼";
-    atmosphereBadge = "bg-purple-50 text-purple-800 border-purple-200";
-  } else if (startTime >= "17:00" && startTime < "19:00") {
-    timeIcon = <Sunset className="w-4 h-4 text-rose-500" />;
-    atmosphereLabel = "黃昏漫步 · 百花川夕照";
-    atmosphereBadge = "bg-rose-50 text-rose-800 border-rose-200";
-  }
+  const currentDisplayClock = minutesToTime(clockMinutes);
 
   return (
-    <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-3 sm:p-4 text-white shadow-md border border-blue-800/40 flex flex-wrap items-center justify-between gap-3">
-      {/* Left: Date & Time Clock Display */}
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-amber-300 shrink-0 shadow-inner">
-          {timeIcon}
+    <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 rounded-2xl p-3.5 sm:p-4 text-white shadow-lg border border-blue-800/40 flex flex-wrap items-center justify-between gap-3 relative overflow-hidden">
+      {/* Running time highlight ambient glow */}
+      {isFlowing && (
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-amber-500/20 to-transparent animate-pulse pointer-events-none" />
+      )}
+
+      {/* Left: Day & Linear Flowing Clock Display */}
+      <div className="flex items-center gap-3 relative z-10">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border transition-all ${isFlowing
+          ? "bg-amber-500/20 border-amber-400/50 shadow-amber-500/30 scale-105"
+          : "bg-white/10 backdrop-blur-xs border-white/20 text-blue-300"
+          }`}>
+          {isFlowing ? (
+            <Play className="w-5 h-5 text-amber-300 animate-pulse fill-amber-300" />
+          ) : (
+            <Pause className="w-5 h-5 text-blue-300" />
+          )}
         </div>
+
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-              <span>{dayName}</span>
-              <span className="font-mono text-amber-300 font-extrabold">{displayTime}</span>
-            </span>
-            <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full border font-semibold ${atmosphereBadge}`}>
-              {atmosphereLabel}
-            </span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Pure Time Display: Weekday + Linear Clock (e.g., 週一 12:00 -> 12:01 -> ...) */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-base sm:text-lg font-bold text-blue-200">
+                {dayName}
+              </span>
+              <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight drop-shadow-xs transition-colors ${isFlowing ? "text-amber-300" : "text-white"
+                }`}>
+                {currentDisplayClock}
+              </span>
+            </div>
+
+            {/* Time Status Badge (Flowing vs Paused) */}
+            {isFlowing ? (
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/50 animate-pulse font-mono">
+                <Sparkles className="w-3 h-3 animate-spin" />
+                <span>時間流逝中...</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 font-mono">
+                <span>⏸️ 時間暫停 · 等待決策</span>
+              </span>
+            )}
+
+            {/* Skip Button: Instant skip to next event */}
+            {isFlowing && (
+              <button
+                type="button"
+                onClick={onSkip}
+                className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs font-bold transition-all shadow-md cursor-pointer animate-in fade-in"
+                title="快速跳到下一個事件選項"
+              >
+                <FastForward className="w-3.5 h-3.5 fill-stone-950" />
+                <span>跳過 (Skip)</span>
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-blue-200/90 mt-0.5">
-            <span>當前行動：<strong className="text-white font-semibold">{slot.title}</strong></span>
+
+          <div className="flex items-center gap-2 text-xs text-stone-300 mt-1">
+            <span className="text-stone-400">當前行程：</span>
+            <strong className="text-white font-semibold truncate max-w-[200px] sm:max-w-xs">
+              {slot.title}
+            </strong>
           </div>
         </div>
       </div>
 
-      {/* Right: Location & Turn Step Pill */}
-      <div className="flex items-center gap-2">
+      {/* Right: Location 3D Focus & Turn Progress */}
+      <div className="flex items-center gap-2 relative z-10">
         {slot.location_name && (
           <button
             onClick={onFocusLocation}

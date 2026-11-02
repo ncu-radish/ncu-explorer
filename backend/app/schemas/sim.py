@@ -29,12 +29,16 @@ class ScheduleSlot(BaseModel):
     start_time: str | None = None  # e.g. "10:00"
     end_time: str | None = None  # e.g. "12:50"
     display_time: str | None = None  # e.g. "10:00 ~ 12:50"
+    is_skipped: bool | None = False
+    skip_reason: str | None = None
 
 class SimStartResponse(BaseModel):
     session_id: str
     player_profile: dict[str, Any]
     weekly_schedule: list[ScheduleSlot]
     current_turn: int
+    current_time: str | None = "08:00"
+    current_day: int | None = 1
     stats: dict[str, int]
     current_story: TurnGenerationSchema
     current_location_id: str | None = None
@@ -47,9 +51,61 @@ class SimNextTurnRequest(BaseModel):
 class SimNextTurnResponse(BaseModel):
     session_id: str
     current_turn: int
+    current_time: str | None = None
+    current_day: int | None = None
     is_game_over: bool
     stats: dict[str, int]
     delta_stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
+    current_location_id: str | None = None
+    current_location_name: str | None = None
+    weekly_schedule: list[ScheduleSlot] | None = None
+
+
+class SimTriggerActivityRequest(BaseModel):
+    session_id: str
+    activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, act_campus_leisure
+    option_key: str = "A"  # A, B, or C
+    duration_hours: float = 1.0  # Flexible hours e.g. 1.5, 2.0
+    duration_minutes: int | None = None  # Flexible minutes e.g. 45, 90, 120
+    custom_end_time: str | None = None  # e.g. '22:30'
+    custom_title: str | None = None
+
+
+class SimTriggerActivityResponse(BaseModel):
+    session_id: str
+    message: str
+    marked_slot: ScheduleSlot | None = None
+    weekly_schedule: list[ScheduleSlot]
+    current_turn: int | None = None
+    current_time: str | None = None
+    current_day: int | None = None
+    stats: dict[str, int]
+    delta_stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
+    is_game_over: bool = False
+    current_location_id: str | None = None
+    current_location_name: str | None = None
+
+
+class SimPrePlanRequest(BaseModel):
+    session_id: str
+    target_day: int
+    slots: list[dict[str, Any]] = []
+    sleep_time: str | None = "22:00"
+    alarm_time: str | None = "07:30"
+
+
+class SimPrePlanResponse(BaseModel):
+    session_id: str
+    message: str
+    current_turn: int
+    current_time: str | None = None
+    current_day: int | None = None
+    weekly_schedule: list[ScheduleSlot]
+    stats: dict[str, int]
+    delta_stats: dict[str, int] | None = None
+    sleep_hours: float | None = None
     story: TurnGenerationSchema | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None

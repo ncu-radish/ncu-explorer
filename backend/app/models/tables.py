@@ -97,8 +97,15 @@ class RandomEvent(Base):
     title = Column(String(100), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     weight = Column(Integer, default=10, nullable=False)
+    trigger_rate = Column(Float, default=0.5, nullable=False)  # 專屬獨立觸發機率 (0.0 ~ 1.0)
     cond_days = Column(JSON, nullable=True)  # [1, 2, 3, 4, 5]
-    cond_slots = Column(JSON, nullable=True)  # ["morning"]
+    cond_slots = Column(JSON, nullable=True)  # ["morning", "afternoon", "evening"]
+    cond_time_start = Column(String(10), nullable=True)  # e.g. "12:00"
+    cond_time_end = Column(String(10), nullable=True)  # e.g. "13:30"
+    cond_activity_type = Column(String(50), nullable=True)  # e.g. "course", "club", "dining", "dorm", "leisure"
+    cond_activity_title = Column(String(100), nullable=True)  # 當前活動名稱關鍵字, e.g. "微積分"
+    cond_prev_activity = Column(String(100), nullable=True)  # 先前活動或歷史行程關鍵字, e.g. "體育"
+    cond_prev_event_id = Column(String(50), nullable=True)  # 先前曾觸發的突發事件 ID
     cond_location = Column(String(50), ForeignKey("campus_locations.id"), nullable=True)
     cond_min_stamina = Column(Integer, default=0, nullable=False)
     cond_max_stamina = Column(Integer, default=100, nullable=False)
@@ -149,3 +156,21 @@ class Building(Base):
     departments = Column(JSON, nullable=True)  # List[str]
     alias = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
+
+
+class CampusActivity(Base):
+    __tablename__ = "campus_activities"
+
+    id = Column(String(50), primary_key=True, index=True)
+    title = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False, index=True)  # breakfast, lunch, dinner, dorm_leisure, campus_leisure
+    trigger_type = Column(String(50), nullable=False, default="time_slot")  # time_slot, class_break, free_time
+    trigger_timing = Column(String(100), nullable=False, default="12:00~13:30")  # e.g. "07:00~09:00", "12:00~13:30", "17:30~19:30", "下課空閒時間"
+    trigger_mode = Column(String(50), nullable=False, default="manual_choice")  # manual_choice (主動選擇是否進行), auto_prompt (時段推薦), conditional (條件觸發)
+    location_id = Column(String(50), ForeignKey("campus_locations.id"), nullable=True)
+    location_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    weight = Column(Integer, default=10, nullable=False)
+    event_prompt = Column(Text, nullable=False)
+    preset_options = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -12,6 +12,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import get_password_hash
 from app.models.tables import (
     AdminUser,
+    CampusActivity,
     CampusLifeInfo,
     CampusLocation,
     ClubAndActivity,
@@ -179,13 +180,41 @@ def seed_database():
                     title=evt["title"],
                     is_active=evt.get("is_active", True),
                     weight=evt.get("weight", 10),
+                    trigger_rate=evt.get("trigger_rate", 0.5),
                     cond_days=evt.get("cond_days"),
                     cond_slots=evt.get("cond_slots"),
+                    cond_time_start=evt.get("cond_time_start"),
+                    cond_time_end=evt.get("cond_time_end"),
+                    cond_activity_type=evt.get("cond_activity_type"),
+                    cond_activity_title=evt.get("cond_activity_title"),
+                    cond_prev_activity=evt.get("cond_prev_activity"),
+                    cond_prev_event_id=evt.get("cond_prev_event_id"),
                     cond_location=evt.get("cond_location"),
                     cond_min_stamina=evt.get("cond_min_stamina", 0),
                     cond_max_stamina=evt.get("cond_max_stamina", 100),
                     event_prompt=evt["event_prompt"],
                     preset_options=evt["preset_options"]
+                ))
+        db.commit()
+
+        # 5.1 校園動態日常活動 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
+        print("5.1 匯入校園動態日常活動 (早餐/午餐/晚餐/宿舍休閒/校園休閒)...")
+        from app.api.admin import DEFAULT_CAMPUS_ACTIVITIES
+        for act in DEFAULT_CAMPUS_ACTIVITIES:
+            if not db.query(CampusActivity).filter(CampusActivity.id == act["id"]).first():
+                db.add(CampusActivity(
+                    id=act["id"],
+                    title=act["title"],
+                    category=act["category"],
+                    trigger_type=act["trigger_type"],
+                    trigger_timing=act["trigger_timing"],
+                    trigger_mode=act["trigger_mode"],
+                    location_id=act.get("location_id"),
+                    location_name=act.get("location_name"),
+                    is_active=act["is_active"],
+                    weight=act["weight"],
+                    event_prompt=act["event_prompt"],
+                    preset_options=act["preset_options"]
                 ))
         db.commit()
 

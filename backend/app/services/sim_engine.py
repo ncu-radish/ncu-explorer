@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.llm_client import call_ollama_structured
 from app.models.tables import (
     Building,
+    CampusActivity,
     CampusLifeInfo,
     CampusLocation,
     ClubAndActivity,
@@ -966,7 +967,7 @@ class SimEngine:
                             start_time=s_time,
                             end_time=e_time,
                             display_time=f"{s_time} ~ {e_time}",
-                            time_label=f"{day_name} {p_label}",
+                            time_label=f"{day_name} {s_time}",
                             periods=pers
                         ))
 
@@ -974,18 +975,217 @@ class SimEngine:
             if day in club_slots_by_day:
                 day_events.extend(club_slots_by_day[day])
 
-            # 當天行程按開始時間排序 (日間課堂在前，夜間社團在後)
+            # 當天行程按開始時間排序
+            day_events.sort(key=lambda s: s.start_time or "00:00")
+
+            # (3) 中午午餐時間檢測：若 12:00~13:00 沒有課程或任何活動，加入午餐提問檢查點
+            has_lunch_conflict = any(
+                (s.start_time or "00:00") < "13:00" and (s.end_time or "00:00") > "12:00"
+                for s in day_events
+            )
+            if not has_lunch_conflict:
+                day_events.append(ScheduleSlot(
+                    day=day,
+                    slot="12:00",
+                    title="12:00 中午時光",
+                    type="lunch_prompt",
+                    location_id="loc_pine_restaurant",
+                    location_name="松果餐廳",
+                    start_time="12:00",
+                    end_time="13:00",
+                    display_time="12:00 ~ 13:00",
+                    time_label=f"{day_name} 12:00"
+                ))
+
+            # (4) 課餘空閒時間檢測：在課程結束後或課間空檔若有 >= 1.5 小時無活動，加入休閒提問檢查點
+            day_events.sort(key=lambda s: s.start_time or "00:00")
+            gap_checkpoints: list[ScheduleSlot] = []
+
+            # 檢測下午課後空檔 (例如 15:00~18:00 或 17:00~18:30)
+            class_ends = [s.end_time for s in day_events if s.type == "course" and s.end_time]
+            if class_ends:
+                max_class_end = max(class_ends)
+                # 尋找課後下一個活動
+                later_acts = [s for s in day_events if (s.start_time or "00:00") >= max_class_end and s.type != "lunch_prompt"]
+                next_act_start = (later_acts[0].start_time if later_acts and later_acts[0].start_time else None) or "21:00"
+
+                # 若空檔大於等於 90 分鐘，且不與已有檢查點衝突
+                if max_class_end and max_class_end < "19:00" and next_act_start > max_class_end:
+                    gap_checkpoints.append(ScheduleSlot(
+                        day=day,
+                        slot=max_class_end,
+                        title=f"{max_class_end} 課餘空閒時間",
+                        type="leisure_prompt",
+                        location_id="loc_dorm_girl14",
+                        location_name="學生宿舍 / 校園設施",
+                        start_time=max_class_end,
+                        end_time=next_act_start,
+                        display_time=f"{max_class_end} ~ {next_act_start}",
+                        time_label=f"{day_name} {max_class_end}"
+                    ))
+
+            day_events.extend(gap_checkpoints)
+
+            # (5) 每日結束檢查點 (用於觸發明日活動預排)
+            if day < 5:
+                day_events.append(ScheduleSlot(
+                    day=day,
+                    slot="21:00",
+                    title=f"{day_name} 夜幕結算 · 明日活動預排",
+                    type="day_end",
+                    location_id="loc_dorm_boy9",
+                    location_name="學生宿舍",
+                    start_time="21:00",
+                    end_time="22:00",
+                    display_time="21:00",
+                    time_label=f"{day_name} 21:00"
+                ))
+
+            # 嚴格按開始時間排序當日所有行程
             day_events.sort(key=lambda s: s.start_time or "00:00")
             schedule.extend(day_events)
 
         return schedule
+
+    def evaluate_random_event_trigger(
+        self,
+        db: Session,
+        session: GameSession,
+        slot_info: dict[str, Any],
+        default_trigger_prob: float
+    ) -> RandomEvent | None:
+        """
+        評估並判定當前時段是否觸發突發事件：
+        1. 檢查體力、星期、時段、地點條件
+        2. 檢查時間範圍條件 (cond_time_start ~ cond_time_end，如 12:00 ~ 13:30)
+        3. 檢查當前活動類型 (cond_activity_type) 與活動名稱關鍵字 (cond_activity_title)
+        4. 檢查先前活動/歷史行程條件 (cond_prev_activity，如「體育」)
+        5. 檢查先前突發事件前置條件 (cond_prev_event_id)
+        6. 依據各事件設定的專屬 trigger_rate 判定是否通過擲骰
+        7. 符合且通過擲骰的多個事件依 weight 權重抽出一個
+        """
+        stamina = session.stats.get("stamina", 80) if session.stats else 80
+        turn = session.current_turn
+        day_num = slot_info.get("day", 1)
+        slot_name = slot_info.get("slot") or "morning"
+        start_t = slot_info.get("start_time") or "10:00"
+        act_type = str(slot_info.get("type") or "course").lower()
+        act_title = str(slot_info.get("title") or "").lower()
+        loc_id = slot_info.get("location_id") or ""
+
+        # 收集歷史活動名稱與日誌，供 cond_prev_activity 研判
+        past_activities: list[str] = []
+        if session.weekly_schedule and isinstance(session.weekly_schedule, list):
+            for past_slot in session.weekly_schedule[:turn]:
+                if isinstance(past_slot, dict):
+                    if past_slot.get("title"):
+                        past_activities.append(str(past_slot.get("title")).lower())
+                    if past_slot.get("type"):
+                        past_activities.append(str(past_slot.get("type")).lower())
+        for log in (session.history_logs or []):
+            past_activities.append(str(log).lower())
+
+        # 解析當前時段所屬的語意分類集合 (如 morning, afternoon, evening)
+        slot_categories = {slot_name.lower()}
+        if ":" in start_t:
+            try:
+                parts = start_t.split(":")
+                hour = int(parts[0])
+                minute = int(parts[1])
+                time_mins = hour * 60 + minute
+                if 5 * 60 <= time_mins < 12 * 60:
+                    slot_categories.add("morning")
+                elif 12 * 60 <= time_mins < 17 * 60:
+                    slot_categories.add("afternoon")
+                else:
+                    slot_categories.add("evening")
+            except Exception:
+                pass
+
+        s_lower = slot_name.lower()
+        if any(k in s_lower for k in ("morning", "breakfast", "alarm", "wake", "早")):
+            slot_categories.add("morning")
+        if any(k in s_lower for k in ("noon", "lunch", "afternoon", "午")):
+            slot_categories.add("afternoon")
+        if any(k in s_lower for k in ("night", "dinner", "evening", "dorm", "晚", "宵夜")):
+            slot_categories.add("evening")
+
+        candidate_events = db.query(RandomEvent).filter(
+            RandomEvent.is_active == True,
+            RandomEvent.cond_min_stamina <= stamina,
+            RandomEvent.cond_max_stamina >= stamina
+        ).all()
+        # triggered_evts is kept for cond_prev_event_id chain checks,
+        # but no longer permanently excludes events (they can re-trigger each day).
+
+        triggered_candidates: list[RandomEvent] = []
+        for ev in candidate_events:
+            # 1. 星期幾條件
+            if ev.cond_days and day_num not in ev.cond_days:
+                continue
+            # 2. 時段條件 (支援 morning/afternoon/evening 語意判定與具體 slot 鍵名)
+            if ev.cond_slots and isinstance(ev.cond_slots, list):
+                if not any(str(cs).lower() in slot_categories for cs in ev.cond_slots):
+                    continue
+            # 3. 特定館舍/地點條件
+            if ev.cond_location and ev.cond_location != loc_id:
+                continue
+            # 4. 特定時間範圍條件 (例如在 OO:XX 時間發生)
+            if ev.cond_time_start and start_t < ev.cond_time_start:
+                continue
+            if ev.cond_time_end and start_t > ev.cond_time_end:
+                continue
+            # 5. 當前活動類型條件 (course, club, dining, dorm, leisure)
+            if ev.cond_activity_type:
+                target_type = ev.cond_activity_type.lower()
+                matched = False
+                if target_type in act_type:
+                    matched = True
+                elif target_type == "dining" and any(k in act_type for k in ("lunch", "dinner", "dining", "food")):
+                    matched = True
+                elif target_type == "dorm" and ("dorm" in act_type):
+                    matched = True
+                elif target_type == "leisure" and any(k in act_type for k in ("leisure", "free", "campus")):
+                    matched = True
+                elif target_type == "course" and ("course" in act_type):
+                    matched = True
+                elif target_type == "club" and ("club" in act_type):
+                    matched = True
+                if not matched:
+                    continue
+            # 6. 當前活動名稱關鍵字條件 (例如 "微積分", "羽球")
+            if ev.cond_activity_title and ev.cond_activity_title.lower() not in act_title:
+                continue
+            # 7. 先前活動/歷史條件 (例如先發生體育活動、先參加系學會等)
+            if ev.cond_prev_activity:
+                prev_kw = ev.cond_prev_activity.lower()
+                if not any(prev_kw in p for p in past_activities):
+                    continue
+            # 8. 先前突發事件前置條件 (例如需先觸發特定前置事件)
+            if ev.cond_prev_event_id:
+                if ev.cond_prev_event_id not in (session.triggered_evts or []):
+                    continue
+
+            # 9. 專屬獨立觸發機率判定
+            event_prob = ev.trigger_rate if ev.trigger_rate is not None else default_trigger_prob
+            if random.random() <= event_prob:
+                triggered_candidates.append(ev)
+
+        if triggered_candidates:
+            weights = [max(1, e.weight) for e in triggered_candidates]
+            chosen = random.choices(triggered_candidates, weights=weights, k=1)[0]
+            session.triggered_evts = (session.triggered_evts or []) + [chosen.id]
+            return chosen
+
+        return None
 
     async def generate_turn_content(
         self,
         db: Session,
         session: GameSession,
         active_model: str,
-        trigger_prob: float
+        trigger_prob: float,
+        allow_random_event: bool = True
     ) -> tuple[TurnGenerationSchema, dict[str, Any], str | None, str | None]:
         """
         為當前 turn 生成情境與三個選項：
@@ -998,7 +1198,6 @@ class SimEngine:
         slot_info = session.weekly_schedule[turn]
         day_num = slot_info.get("day", 1)
         day_str = DAY_NAMES[(day_num - 1) % len(DAY_NAMES)]
-        slot_name = slot_info.get("slot") or "morning"
         slot_str = slot_info.get("time_label") or slot_info.get("display_time") or "校園時段"
 
         loc_id = slot_info.get("location_id") or "bldg_general_edu"
@@ -1022,35 +1221,90 @@ class SimEngine:
         else:
             life_snippet = life_info.game_snippet if life_info else "微風徐徐吹過百花川與大草坪，下課鐘聲在校園迴盪。"
 
-        # 判定突發事件
+        # 判定突發事件 (支援專屬觸發條件與各別觸發機率)
         chosen_event = None
-        if random.random() < trigger_prob:
-            stamina = session.stats.get("stamina", 80)
-            candidate_events = db.query(RandomEvent).filter(
-                RandomEvent.is_active == True,
-                RandomEvent.id.notin_(session.triggered_evts or []),
-                RandomEvent.cond_min_stamina <= stamina,
-                RandomEvent.cond_max_stamina >= stamina
-            ).all()
+        if allow_random_event:
+            chosen_event = self.evaluate_random_event_trigger(
+                db=db,
+                session=session,
+                slot_info=slot_info,
+                default_trigger_prob=trigger_prob
+            )
 
-            filtered = []
-            for ev in candidate_events:
-                if ev.cond_days and day_num not in ev.cond_days:
-                    continue
-                if ev.cond_slots and slot_name not in ev.cond_slots:
-                    continue
-                if ev.cond_location and ev.cond_location != loc_id:
-                    continue
-                filtered.append(ev)
-
-            if filtered:
-                weights = [e.weight for e in filtered]
-                chosen_event = random.choices(filtered, weights=weights, k=1)[0]
-                session.triggered_evts = (session.triggered_evts or []) + [chosen_event.id]
+        start_t = slot_info.get("start_time") or "10:00"
+        is_night_time = (slot_info.get("type") == "day_end") or (start_t >= "21:00" or start_t < "05:00")
+        is_cutoff_reached = start_t == "05:00" or (start_t > "04:30" and start_t < "06:00")
 
         if chosen_event:
             event_instruction = f"【突發狀況事件：{chosen_event.title}】\n{chosen_event.event_prompt}"
-            preset_options = chosen_event.preset_options
+            preset_options: list[dict[str, Any]] = list(chosen_event.preset_options or [])
+        elif slot_info.get("type") == "lunch_prompt":
+            event_instruction = "中午 12:00 到了，此時段沒有任何排定課程或活動。肚子漸漸餓了，系統詢問你是否要吃午餐？"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "是，我想吃午餐（挑選想去的餐廳美食）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_lunch_menu"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "否，暫不吃午餐（留在教室小憩或自習，準備後續行程）",
+                    "effects": {"stamina": 5, "study": 10, "social": -5, "money": 0},
+                    "action_type": "skip"
+                }
+            ]
+        elif slot_info.get("type") == "leisure_prompt":
+            event_instruction = f"下課或午後空閒時間到了（{start_t}），目前沒有任何課程或活動安排。系統詢問你是否要回宿舍休息，或者前往校園休閒設施？"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "回宿舍放鬆（宿舍休閒活動，可選1~3小時補眠、打手遊、洗衣追劇）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_dorm_menu"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "進行校園休閒活動（前往依仁堂健身房、總圖/K書中心自習、百花川散步）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_campus_menu"
+                },
+                {
+                    "option_key": "C",
+                    "intent_hint": "自由漫步 / 準備下一行程（略過休閒活動）",
+                    "effects": {"stamina": 5, "study": 5, "social": 0, "money": 0},
+                    "action_type": "skip"
+                }
+            ]
+        elif slot_info.get("type") == "day_end" or is_night_time:
+            day_num = slot_info.get("day", 1)
+            next_day_str = DAY_NAMES[day_num] if day_num < len(DAY_NAMES) else "週末"
+            if is_cutoff_reached:
+                event_instruction = f"晨曦微露，已達清晨 05:00 每日換日線！不可再繼續熬夜，請立即就寢入眠並設定鬧鐘進入【{next_day_str}】。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": f"🛏️ 去睡覺（設定隔日鬧鐘並預排{next_day_str}行程）",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                        "action_type": "go_to_sleep"
+                    }
+                ]
+            else:
+                event_instruction = f"夜幕低垂（{start_t}），中大校園夜色已深。你可以準備就寢（設定明日鬧鐘並預排{next_day_str}行程），或是繼續進行宿舍休閒或校園夜間活動。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": f"🛏️ 去睡覺（設定隔日鬧鐘並預排{next_day_str}行程）",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0},
+                        "action_type": "go_to_sleep"
+                    },
+                    {
+                        "option_key": "B",
+                        "intent_hint": "🌙 進行活動（宿舍休閒或校園活動）",
+                        "effects": {"stamina": -5, "study": 0, "social": 5, "money": 0},
+                        "action_type": "open_night_activity"
+                    }
+                ]
         elif slot_info.get("type") == "club":
             event_instruction = f"社團活動時段：你在 {loc_name} 參與【{slot_info.get('title')}】。請描述你沉浸於社團練習、交流或例會討論的熱血情境。"
             preset_options = [
@@ -1071,36 +1325,92 @@ class SimEngine:
                 }
             ]
         else:
-            event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
-            preset_options = [
-                {
-                    "option_key": "A",
-                    "intent_hint": "全神貫注認真參與，主動與教授或身旁同學交流提問",
-                    "effects": {"stamina": -10, "study": 12, "social": 5, "money": 0}
-                },
-                {
-                    "option_key": "B",
-                    "intent_hint": "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
-                    "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0}
-                },
-                {
-                    "option_key": "C",
-                    "intent_hint": "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦",
-                    "effects": {"stamina": -5, "study": 0, "social": 12, "money": -60}
-                }
-            ]
+            # 檢查是否有對應的校園動態活動 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
+            slot_type = slot_info.get("type", "course")
+            start_t = slot_info.get("start_time") or "10:00"
+
+            target_cat = None
+            if slot_type == "lunch":
+                target_cat = "lunch"
+            elif slot_type == "dinner":
+                target_cat = "dinner"
+            elif slot_type == "breakfast":
+                target_cat = "breakfast"
+            elif slot_type == "dorm":
+                target_cat = "dorm_leisure"
+            elif slot_type == "campus_leisure":
+                target_cat = "campus_leisure"
+
+            matched_act = None
+            if target_cat:
+                matched_act = db.query(CampusActivity).filter(
+                    CampusActivity.category == target_cat,
+                    CampusActivity.is_active == True
+                ).first()
+
+            if matched_act:
+                event_instruction = f"【校園動態活動：{matched_act.title}】\n{matched_act.event_prompt}"
+                preset_options = matched_act.preset_options
+            else:
+                event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": "全神貫注認真參與，主動與教授或身旁同學交流提問",
+                        "effects": {"stamina": -10, "study": 12, "social": 5, "money": 0}
+                    },
+                    {
+                        "option_key": "B",
+                        "intent_hint": "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
+                        "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0}
+                    },
+                    {
+                        "option_key": "C",
+                        "intent_hint": "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦",
+                        "effects": {"stamina": -5, "study": 0, "social": 12, "money": -60}
+                    }
+                ]
+
+        # Special handling for interactive prompt checkpoints: return crisp predefined narrative & options immediately
+        if (slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end") or is_night_time) and not chosen_event:
+            story = TurnGenerationSchema(
+                narrative=f"【{day_str} {slot_str}】{event_instruction}",
+                options=[
+                    OptionItem(
+                        option_key=opt.get("option_key", chr(65 + i)),
+                        display_text=opt.get("intent_hint", "")[:38]
+                    )
+                    for i, opt in enumerate(preset_options)
+                ]
+            )
+            effects_map = {opt["option_key"]: opt["effects"] for opt in preset_options}
+            return story, effects_map, loc_id, loc_name
 
         # 備援內容
+        fallback_options = [
+            OptionItem(
+                option_key=opt.get("option_key", chr(65 + i)),
+                display_text=opt.get("intent_hint", "")[:24]
+            )
+            for i, opt in enumerate(preset_options)
+        ]
+        if chosen_event:
+            fallback_narrative = f"【突發狀況：{chosen_event.title}】{chosen_event.event_prompt}"
+        else:
+            fallback_narrative = f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。"
         fallback_story = TurnGenerationSchema(
-            narrative=f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。",
-            options=[
-                OptionItem(option_key="A", display_text=preset_options[0]["intent_hint"][:24]),
-                OptionItem(option_key="B", display_text=preset_options[1]["intent_hint"][:24]),
-                OptionItem(option_key="C", display_text=preset_options[2]["intent_hint"][:24]),
-            ]
+            narrative=fallback_narrative,
+            options=fallback_options,
+            is_random_event=bool(chosen_event),
+            event_id=chosen_event.id if chosen_event else None,
+            event_title=chosen_event.title if chosen_event else None
         )
 
         recent_hist = "、".join(session.history_logs[-2:]) if session.history_logs else "剛踏入中央大學展開第一週校園生活"
+        opt_a_hint = preset_options[0]["intent_hint"] if len(preset_options) > 0 else "專注投入"
+        opt_b_hint = preset_options[1]["intent_hint"] if len(preset_options) > 1 else "稍作休息"
+        opt_c_hint = preset_options[2]["intent_hint"] if len(preset_options) > 2 else "自由活動"
+
         prompt = TURN_NARRATIVE_PROMPT_TEMPLATE.format(
             day_name=day_str,
             slot_name=slot_str,
@@ -1110,9 +1420,9 @@ class SimEngine:
             life_snippet=life_snippet,
             recent_history=recent_hist,
             event_instruction=event_instruction,
-            opt_a_hint=preset_options[0]["intent_hint"],
-            opt_b_hint=preset_options[1]["intent_hint"],
-            opt_c_hint=preset_options[2]["intent_hint"],
+            opt_a_hint=opt_a_hint,
+            opt_b_hint=opt_b_hint,
+            opt_c_hint=opt_c_hint,
         )
 
         try:
@@ -1127,7 +1437,12 @@ class SimEngine:
             logger.warning(f"Turn story generation failed, using fallback: {e}")
             story = fallback_story
 
-        effects_map = {opt["option_key"]: opt["effects"] for opt in preset_options}
+        if chosen_event:
+            story.is_random_event = True
+            story.event_id = chosen_event.id
+            story.event_title = chosen_event.title
+
+        effects_map = {opt["option_key"]: opt.get("effects", {}) for opt in preset_options}
         return story, effects_map, loc_id, loc_name
 
     def apply_choice_effects(
