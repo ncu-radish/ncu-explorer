@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.database import get_db
-from app.models.tables import CampusActivity, CampusLocation, GameSession, SystemConfig
+from app.models.tables import CampusActivity, CampusLocation, GameSession, RandomEvent, SystemConfig
 from app.schemas.sim import (
     ScheduleSlot,
     SimNextTurnRequest,
@@ -24,15 +24,25 @@ from app.services.sim_engine import sim_engine
 
 router = APIRouter(prefix="/sim", tags=["Simulation"])
 
-def sync_active_event(session: GameSession, story: Any, effects_map: dict[str, Any]):
+def sync_active_event(session: GameSession, story: Any, effects_map: dict[str, Any], db: Session | None = None):
     profile = dict(session.player_profile or {})
     if getattr(story, "is_random_event", False) and getattr(story, "event_id", None):
         options_meta = {}
+        raw_options = {}
+        if db:
+            ev = db.query(RandomEvent).filter(RandomEvent.id == story.event_id).first()
+            if ev and ev.preset_options:
+                raw_options = {o.get("option_key"): o for o in ev.preset_options}
         for opt in (getattr(story, "options", []) or []):
+            raw = raw_options.get(opt.option_key, {})
+            eff = raw.get("effects") or effects_map.get(opt.option_key, {})
             options_meta[opt.option_key] = {
                 "option_key": opt.option_key,
-                "intent_hint": opt.display_text,
-                "effects": effects_map.get(opt.option_key, {})
+                "intent_hint": opt.display_text or raw.get("intent_hint", ""),
+                "effects": eff,
+                "time_action": raw.get("time_action", "none"),
+                "target_time": raw.get("target_time"),
+                "duration_hours": float(raw.get("duration_hours") or 0.0),
             }
         profile["active_random_event"] = {
             "id": story.event_id,
@@ -89,7 +99,7 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
     story, effects_map, loc_id, loc_name = await sim_engine.generate_turn_content(
         db, new_session, active_model, trigger_prob
     )
-    sync_active_event(new_session, story, effects_map)
+    sync_active_event(new_session, story, effects_map, db=db)
 
     if loc_id and loc_id not in new_session.visited_locs:
         new_session.visited_locs = (new_session.visited_locs or []) + [loc_id]
@@ -166,6 +176,7 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
 
     # 檢查此回合是否是在處理突發事件
     is_resolving_event = bool(active_event and active_event.get("turn") == session.current_turn)
+    slot_new_time = None
 
     if is_resolving_event:
         # 1. 取得突發事件專屬效果
@@ -184,21 +195,46 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
         options_meta = active_event.get("options_meta", {})
         opt_info = options_meta.get(req.option_key, {})
         opt_hint = opt_info.get("intent_hint", f"方案 {req.option_key}")
-
-        # 判斷是否為放棄/繼續睡等跳過行程的選項
-        skip_keywords = ("睡", "放假", "蹺課", "翹課", "放棄前進", "不去", "取消", "在家")
-        is_skipping_slot = any(k in opt_hint for k in skip_keywords)
+        time_action = opt_info.get("time_action")
+        target_time = opt_info.get("target_time")
+        duration_hours = float(opt_info.get("duration_hours") or 0.0)
 
         # 突發事件已決策完畢，清除作用中的事件
         profile.pop("active_random_event", None)
         session.player_profile = profile
         flag_modified(session, "player_profile")
 
-        if is_skipping_slot:
-            # 選擇跳過（如睡過頭自主放假）：推進至下一回合，跳過原定活動
-            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（放棄或跳過「{slot_title}」）"
+        day = current_slot.get("day", 1)
+        cur_st = current_slot.get("start_time") or "08:00"
+        cur_et = current_slot.get("end_time") or "09:00"
+
+        # 依後台設定之結束時間與跳轉模式進行時間與時段推進
+        if time_action == "jump_to_time" and target_time:
+            # 模式一：直接跳到指定時間 (例如 12:00)
+            target_idx = None
+            for idx, s in enumerate(session.weekly_schedule):
+                if s.get("day") == day and (s.get("start_time") or "00:00") >= target_time:
+                    target_idx = idx
+                    break
+            if target_idx is None:
+                for idx, s in enumerate(session.weekly_schedule):
+                    if s.get("day", 1) > day:
+                        target_idx = idx
+                        break
+            new_target_idx = target_idx if target_idx is not None else len(session.weekly_schedule)
+
+            # 將被跳過的排定時段標註為已跳過
+            updated_schedule = [dict(s) for s in (session.weekly_schedule or [])]
+            for i in range(session.current_turn, new_target_idx):
+                if i < len(updated_schedule):
+                    updated_schedule[i]["is_skipped"] = True
+                    updated_schedule[i]["skip_reason"] = f"因突發狀況【{ev_title}】跳過"
+            session.weekly_schedule = updated_schedule
+            flag_modified(session, "weekly_schedule")
+
+            session.current_turn = new_target_idx
+            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（跳轉至 {target_time}）"
             session.history_logs = (session.history_logs or []) + [log_entry]
-            session.current_turn += 1
 
             if session.current_turn >= len(session.weekly_schedule):
                 db.commit()
@@ -210,23 +246,164 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
                     is_game_over=True,
                     stats=session.stats,
                     delta_stats=applied_effects,
-                    story=None
+                    story=None,
+                    weekly_schedule=[ScheduleSlot(**s) for s in (session.weekly_schedule or [])]
                 )
 
             story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
                 db, session, active_model, trigger_prob, allow_random_event=True
             )
-            sync_active_event(session, story, next_effects)
-        else:
-            # 選擇面對或前往（如套上衣服百米衝去教室）：不跳過活動！留在當前 turn，生成該活動情境
-            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（成功趕赴「{slot_title}」）"
+            sync_active_event(session, story, next_effects, db=db)
+
+        elif time_action == "add_hours" and duration_hours > 0:
+            # 模式二：跳到 N 小時後 (例如慢慢梳洗代簽到，跳到 1 小時後)
+            new_time = add_time_hours(cur_st, duration_hours)
+            if new_time < cur_et:
+                slot_new_time = new_time
+                log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（耗時 {duration_hours} 小時，於 {new_time} 進入「{slot_title}」）"
+                session.history_logs = (session.history_logs or []) + [log_entry]
+
+                story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                    db, session, active_model, trigger_prob, allow_random_event=False
+                )
+                sync_active_event(session, story, next_effects, db=db)
+            else:
+                target_idx = None
+                for idx, s in enumerate(session.weekly_schedule):
+                    if s.get("day") == day and (s.get("start_time") or "00:00") >= new_time:
+                        target_idx = idx
+                        break
+                if target_idx is None:
+                    for idx, s in enumerate(session.weekly_schedule):
+                        if s.get("day", 1) > day:
+                            target_idx = idx
+                            break
+                new_target_idx = target_idx if target_idx is not None else len(session.weekly_schedule)
+
+                # 將超時跳過的時段標註為已跳過
+                updated_schedule = [dict(s) for s in (session.weekly_schedule or [])]
+                for i in range(session.current_turn, new_target_idx):
+                    if i < len(updated_schedule):
+                        updated_schedule[i]["is_skipped"] = True
+                        updated_schedule[i]["skip_reason"] = f"因突發狀況【{ev_title}】超時未參與"
+                session.weekly_schedule = updated_schedule
+                flag_modified(session, "weekly_schedule")
+
+                session.current_turn = new_target_idx
+                log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（耗時 {duration_hours} 小時，跳至下一行程）"
+                session.history_logs = (session.history_logs or []) + [log_entry]
+
+                if session.current_turn >= len(session.weekly_schedule):
+                    db.commit()
+                    return SimNextTurnResponse(
+                        session_id=session.session_id,
+                        current_turn=session.current_turn,
+                        current_time="22:00",
+                        current_day=5,
+                        is_game_over=True,
+                        stats=session.stats,
+                        delta_stats=applied_effects,
+                        story=None,
+                        weekly_schedule=[ScheduleSlot(**s) for s in (session.weekly_schedule or [])]
+                    )
+
+                story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                    db, session, active_model, trigger_prob, allow_random_event=True
+                )
+                sync_active_event(session, story, next_effects, db=db)
+
+        elif time_action == "next_slot":
+            # 模式三：跳過當前行程，進入下一時段
+            updated_schedule = [dict(s) for s in (session.weekly_schedule or [])]
+            if session.current_turn < len(updated_schedule):
+                updated_schedule[session.current_turn]["is_skipped"] = True
+                updated_schedule[session.current_turn]["skip_reason"] = f"因突發狀況【{ev_title}】跳過"
+            session.weekly_schedule = updated_schedule
+            flag_modified(session, "weekly_schedule")
+
+            session.current_turn += 1
+            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（跳過排定行程「{slot_title}」）"
             session.history_logs = (session.history_logs or []) + [log_entry]
 
-            # current_turn 保持不變，進入原定行程（不重複觸發突發事件）
+            if session.current_turn >= len(session.weekly_schedule):
+                db.commit()
+                return SimNextTurnResponse(
+                    session_id=session.session_id,
+                    current_turn=session.current_turn,
+                    current_time="22:00",
+                    current_day=5,
+                    is_game_over=True,
+                    stats=session.stats,
+                    delta_stats=applied_effects,
+                    story=None,
+                    weekly_schedule=[ScheduleSlot(**s) for s in (session.weekly_schedule or [])]
+                )
+
+            story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                db, session, active_model, trigger_prob, allow_random_event=True
+            )
+            sync_active_event(session, story, next_effects, db=db)
+
+        elif time_action == "none":
+            # 模式四：不耗時間，立即進入當前排定行程
+            log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（立即趕赴「{slot_title}」）"
+            session.history_logs = (session.history_logs or []) + [log_entry]
+
             story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
                 db, session, active_model, trigger_prob, allow_random_event=False
             )
-            sync_active_event(session, story, next_effects)
+            sync_active_event(session, story, next_effects, db=db)
+
+        else:
+            # 模式五：備援關鍵字判斷
+            skip_keywords = (
+                "繼續睡", "回去睡", "再睡", "自主放假", "放假",
+                "蹺課", "翹課", "放棄前進", "不去", "取消",
+                "不出門", "縮回被窩", "拉過頭頂", "睡過頭放棄"
+            )
+            attend_keywords = ("衝", "上課", "教室", "抵達", "趕往", "出門", "簽到", "點名", "參加")
+
+            has_skip = any(k in opt_hint for k in skip_keywords)
+            has_attend = any(k in opt_hint for k in attend_keywords)
+
+            if has_skip and not has_attend:
+                updated_schedule = [dict(s) for s in (session.weekly_schedule or [])]
+                if session.current_turn < len(updated_schedule):
+                    updated_schedule[session.current_turn]["is_skipped"] = True
+                    updated_schedule[session.current_turn]["skip_reason"] = f"因突發狀況【{ev_title}】跳過"
+                session.weekly_schedule = updated_schedule
+                flag_modified(session, "weekly_schedule")
+
+                session.current_turn += 1
+                log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（放棄或跳過「{slot_title}」）"
+                session.history_logs = (session.history_logs or []) + [log_entry]
+
+                if session.current_turn >= len(session.weekly_schedule):
+                    db.commit()
+                    return SimNextTurnResponse(
+                        session_id=session.session_id,
+                        current_turn=session.current_turn,
+                        current_time="22:00",
+                        current_day=5,
+                        is_game_over=True,
+                        stats=session.stats,
+                        delta_stats=applied_effects,
+                        story=None,
+                        weekly_schedule=[ScheduleSlot(**s) for s in (session.weekly_schedule or [])]
+                    )
+
+                story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                    db, session, active_model, trigger_prob, allow_random_event=True
+                )
+                sync_active_event(session, story, next_effects, db=db)
+            else:
+                log_entry = f"【突發狀況：{ev_title}】：選擇了方案 {req.option_key}（成功趕赴「{slot_title}」）"
+                session.history_logs = (session.history_logs or []) + [log_entry]
+
+                story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
+                    db, session, active_model, trigger_prob, allow_random_event=False
+                )
+                sync_active_event(session, story, next_effects, db=db)
 
     else:
         # 常規行程推進
@@ -253,13 +430,14 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
                 is_game_over=True,
                 stats=session.stats,
                 delta_stats=applied_effects,
-                story=None
+                story=None,
+                weekly_schedule=[ScheduleSlot(**s) for s in (session.weekly_schedule or [])]
             )
 
         story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
             db, session, active_model, trigger_prob, allow_random_event=True
         )
-        sync_active_event(session, story, next_effects)
+        sync_active_event(session, story, next_effects, db=db)
 
     if loc_id and loc_id not in (session.visited_locs or []):
         session.visited_locs = (session.visited_locs or []) + [loc_id]
@@ -267,7 +445,7 @@ async def next_turn(req: SimNextTurnRequest, db: Session = Depends(get_db)):
     db.commit()
 
     next_slot = session.weekly_schedule[session.current_turn]
-    curr_time = next_slot.get("start_time") or "08:00"
+    curr_time = slot_new_time or next_slot.get("start_time") or "08:00"
     curr_day = next_slot.get("day", 1)
 
     return SimNextTurnResponse(
@@ -448,7 +626,7 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
         next_story, next_effects, next_loc_id, next_loc_name = await sim_engine.generate_turn_content(
             db, session, active_model, trigger_prob
         )
-        sync_active_event(session, next_story, next_effects)
+        sync_active_event(session, next_story, next_effects, db=db)
         if next_loc_id and next_loc_id not in (session.visited_locs or []):
             session.visited_locs = (session.visited_locs or []) + [next_loc_id]
         next_slot = updated_schedule[session.current_turn]
@@ -577,7 +755,7 @@ async def pre_plan_tomorrow(req: SimPrePlanRequest, db: Session = Depends(get_db
     story, next_effects, loc_id, loc_name = await sim_engine.generate_turn_content(
         db, session, active_model, trigger_prob
     )
-    sync_active_event(session, story, next_effects)
+    sync_active_event(session, story, next_effects, db=db)
     if loc_id and loc_id not in (session.visited_locs or []):
         session.visited_locs = (session.visited_locs or []) + [loc_id]
 

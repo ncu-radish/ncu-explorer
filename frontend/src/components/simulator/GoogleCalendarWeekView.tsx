@@ -222,6 +222,7 @@ export function GoogleCalendarWeekView({
                 {daySlots.map(({ slot, index }) => {
                   const isCurrent = index === currentTurn;
                   const isPast = index < currentTurn;
+                  const isSkipped = Boolean(slot.is_skipped);
                   const startM = parseMinutes(slot.start_time);
                   const endM = parseMinutes(slot.end_time);
                   const durationM = Math.max(35, endM - startM);
@@ -239,11 +240,13 @@ export function GoogleCalendarWeekView({
                         height: `${heightPercent}%`,
                       }}
                       className={`absolute left-0.5 right-0.5 rounded-lg border p-1 sm:p-1.5 flex flex-col justify-between transition-all cursor-pointer shadow-2xs overflow-hidden ${
-                        styleMeta.bg
+                        isSkipped
+                          ? "border-dashed border-rose-300 bg-stone-100/90 text-stone-500 opacity-70 hover:opacity-100"
+                          : styleMeta.bg
                       } ${
-                        isCurrent
+                        !isSkipped && isCurrent
                           ? "ring-2 ring-blue-500 bg-white shadow-md z-10 scale-[1.01]"
-                          : isPast
+                          : !isSkipped && isPast
                           ? "opacity-60 hover:opacity-100"
                           : "hover:shadow-xs"
                       }`}
@@ -252,9 +255,13 @@ export function GoogleCalendarWeekView({
                         {/* Event Header: Category badge & Time */}
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span
-                            className={`text-[8px] px-1 py-0.2 rounded font-semibold ${styleMeta.badge}`}
+                            className={`text-[8px] px-1 py-0.2 rounded font-semibold ${
+                              isSkipped
+                                ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                : styleMeta.badge
+                            }`}
                           >
-                            {styleMeta.label}
+                            {isSkipped ? "已跳過" : styleMeta.label}
                           </span>
                           <span className="text-[9px] font-mono opacity-75 truncate">
                             {slot.start_time}
@@ -262,7 +269,9 @@ export function GoogleCalendarWeekView({
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-[10px] sm:text-[11px] font-bold line-clamp-2 leading-tight">
+                        <h4 className={`text-[10px] sm:text-[11px] font-bold line-clamp-2 leading-tight ${
+                          isSkipped ? "line-through text-stone-400" : ""
+                        }`}>
                           {slot.title}
                         </h4>
                       </div>

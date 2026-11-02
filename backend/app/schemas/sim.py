@@ -29,6 +29,8 @@ class ScheduleSlot(BaseModel):
     start_time: str | None = None  # e.g. "10:00"
     end_time: str | None = None  # e.g. "12:50"
     display_time: str | None = None  # e.g. "10:00 ~ 12:50"
+    is_skipped: bool | None = False
+    skip_reason: str | None = None
 
 class SimStartResponse(BaseModel):
     session_id: str

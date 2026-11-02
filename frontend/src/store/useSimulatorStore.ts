@@ -20,6 +20,8 @@ export interface ScheduleSlot {
   start_time?: string;
   end_time?: string;
   display_time?: string;
+  is_skipped?: boolean;
+  skip_reason?: string;
 }
 
 export interface OptionItem {
@@ -60,7 +62,7 @@ interface SimulatorState {
   error: string | null;
 
   startSimulation: (userInput: string, department?: string, grade?: number) => Promise<void>;
-  chooseOption: (optionKey: string) => Promise<void>;
+  chooseOption: (optionKey: string) => Promise<any>;
   triggerDynamicActivity: (
     activityId: string,
     optionKey?: string,
@@ -150,6 +152,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
           isLoading: false,
         });
       }
+      return data;
     } catch (err: any) {
       set({ error: err.message || "選擇行動時發生錯誤", isLoading: false });
     }

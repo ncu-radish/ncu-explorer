@@ -130,7 +130,13 @@ export default function SimulatorPage() {
   const handleChooseOption = async (optionKey: string) => {
     // 突發事件為獨立偶發事件，不進入常規 lunch/leisure/sleep 攔截器，直接向後端提交抉擇
     if (story?.is_random_event) {
-      await executeWithTimeFlow(() => chooseOption(optionKey));
+      const prevTime = currentSlotInfo?.start_time || currentTime || "08:00";
+      const res = await chooseOption(optionKey);
+      const nextTime = res?.current_time;
+      // 只有當時間確實有所前進或跳轉時才播放時間流轉動畫，避免不耗時間時誤跳到下個時段又彈回
+      if (nextTime && nextTime !== prevTime) {
+        await startFlowingTransition(prevTime, nextTime);
+      }
       return;
     }
     const slotType = currentSlotInfo.type;

@@ -110,9 +110,32 @@ function EventsContent() {
   const [reCondMaxStamina, setReCondMaxStamina] = useState(100);
   const [reIsActive, setReIsActive] = useState(true);
   const [rePrompt, setRePrompt] = useState("");
-  const [reOptA, setReOptA] = useState("");
-  const [reOptB, setReOptB] = useState("");
-  const [reOptC, setReOptC] = useState("");
+  const [reOptions, setReOptions] = useState<any[]>([
+    {
+      option_key: "A",
+      intent_hint: "全力以赴應對",
+      effects: { stamina: -5, study: 5, social: 0, money: 0 },
+      time_action: "none",
+      target_time: "12:00",
+      duration_hours: 1.0,
+    },
+    {
+      option_key: "B",
+      intent_hint: "尋求同學或室友協助",
+      effects: { stamina: 5, study: 0, social: 5, money: 0 },
+      time_action: "none",
+      target_time: "12:00",
+      duration_hours: 1.0,
+    },
+    {
+      option_key: "C",
+      intent_hint: "隨機應變，冒險嘗試",
+      effects: { stamina: 0, study: 0, social: 10, money: -30 },
+      time_action: "next_slot",
+      target_time: "12:00",
+      duration_hours: 1.0,
+    },
+  ]);
   const [reSandboxStory, setReSandboxStory] = useState<any | null>(null);
   const [isReSandboxTesting, setIsReSandboxTesting] = useState(false);
   const [reSaveMessage, setReSaveMessage] = useState<string | null>(null);
@@ -161,9 +184,22 @@ function EventsContent() {
     setReCondMaxStamina(ev.cond_max_stamina ?? 100);
     setReIsActive(ev.is_active ?? true);
     setRePrompt(ev.event_prompt || "");
-    setReOptA(ev.preset_options?.[0]?.intent_hint || "");
-    setReOptB(ev.preset_options?.[1]?.intent_hint || "");
-    setReOptC(ev.preset_options?.[2]?.intent_hint || "");
+    const rawOpts = ev.preset_options && ev.preset_options.length >= 3
+      ? ev.preset_options
+      : [
+          { option_key: "A", intent_hint: "全力以赴應對", effects: { stamina: -5, study: 5, social: 0, money: 0 }, time_action: "none", target_time: "12:00", duration_hours: 1.0 },
+          { option_key: "B", intent_hint: "尋求同學或室友協助", effects: { stamina: 5, study: 0, social: 5, money: 0 }, time_action: "none", target_time: "12:00", duration_hours: 1.0 },
+          { option_key: "C", intent_hint: "隨機應變，冒險嘗試", effects: { stamina: 0, study: 0, social: 10, money: -30 }, time_action: "next_slot", target_time: "12:00", duration_hours: 1.0 },
+        ];
+    const normalizedOpts = rawOpts.map((o: any, idx: number) => ({
+      option_key: o.option_key || String.fromCharCode(65 + idx),
+      intent_hint: o.intent_hint || "",
+      effects: o.effects || { stamina: 0, study: 0, social: 0, money: 0 },
+      time_action: o.time_action || "none",
+      target_time: o.target_time || "12:00",
+      duration_hours: o.duration_hours !== undefined ? o.duration_hours : 1.0,
+    }));
+    setReOptions(normalizedOpts);
     setReSandboxStory(null);
   };
 
@@ -186,9 +222,11 @@ function EventsContent() {
     setReCondMaxStamina(100);
     setReIsActive(true);
     setRePrompt("突發事件：你在校園中遇到了突發狀況...");
-    setReOptA("冷靜應對，採取穩健對策");
-    setReOptB("尋求身邊同學或室友協助");
-    setReOptC("隨機應變，嘗試新選擇");
+    setReOptions([
+      { option_key: "A", intent_hint: "冷靜應對，採取穩健對策", effects: { stamina: -5, study: 5, social: 0, money: 0 }, time_action: "none", target_time: "12:00", duration_hours: 1.0 },
+      { option_key: "B", intent_hint: "尋求身邊同學或室友協助", effects: { stamina: 5, study: 0, social: 5, money: 0 }, time_action: "none", target_time: "12:00", duration_hours: 1.0 },
+      { option_key: "C", intent_hint: "隨機應變，嘗試新選擇", effects: { stamina: 0, study: 0, social: 10, money: -30 }, time_action: "next_slot", target_time: "12:00", duration_hours: 1.0 },
+    ]);
     setReSandboxStory(null);
   };
 
@@ -332,24 +370,6 @@ function EventsContent() {
   const handleSaveRandomEvent = async () => {
     if (!isCreatingNewRandomEvent && !selectedRandomEvent) return;
     try {
-      const updatedOptions = [
-        {
-          option_key: "A",
-          intent_hint: reOptA || "全力以赴應對",
-          effects: selectedRandomEvent?.preset_options?.[0]?.effects || { stamina: -5, study: 5, social: 0, money: 0 },
-        },
-        {
-          option_key: "B",
-          intent_hint: reOptB || "尋求同學或室友協助",
-          effects: selectedRandomEvent?.preset_options?.[1]?.effects || { stamina: 5, study: 0, social: 5, money: 0 },
-        },
-        {
-          option_key: "C",
-          intent_hint: reOptC || "隨機應變，冒險嘗試",
-          effects: selectedRandomEvent?.preset_options?.[2]?.effects || { stamina: 0, study: 0, social: 10, money: -30 },
-        },
-      ];
-
       const payload = {
         title: reTitle,
         weight: reWeight,
@@ -365,7 +385,7 @@ function EventsContent() {
         cond_max_stamina: reCondMaxStamina,
         is_active: reIsActive,
         event_prompt: rePrompt,
-        preset_options: updatedOptions,
+        preset_options: reOptions,
       };
 
       if (isCreatingNewRandomEvent) {
@@ -404,14 +424,9 @@ function EventsContent() {
   const handleTestRandomSandbox = async () => {
     setIsReSandboxTesting(true);
     try {
-      const presetOptions = [
-        { option_key: "A", intent_hint: reOptA || "全力以赴應對", effects: {} },
-        { option_key: "B", intent_hint: reOptB || "尋求室友幫助", effects: {} },
-        { option_key: "C", intent_hint: reOptC || "先回宿舍補眠", effects: {} },
-      ];
       const data = await adminApi.testSandbox({
         event_prompt: rePrompt || "突發狀況發生",
-        preset_options: presetOptions,
+        preset_options: reOptions,
         location_id: reCondLocation || selectedRandomEvent?.cond_location || "loc_park_creek",
       });
       setReSandboxStory(data.generated_story);
@@ -1416,32 +1431,180 @@ function EventsContent() {
                   />
                 </div>
 
-                {/* 5. Option Hints */}
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-stone-700 block">
-                    三個預設選項意圖提示（由 LLM 潤飾為大學生生動語句）：
+                {/* 5. Option Hints, Effects & Time Progression */}
+                <div className="space-y-3 pt-3 border-t border-stone-200">
+                  <span className="text-xs text-stone-900 font-bold block flex items-center justify-between">
+                    <span>三個行動選項設定 (意圖提示、數值增減與結束時間／跳轉)：</span>
+                    <span className="text-[11px] text-stone-500 font-medium">
+                      可獨立設定各選項對數值的影響以及時間跳轉模式
+                    </span>
                   </span>
-                  <input
-                    type="text"
-                    placeholder="選項 A 提示..."
-                    value={reOptA}
-                    onChange={(e) => setReOptA(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600"
-                  />
-                  <input
-                    type="text"
-                    placeholder="選項 B 提示..."
-                    value={reOptB}
-                    onChange={(e) => setReOptB(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600"
-                  />
-                  <input
-                    type="text"
-                    placeholder="選項 C 提示..."
-                    value={reOptC}
-                    onChange={(e) => setReOptC(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600"
-                  />
+
+                  {reOptions.map((opt, idx) => (
+                    <div
+                      key={opt.option_key}
+                      className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 flex flex-col gap-3 shadow-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-white font-mono font-bold text-xs shadow-xs">
+                          選項 {opt.option_key}
+                        </span>
+                        <span className="text-[11px] text-stone-500 font-medium">
+                          設定該選項被玩家挑選時的數值增減與時間跳轉
+                        </span>
+                      </div>
+
+                      {/* 選項提示文字 */}
+                      <div>
+                        <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                          意圖提示 (LLM 將潤飾為生動語句)
+                        </label>
+                        <input
+                          type="text"
+                          value={opt.intent_hint}
+                          onChange={(e) => {
+                            const next = [...reOptions];
+                            next[idx] = { ...next[idx], intent_hint: e.target.value };
+                            setReOptions(next);
+                          }}
+                          placeholder={`例如：方案 ${opt.option_key} 睡衣套上外套開啟百米衝刺模式衝進教室...`}
+                          className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                        />
+                      </div>
+
+                      {/* 數值影響 (Effects) */}
+                      <div>
+                        <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                          數值影響 (Stamina / Study / Social / Money)
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          <div>
+                            <span className="text-[11px] font-bold text-emerald-700 block mb-0.5">⚡ 體力 (Stamina)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.stamina ?? 0}
+                              onChange={(e) => {
+                                const next = [...reOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, stamina: parseInt(e.target.value) || 0 }
+                                };
+                                setReOptions(next);
+                              }}
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold text-blue-700 block mb-0.5">📚 學業 (Study)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.study ?? 0}
+                              onChange={(e) => {
+                                const next = [...reOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, study: parseInt(e.target.value) || 0 }
+                                };
+                                setReOptions(next);
+                              }}
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold text-indigo-700 block mb-0.5">👥 社交 (Social)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.social ?? 0}
+                              onChange={(e) => {
+                                const next = [...reOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, social: parseInt(e.target.value) || 0 }
+                                };
+                                setReOptions(next);
+                              }}
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold text-amber-700 block mb-0.5">💰 金錢 (Money)</span>
+                            <input
+                              type="number"
+                              value={opt.effects?.money ?? 0}
+                              onChange={(e) => {
+                                const next = [...reOptions];
+                                next[idx] = {
+                                  ...next[idx],
+                                  effects: { ...next[idx].effects, money: parseInt(e.target.value) || 0 }
+                                };
+                                setReOptions(next);
+                              }}
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 時間流轉 / 結束時間設定 (Time Action) */}
+                      <div className="pt-2 border-t border-stone-100">
+                        <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                          時間流轉與時段行程影響 (Time & Schedule Progression)
+                        </label>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                          <select
+                            value={opt.time_action || "none"}
+                            onChange={(e) => {
+                              const next = [...reOptions];
+                              next[idx] = { ...next[idx], time_action: e.target.value };
+                              setReOptions(next);
+                            }}
+                            className="flex-1 px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-medium focus:bg-white focus:border-blue-600"
+                          >
+                            <option value="none">⏱️ 不耗時間（立即進入原定行程，如衝去上課）</option>
+                            <option value="jump_to_time">⏩ 跳到指定時間（如繼續睡跳到 12:00）</option>
+                            <option value="add_hours">⏳ 消耗時長 / 跳到 N 小時後（如慢慢梳洗跳到 1 小時後）</option>
+                            <option value="next_slot">⏭️ 跳過此時段（直接進入下一個行程）</option>
+                          </select>
+
+                          {opt.time_action === "jump_to_time" && (
+                            <div className="flex items-center gap-1.5 shrink-0 animate-in fade-in">
+                              <span className="text-xs text-stone-600 font-medium">跳至時間:</span>
+                              <input
+                                type="time"
+                                value={opt.target_time || "12:00"}
+                                onChange={(e) => {
+                                  const next = [...reOptions];
+                                  next[idx] = { ...next[idx], target_time: e.target.value };
+                                  setReOptions(next);
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:border-blue-600"
+                              />
+                            </div>
+                          )}
+
+                          {opt.time_action === "add_hours" && (
+                            <div className="flex items-center gap-1.5 shrink-0 animate-in fade-in">
+                              <span className="text-xs text-stone-600 font-medium">消耗時長:</span>
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0.5"
+                                max="6"
+                                value={opt.duration_hours || 1.0}
+                                onChange={(e) => {
+                                  const next = [...reOptions];
+                                  next[idx] = { ...next[idx], duration_hours: parseFloat(e.target.value) || 1.0 };
+                                  setReOptions(next);
+                                }}
+                                className="w-16 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-center text-stone-900 focus:border-blue-600"
+                              />
+                              <span className="text-xs text-stone-600 font-medium">小時</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* 6. Action Buttons */}
