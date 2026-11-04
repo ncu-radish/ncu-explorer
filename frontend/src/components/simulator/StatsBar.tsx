@@ -11,8 +11,8 @@ export function StatsBar({ stats }: { stats: Stats }) {
       max: 100,
       unit: "%",
       icon: Activity,
-      color: "bg-emerald-500",
-      textColor: "text-emerald-400",
+      color: "bg-violet-500",
+      textColor: "text-stone-700",
     },
     {
       label: "學業",
@@ -20,8 +20,8 @@ export function StatsBar({ stats }: { stats: Stats }) {
       max: 100,
       unit: "分",
       icon: BookOpen,
-      color: "bg-blue-500",
-      textColor: "text-blue-400",
+      color: "bg-violet-500",
+      textColor: "text-stone-700",
     },
     {
       label: "社交",
@@ -29,8 +29,8 @@ export function StatsBar({ stats }: { stats: Stats }) {
       max: 100,
       unit: "點",
       icon: Users,
-      color: "bg-purple-500",
-      textColor: "text-purple-400",
+      color: "bg-violet-500",
+      textColor: "text-stone-700",
     },
     {
       label: "生活費",
@@ -38,8 +38,8 @@ export function StatsBar({ stats }: { stats: Stats }) {
       max: 3000,
       unit: "元",
       icon: Coins,
-      color: "bg-amber-500",
-      textColor: "text-amber-400",
+      color: "bg-violet-500",
+      textColor: "text-stone-700",
     },
   ];
 
@@ -54,13 +54,13 @@ export function StatsBar({ stats }: { stats: Stats }) {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <Icon className={`w-3.5 h-3.5 ${item.textColor}`} />
-                <span className="text-xs text-gray-400">{item.label}</span>
+                <span className="text-sm text-stone-700">{item.label}</span>
               </div>
-              <span className={`text-xs font-bold font-mono ${item.textColor}`}>
+              <span className={`text-xs font-bold font-mono text-stone-700`}>
                 {item.value} {item.unit}
               </span>
             </div>
-            <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
               <div
                 className={`h-full ${item.color} transition-all duration-500 rounded-full`}
                 style={{ width: `${percent}%` }}

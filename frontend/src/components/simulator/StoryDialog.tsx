@@ -44,7 +44,7 @@ export function StoryDialog({
               <span>⚡ 突發狀況 · {story?.event_title || "突發事件"}</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-semibold">
               <Clock className="w-3.5 h-3.5" />
               {dayName} {slot?.display_time || slot?.time_label || slotName}
             </span>
@@ -61,9 +61,9 @@ export function StoryDialog({
             onClick={onFocusLocation}
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs transition-colors group cursor-pointer"
           >
-            <MapPin className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+            <MapPin className="w-3.5 h-3.5 text-violet-600 group-hover:scale-110 transition-transform" />
             <span>{locationName || "校園巡禮"}</span>
-            <span className="text-[10px] text-blue-600 underline ml-0.5">3D聚焦</span>
+            <span className="text-xs text-violet-600 underline ml-0.5">3D聚焦</span>
           </button>
 
           {slot?.course_category && (

@@ -17,18 +17,18 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full glass-panel border-b border-white/10 px-4 md:px-8 py-3">
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-stone-200 px-4 md:px-8 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-            <Compass className="w-5 h-5 animate-pulse" />
+          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+            <Compass className="w-5 h-5" />
           </div>
           <div>
-            <span className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
-              NCU <span className="text-cyan-400">Explorer</span>
+            <span className="font-bold text-lg tracking-tight text-stone-900 flex items-center gap-1.5">
+              NCU <span className="text-violet-600">Explorer</span>
             </span>
-            <span className="hidden sm:block text-[10px] text-gray-400 -mt-1 tracking-wider uppercase">
+            <span className="hidden sm:block text-xs text-stone-500 -mt-0.5 tracking-wider uppercase">
               中央大學智慧校園生活與課程平台
             </span>
           </div>
@@ -45,11 +45,11 @@ export function Navbar() {
                 href={link.href}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? "bg-blue-600/20 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-blue-500/20"
-                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                    ? "bg-violet-50 text-violet-700 border border-violet-200"
+                    : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-cyan-400" : "text-gray-400"}`} />
+                <Icon className={`w-4 h-4 ${isActive ? "text-violet-600" : "text-stone-500"}`} />
                 <span className="hidden md:inline">{link.label}</span>
               </Link>
             );

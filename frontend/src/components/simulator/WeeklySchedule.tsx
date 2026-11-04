@@ -33,7 +33,7 @@ export function WeeklySchedule({
             onClick={() => setViewMode("day")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === "day"
-                ? "bg-white text-blue-700 shadow-xs"
+                ? "bg-white text-violet-700 shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -45,7 +45,7 @@ export function WeeklySchedule({
             onClick={() => setViewMode("week")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === "week"
-                ? "bg-white text-blue-700 shadow-xs"
+                ? "bg-white text-violet-700 shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -88,7 +88,7 @@ export function WeeklySchedule({
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
               <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
+                <Calendar className="w-5 h-5 text-violet-600" />
                 <h3 className="text-base font-bold text-stone-900">
                   一週生活全景行事曆 (Google Calendar 風格)
                 </h3>

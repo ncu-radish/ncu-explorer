@@ -28,8 +28,8 @@ const CampusScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF8F5] text-stone-500 gap-3">
-        <div className="w-8 h-8 border-3 border-stone-300 border-t-blue-600 rounded-full animate-spin" />
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF8F5] text-stone-600 gap-3">
+        <div className="w-8 h-8 border-3 border-stone-300 border-t-violet-600 rounded-full animate-spin" />
         <span className="text-sm font-medium tracking-wide">載入中央大學 3D 校園地圖...</span>
       </div>
     ),
@@ -46,44 +46,32 @@ const CATEGORIES = [
 ];
 
 function CategoryBadge({ category }: { category?: string | null }) {
+  let label = "校園館舍";
   switch (category) {
     case "teaching":
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium">
-          教學館舍
-        </span>
-      );
+      label = "教學館舍";
+      break;
     case "dorm":
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-medium">
-          學生宿舍
-        </span>
-      );
+      label = "學生宿舍";
+      break;
     case "function":
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
-          行政功能
-        </span>
-      );
+      label = "行政功能";
+      break;
     case "sport":
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
-          運動場館
-        </span>
-      );
+      label = "運動場館";
+      break;
     case "restaurant":
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
-          生活餐飲
-        </span>
-      );
+      label = "生活餐飲";
+      break;
     default:
-      return (
-        <span className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200 font-medium">
-          校園館舍
-        </span>
-      );
+      label = "校園館舍";
+      break;
   }
+  return (
+    <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200 font-medium">
+      {label}
+    </span>
+  );
 }
 
 function MapContent() {
@@ -119,29 +107,28 @@ function MapContent() {
       setLoading(true);
       const data = await exploreApi.getBuildings({
         q: q || undefined,
-        category: cat !== "all" ? cat : undefined,
+        category: cat && cat !== "all" ? cat : undefined,
       });
       setBuildings(data);
     } catch (err) {
-      console.error("載入建築物資料失敗:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchBuildings(searchQuery, selectedCategory);
   }, [selectedCategory]);
 
-  // Handle URL query param for direct linking
+  // Initial selection from URL params
   useEffect(() => {
     if (initialBldgId) {
       selectBuilding(initialBldgId);
     }
-  }, [initialBldgId, selectBuilding]);
+  }, [initialBldgId]);
 
-  // Keep selected building detail in sync
+  // Fetch full details of the currently selected building
   useEffect(() => {
     if (!selectedBuildingId) {
       setSelectedBuildingDetail(null);
@@ -154,7 +141,8 @@ function MapContent() {
     if (found) {
       setSelectedBuildingDetail(found);
     } else {
-      exploreApi.getBuildingDetail(selectedBuildingId)
+      exploreApi
+        .getBuildingDetail(selectedBuildingId)
         .then(setSelectedBuildingDetail)
         .catch(() => setSelectedBuildingDetail(null));
     }
@@ -176,12 +164,7 @@ function MapContent() {
   }, [searchQuery]);
 
   const handleSelectBuilding = (id: string) => {
-    if (selectedBuildingId === id) {
-      // Toggle or keep focus
-      selectBuilding(id);
-    } else {
-      selectBuilding(id);
-    }
+    selectBuilding(id);
   };
 
   return (
@@ -193,23 +176,23 @@ function MapContent() {
           <div className="flex items-center justify-between mb-3">
             <Link
               href="/explore"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-stone-50 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>回中央相關資料</span>
             </Link>
-            <span className="text-[11px] font-mono font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+            <span className="text-xs font-mono font-medium text-stone-700 bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200">
               {buildings.length} 棟館舍
             </span>
           </div>
 
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-xs">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-base font-bold text-stone-900 leading-tight">NCU 3D 校園地圖與館舍設施</h1>
-              <p className="text-[11px] text-stone-500">中央大學 3D 立體互動式館舍與建築設施導覽</p>
+              <p className="text-xs text-stone-600">中央大學 3D 立體互動式館舍與建築設施導覽</p>
             </div>
           </div>
 
@@ -221,7 +204,7 @@ function MapContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜尋代號 (如 E6)、館名、系所、別名..."
-              className="w-full pl-9 pr-8 py-2 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all shadow-2xs"
             />
             {searchQuery && (
               <button
@@ -235,12 +218,12 @@ function MapContent() {
           </div>
 
           {/* Search scope hint */}
-          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-stone-400 overflow-x-auto whitespace-nowrap">
-            <span className="font-medium text-stone-500">支援欄位:</span>
-            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">館舍名稱</span>
-            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">教室代號 (E6/C2)</span>
-            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">系所辦公室</span>
-            <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600">別名 (工五/管二)</span>
+          <div className="flex items-center gap-1.5 mt-2.5 text-xs text-stone-600 overflow-x-auto whitespace-nowrap">
+            <span className="font-semibold text-stone-700">支援欄位:</span>
+            <span className="bg-stone-100 px-2 py-0.5 rounded-md text-stone-700 border border-stone-200">館舍名稱</span>
+            <span className="bg-stone-100 px-2 py-0.5 rounded-md text-stone-700 border border-stone-200">教室代號 (E6/C2)</span>
+            <span className="bg-stone-100 px-2 py-0.5 rounded-md text-stone-700 border border-stone-200">系所辦公室</span>
+            <span className="bg-stone-100 px-2 py-0.5 rounded-md text-stone-700 border border-stone-200">別名 (工五/管二)</span>
           </div>
 
           {/* Category Tabs */}
@@ -252,10 +235,10 @@ function MapContent() {
                 <button
                   key={cat.key}
                   onClick={() => setSelectedCategory(cat.key)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900"
+                      ? "bg-violet-600 text-white shadow-xs"
+                      : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-stone-900 border border-stone-200"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -268,17 +251,17 @@ function MapContent() {
 
         {/* Selected Building Detail Card (Pinned when selected) */}
         {selectedBuildingDetail && (
-          <div className="p-4 bg-blue-50/50 border-b border-blue-200/80 transition-all">
+          <div className="p-4 bg-violet-50/60 border-b border-violet-200 transition-all">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <CategoryBadge category={selectedBuildingDetail.category} />
                 {selectedBuildingDetail.classroom_code && (
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold shadow-2xs">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-violet-600 text-white font-bold shadow-2xs">
                     代號: {selectedBuildingDetail.classroom_code}
                   </span>
                 )}
                 {selectedBuildingDetail.alias && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-white text-stone-700 border border-stone-300 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-white text-stone-700 border border-stone-300 font-medium">
                     別稱: {selectedBuildingDetail.alias}
                   </span>
                 )}
@@ -293,12 +276,12 @@ function MapContent() {
             </div>
 
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+              <MapPin className="w-4 h-4 text-violet-600 shrink-0" />
               <span>{selectedBuildingDetail.name_zh}</span>
             </h2>
 
             {selectedBuildingDetail.name_en && (
-              <p className="text-xs text-stone-500 font-sans mt-0.5 ml-5.5">
+              <p className="text-xs text-stone-600 font-sans mt-0.5 ml-5.5">
                 {selectedBuildingDetail.name_en}
               </p>
             )}
@@ -306,12 +289,12 @@ function MapContent() {
             {/* Departments */}
             {selectedBuildingDetail.departments && selectedBuildingDetail.departments.length > 0 && (
               <div className="mt-3 ml-5.5">
-                <p className="text-[11px] font-semibold text-stone-700 mb-1">所屬系所與單位：</p>
+                <p className="text-xs font-semibold text-stone-800 mb-1">所屬系所與單位：</p>
                 <div className="flex flex-wrap gap-1">
                   {selectedBuildingDetail.departments.map((dept, idx) => (
                     <span
                       key={idx}
-                      className="text-[11px] px-2 py-0.5 bg-white text-stone-700 rounded border border-stone-200 shadow-2xs font-medium"
+                      className="text-xs px-2 py-0.5 bg-white text-stone-700 rounded-md border border-stone-200 shadow-2xs font-medium"
                     >
                       {dept}
                     </span>
@@ -322,9 +305,9 @@ function MapContent() {
 
             {/* Description */}
             {selectedBuildingDetail.description && (
-              <div className="mt-3 ml-5.5 text-xs text-stone-600 leading-relaxed max-h-36 overflow-y-auto pr-1">
+              <div className="mt-3 ml-5.5 text-sm text-stone-700 leading-relaxed max-h-36 overflow-y-auto pr-1">
                 <div
-                  className="prose prose-xs text-stone-600 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-1"
+                  className="prose-content"
                   dangerouslySetInnerHTML={{ __html: selectedBuildingDetail.description }}
                 />
               </div>
@@ -333,13 +316,13 @@ function MapContent() {
             <div className="mt-3 ml-5.5 flex items-center gap-2">
               <button
                 onClick={() => selectBuilding(selectedBuildingDetail.id)}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:underline cursor-pointer"
+                className="text-xs font-semibold text-violet-600 hover:text-violet-700 flex items-center gap-1 hover:underline cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 重新聚焦視角
               </button>
               <span className="text-stone-300">|</span>
-              <span className="text-[10px] text-stone-400 font-mono">
+              <span className="text-xs text-stone-500 font-mono">
                 ID: {selectedBuildingDetail.id}
               </span>
             </div>
@@ -352,15 +335,15 @@ function MapContent() {
           className="flex-1 overflow-y-auto p-3 space-y-2 divide-y divide-stone-100"
         >
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-2">
-              <div className="w-6 h-6 border-2 border-stone-300 border-t-blue-600 rounded-full animate-spin" />
+            <div className="py-12 flex flex-col items-center justify-center text-stone-500 gap-2">
+              <div className="w-6 h-6 border-2 border-stone-300 border-t-violet-600 rounded-full animate-spin" />
               <span className="text-xs">檢索建築物資料...</span>
             </div>
           ) : buildings.length === 0 ? (
-            <div className="py-16 text-center text-stone-400">
-              <Building2 className="w-8 h-8 mx-auto mb-2 text-stone-300" />
-              <p className="text-xs font-medium">找不到符合條件的建築物</p>
-              <p className="text-[11px] text-stone-400 mt-1">
+            <div className="py-16 text-center text-stone-500">
+              <Building2 className="w-8 h-8 mx-auto mb-2 text-stone-400" />
+              <p className="text-sm font-medium text-stone-700">找不到符合條件的建築物</p>
+              <p className="text-xs text-stone-500 mt-1">
                 請嘗試搜尋代號 (如 E6)、系所或別名 (如工五)
               </p>
             </div>
@@ -378,7 +361,7 @@ function MapContent() {
                   onMouseLeave={() => setHoveredBuilding(null)}
                   className={`p-3 rounded-xl transition-all cursor-pointer border ${
                     isSelected
-                      ? "bg-blue-50/80 border-blue-500 shadow-xs ring-1 ring-blue-500"
+                      ? "bg-violet-50/80 border-violet-500 shadow-xs ring-1 ring-violet-500"
                       : isHovered
                       ? "bg-stone-50 border-stone-300"
                       : "bg-white hover:bg-stone-50 border-stone-200"
@@ -389,12 +372,12 @@ function MapContent() {
                       <div className="flex items-center gap-1.5 flex-wrap mb-1">
                         <CategoryBadge category={bldg.category} />
                         {bldg.classroom_code && (
-                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-300">
+                          <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-300">
                             {bldg.classroom_code}
                           </span>
                         )}
                         {bldg.alias && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
                             {bldg.alias}
                           </span>
                         )}
@@ -405,7 +388,7 @@ function MapContent() {
                       </h3>
 
                       {bldg.name_en && (
-                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                        <p className="text-xs text-stone-500 truncate mt-0.5">
                           {bldg.name_en}
                         </p>
                       )}
@@ -416,13 +399,13 @@ function MapContent() {
                           {bldg.departments.slice(0, 2).map((dept, idx) => (
                             <span
                               key={idx}
-                              className="text-[10px] text-stone-600 bg-stone-100/80 px-1.5 py-0.5 rounded border border-stone-200 truncate max-w-[180px]"
+                              className="text-xs text-stone-700 bg-stone-100 px-2 py-0.5 rounded border border-stone-200 truncate max-w-[180px]"
                             >
                               {dept}
                             </span>
                           ))}
                           {bldg.departments.length > 2 && (
-                            <span className="text-[10px] text-stone-400 self-center">
+                            <span className="text-xs text-stone-500 self-center">
                               +{bldg.departments.length - 2}
                             </span>
                           )}
@@ -432,7 +415,7 @@ function MapContent() {
 
                     <ChevronRight
                       className={`w-4 h-4 mt-2 shrink-0 transition-transform ${
-                        isSelected ? "text-blue-600 translate-x-0.5" : "text-stone-300"
+                        isSelected ? "text-violet-600 translate-x-0.5" : "text-stone-400"
                       }`}
                     />
                   </div>
@@ -449,7 +432,7 @@ function MapContent() {
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <button
             onClick={resetCamera}
-            className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/90 backdrop-blur-xs text-stone-700 hover:text-stone-900 border border-stone-300 hover:bg-white shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/95 backdrop-blur-xs text-stone-700 hover:text-stone-900 border border-stone-300 hover:bg-white shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
             title="重置全景鳥瞰視角"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -466,14 +449,14 @@ function MapContent() {
         </div>
 
         {/* Bottom Legend Overlay */}
-        <div className="absolute bottom-4 right-4 z-20 bg-white/90 backdrop-blur-xs p-3 rounded-2xl border border-stone-300 shadow-sm text-xs hidden sm:block">
-          <div className="font-semibold text-stone-700 text-[11px] mb-2 flex items-center gap-1">
-            <Info className="w-3.5 h-3.5 text-stone-500" />
+        <div className="absolute bottom-4 right-4 z-20 bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-stone-300 shadow-sm text-xs hidden sm:block">
+          <div className="font-semibold text-stone-800 text-xs mb-2 flex items-center gap-1.5">
+            <Info className="w-4 h-4 text-stone-500" />
             <span>3D 地圖圖例與操作</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-stone-600">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-stone-700">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+              <span className="w-2.5 h-2.5 rounded-full bg-violet-600" />
               <span>點選目標館舍</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -481,7 +464,7 @@ function MapContent() {
               <span>一般建築幾何</span>
             </div>
           </div>
-          <p className="text-[10px] text-stone-400 mt-2 border-t border-stone-200 pt-1.5">
+          <p className="text-xs text-stone-500 mt-2 border-t border-stone-200 pt-1.5">
             滑鼠左鍵旋轉 ‧ 右鍵平移 ‧ 滾輪縮放視角
           </p>
         </div>
@@ -494,7 +477,7 @@ export default function MapPage() {
   return (
     <Suspense
       fallback={
-        <div className="w-full h-screen flex items-center justify-center bg-[#FAF8F5] text-stone-500 text-sm">
+        <div className="w-full h-screen flex items-center justify-center bg-[#FAF8F5] text-stone-600 text-sm">
           載入中...
         </div>
       }

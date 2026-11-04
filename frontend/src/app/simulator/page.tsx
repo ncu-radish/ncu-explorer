@@ -323,17 +323,17 @@ export default function SimulatorPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>回首頁</span>
           </Link>
-          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
+          <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
             <Compass className="w-5 h-5 animate-pulse" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               中央大學一週生活模擬器
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
                 Turn {Math.min(totalTurns, currentTurn + 1)} / {totalTurns}
               </span>
             </h1>
-            <p className="text-xs text-stone-500">
+            <p className="text-sm text-stone-600">
               {currentSlotInfo.title ? `當前行程：${currentSlotInfo.title}` : "正在排程中..."}
             </p>
           </div>
@@ -347,10 +347,10 @@ export default function SimulatorPage() {
               setPrePlanTargetDay(nextDay);
               setPrePlanModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 text-xs font-semibold transition-colors shadow-xs cursor-pointer"
             title="預先規劃明日行程"
           >
-            <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+            <CalendarDays className="w-3.5 h-3.5 text-stone-600" />
             <span>預排明日活動</span>
           </button>
 
@@ -369,7 +369,7 @@ export default function SimulatorPage() {
           </button>
           <Link
             href="/map"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors shadow-xs"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             <span>全螢幕 3D 地圖</span>
@@ -413,7 +413,7 @@ export default function SimulatorPage() {
           {/* 3D PiP Mini Map */}
           <div className="h-48 sm:h-52 rounded-2xl bg-white overflow-hidden relative border border-stone-200 shadow-xs">
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
-              <MapPin className="w-3 h-3 text-blue-600" />
+              <MapPin className="w-3 h-3 text-violet-600" />
               <span>3D 場景：{currentLocationName || "中大校園"}</span>
             </div>
 

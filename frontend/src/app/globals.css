@@ -132,3 +132,39 @@ body {
 .animate-title-float {
   animation: title-float 7s ease-in-out infinite;
 }
+
+/* Prose content for sanitized HTML */
+.prose-content h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1c1917;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+.prose-content h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #292524;
+  margin-bottom: 0.375rem;
+  margin-top: 0.75rem;
+}
+.prose-content p {
+  font-size: 0.875rem;
+  color: #57534e;
+  line-height: 1.65;
+  margin-bottom: 0.5rem;
+}
+.prose-content ul, .prose-content ol {
+  font-size: 0.875rem;
+  color: #57534e;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.prose-content li {
+  margin-bottom: 0.25rem;
+  line-height: 1.6;
+}
+.prose-content strong {
+  color: #1c1917;
+  font-weight: 600;
+}

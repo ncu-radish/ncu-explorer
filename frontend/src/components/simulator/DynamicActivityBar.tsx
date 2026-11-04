@@ -6,11 +6,8 @@ import {
   Coffee,
   Moon,
   Compass,
-  Sparkles,
   CheckCircle2,
   ChevronRight,
-  Clock,
-  MapPin,
   X,
   Zap,
 } from "lucide-react";
@@ -24,8 +21,6 @@ interface QuickActivityItem {
   timeHint: string;
   triggerModeHint: string;
   icon: any;
-  color: string;
-  badgeBg: string;
   options: Array<{
     key: string;
     text: string;
@@ -42,8 +37,6 @@ const QUICK_ACTIVITIES: QuickActivityItem[] = [
     timeHint: "早晨 07:00~09:00",
     triggerModeHint: "早課前主動選擇是否吃早餐",
     icon: Coffee,
-    color: "text-amber-500",
-    badgeBg: "bg-amber-500/10 text-amber-300 border-amber-500/30",
     options: [
       { key: "A", text: "衝後門早午餐吃現做起司蛋餅配溫豆漿", effects: "體力 +20，學業 +5，花費 $65" },
       { key: "B", text: "超商快速抓飯糰與美式黑咖啡邊走邊吃", effects: "體力 +10，花費 $45" },
@@ -58,8 +51,6 @@ const QUICK_ACTIVITIES: QuickActivityItem[] = [
     timeHint: "中午 11:50~13:30",
     triggerModeHint: "午餐時間選擇是否要吃午餐",
     icon: Utensils,
-    color: "text-emerald-500",
-    badgeBg: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
     options: [
       { key: "A", text: "快步進松果餐廳吃高CP值雙主菜自助餐", effects: "體力 +25，社交 +5，花費 $90" },
       { key: "B", text: "揪同學散步到後門吃炒泡麵配鮮奶茶", effects: "體力 +20，社交 +15，花費 $120" },
@@ -74,8 +65,6 @@ const QUICK_ACTIVITIES: QuickActivityItem[] = [
     timeHint: "傍晚 17:30~19:30",
     triggerModeHint: "下課傍晚選擇是否進行晚餐活動",
     icon: Utensils,
-    color: "text-orange-500",
-    badgeBg: "bg-orange-500/10 text-orange-300 border-orange-500/30",
     options: [
       { key: "A", text: "與室友直奔宵夜街吃熱騰騰拉麵與地瓜球", effects: "體力 +25，社交 +15，花費 $150" },
       { key: "B", text: "外帶少油少鹽平價健康餐盒回宿舍享用", effects: "體力 +15，學業 +5，花費 $95" },
@@ -87,11 +76,9 @@ const QUICK_ACTIVITIES: QuickActivityItem[] = [
     category: "dorm_leisure",
     title: "宿舍休閒活動",
     shortDesc: "回宿舍吹冷氣補眠、與室友開黑打手遊放鬆",
-    timeHint: "下課空閒時間 / 課餘空檔",
+    timeHint: "課餘空檔時間",
     triggerModeHint: "空閒時可選擇回到宿舍休息",
     icon: Moon,
-    color: "text-indigo-400",
-    badgeBg: "bg-indigo-500/10 text-indigo-300 border-indigo-500/30",
     options: [
       { key: "A", text: "回宿舍躺平痛快補眠一小時補足精神", effects: "體力 +30，學業 -5" },
       { key: "B", text: "戴上耳機與室友開黑連線打手遊英雄聯盟", effects: "體力 +10，社交 +15" },
@@ -103,11 +90,9 @@ const QUICK_ACTIVITIES: QuickActivityItem[] = [
     category: "campus_leisure",
     title: "校園休閒活動",
     shortDesc: "健身房、K書中心自習、百花川與中大湖散步",
-    timeHint: "下課空閒時間 / 課餘午後",
+    timeHint: "課餘午後時光",
     triggerModeHint: "空檔時可選擇前往校園設施",
     icon: Compass,
-    color: "text-cyan-400",
-    badgeBg: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30",
     options: [
       { key: "A", text: "前往依仁堂健身房重量訓練或大草坪慢跑", effects: "體力 +15，社交 +5，花費 $20" },
       { key: "B", text: "前往中大總圖書館或K書中心享受靜謐自習", effects: "學業 +25，體力 -5" },
@@ -142,18 +127,18 @@ export function DynamicActivityBar() {
     <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-xs flex flex-col gap-3">
       {/* Bar Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center">
             <Zap className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
               <span>動態校園活動快選</span>
-              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
                 免事前排程 · 選擇後即時標記在行事曆
               </span>
             </h3>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-xs text-stone-600 mt-0.5">
               下課或用餐時間，點擊即可觸發相應的校園日常與休閒活動
             </p>
           </div>
@@ -168,18 +153,18 @@ export function DynamicActivityBar() {
             <button
               key={act.id}
               onClick={() => setSelectedAct(act)}
-              className="flex flex-col items-start p-2.5 rounded-xl border border-stone-200 bg-stone-50/70 hover:bg-white hover:border-blue-400 hover:shadow-xs transition-all text-left cursor-pointer group"
+              className="flex flex-col items-start p-2.5 rounded-xl border border-stone-200 bg-stone-50/70 hover:bg-white hover:border-violet-400 hover:shadow-xs transition-all text-left cursor-pointer group"
             >
               <div className="flex items-center justify-between w-full mb-1">
                 <div className="flex items-center gap-1.5">
-                  <Icon className={`w-4 h-4 ${act.color}`} />
-                  <span className="text-xs font-bold text-stone-900 group-hover:text-blue-600 transition-colors">
+                  <Icon className="w-4 h-4 text-stone-700 group-hover:text-violet-700 transition-colors" />
+                  <span className="text-xs font-bold text-stone-900 group-hover:text-violet-700 transition-colors">
                     {act.title}
                   </span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
               </div>
-              <span className="text-[10px] text-stone-500 font-mono line-clamp-1">
+              <span className="text-xs text-stone-600 font-mono line-clamp-1">
                 {act.timeHint}
               </span>
             </button>
@@ -194,17 +179,17 @@ export function DynamicActivityBar() {
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-3 border-b border-stone-200">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 flex items-center justify-center">
                   <selectedAct.icon className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
                     {selectedAct.title}
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${selectedAct.badgeBg}`}>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full border border-stone-200 bg-stone-100 text-stone-700 font-medium">
                       {selectedAct.timeHint}
                     </span>
                   </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">{selectedAct.triggerModeHint}</p>
+                  <p className="text-xs text-stone-600 mt-0.5">{selectedAct.triggerModeHint}</p>
                 </div>
               </div>
 
@@ -217,39 +202,39 @@ export function DynamicActivityBar() {
             </div>
 
             {/* Description */}
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm text-stone-700 leading-relaxed">
               <p>{selectedAct.shortDesc}</p>
-              <p className="text-[11px] text-blue-600 font-medium mt-1">
+              <p className="text-xs text-violet-700 font-medium mt-1">
                 ✦ 選擇進行活動後，系統將自動於一週行事曆與時間軸上標記此行程！
               </p>
             </div>
 
             {/* Success Message Banner */}
             {successMsg && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3 rounded-xl bg-stone-100 border border-stone-300 text-stone-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0" />
                 <span>{successMsg}</span>
               </div>
             )}
 
             {/* Options List */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-stone-600">請選擇行動方案：</span>
+              <span className="text-xs font-bold text-stone-700">請選擇行動方案：</span>
               {selectedAct.options.map((opt) => (
                 <button
                   key={opt.key}
                   onClick={() => handleSelectOption(selectedAct.id, opt.key)}
                   disabled={isSubmitting || isLoading}
-                  className="p-3 rounded-xl border border-stone-200 bg-white hover:border-blue-500 hover:bg-blue-50/50 transition-all text-left flex items-start gap-3 cursor-pointer group disabled:opacity-50"
+                  className="p-3 rounded-xl border border-stone-200 bg-white hover:border-violet-500 hover:bg-violet-50/40 transition-all text-left flex items-start gap-3 cursor-pointer group disabled:opacity-50"
                 >
-                  <span className="w-6 h-6 rounded-lg bg-stone-100 text-stone-800 font-mono font-bold text-xs flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                  <span className="w-6 h-6 rounded-lg bg-stone-100 text-stone-800 font-mono font-bold text-xs flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
                     {opt.key}
                   </span>
                   <div className="flex-1">
-                    <span className="text-xs font-semibold text-stone-900 block group-hover:text-blue-900 transition-colors">
+                    <span className="text-xs font-semibold text-stone-900 block group-hover:text-violet-950 transition-colors">
                       {opt.text}
                     </span>
-                    <span className="text-[11px] font-mono text-emerald-600 block mt-0.5">
+                    <span className="text-xs font-mono text-stone-600 block mt-0.5">
                       效果：{opt.effects}
                     </span>
                   </div>

@@ -86,9 +86,6 @@ export default function ExplorePage() {
       id: "courses",
       title: "課程資訊與檢索",
       icon: BookOpen,
-      iconColor: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
       badge: "修課與選課",
       description: "查詢全校開課清單、系所必選修、授課時段與學分資訊，並提供修業路徑參考。",
       highlights: ["全校課程檢索", "系所修業地圖", "AI 智慧顧問推薦"],
@@ -97,9 +94,6 @@ export default function ExplorePage() {
       id: "map",
       title: "3D 校園地圖與館舍設施",
       icon: Map,
-      iconColor: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      borderColor: "border-emerald-200",
       badge: "3D 空間導覽",
       description: "瀏覽中央大學各大教學大樓、行政處室、學生宿舍與運動場館分佈，提供全視角 3D 立體導覽與館舍定位。",
       highlights: ["立體空間 3D 地圖", "館舍系所檢索", "教室位置定位"],
@@ -109,9 +103,6 @@ export default function ExplorePage() {
       id: "transport",
       title: "交通方式與指引",
       icon: Bus,
-      iconColor: "text-indigo-600",
-      bgColor: "bg-indigo-50",
-      borderColor: "border-indigo-200",
       badge: "往返與通勤",
       description: "完整收錄 132/133 市區公車、172 高鐵接駁、YouBike 2.0 租借與自行開車停車指南。",
       highlights: ["132/133 公車時刻", "高鐵與火車轉乘", "校園 YouBike 站點"],
@@ -120,9 +111,6 @@ export default function ExplorePage() {
       id: "food" as CategoryId,
       title: "飲食指南與美食",
       icon: Coffee,
-      iconColor: "text-amber-600",
-      bgColor: "bg-amber-50",
-      borderColor: "border-amber-200",
       badge: "生活餐飲",
       description: "後門早餐一條街、宵夜街人氣排隊美食、松苑與男九舍校內學餐、校園咖啡與便利超商。",
       highlights: ["後門早午餐商圈", "宵夜街人氣必吃", "校內平價學生餐廳"],
@@ -131,9 +119,6 @@ export default function ExplorePage() {
       id: "dorm" as CategoryId,
       title: "宿舍生活與入住",
       icon: Home,
-      iconColor: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200",
       badge: "新生住宿",
       description: "男九舍、女十四舍生活開箱須知，包含獨立冷氣電表儲值、洗衣烘衣設施與修繕申報流程。",
       highlights: ["寢室配備與設施", "冷氣卡儲值辦法", "修繕與門禁規範"],
@@ -142,9 +127,6 @@ export default function ExplorePage() {
       id: "clubs" as CategoryId,
       title: "學生社團與活動",
       icon: Users,
-      iconColor: "text-rose-600",
-      bgColor: "bg-rose-50",
-      borderColor: "border-rose-200",
       badge: "課外學習",
       description: "涵蓋學術研究、康樂藝文、體育運動與自治社團組織，探索多采多姿的課外校園生活。",
       highlights: ["社團活動時段", "社辦位置指引", "招新資訊一覽"],
@@ -225,7 +207,7 @@ export default function ExplorePage() {
             <div className="p-4 rounded-xl mb-5 bg-stone-50 border border-stone-200 text-sm text-stone-700 leading-relaxed max-h-80 overflow-y-auto">
               {detailModal.content_html ? (
                 <div
-                  className="prose prose-sm max-w-none prose-headings:text-stone-900 prose-p:text-stone-700 prose-li:text-stone-700"
+                  className="prose-content"
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(detailModal.content_html) }}
                 />
               ) : (
@@ -237,7 +219,7 @@ export default function ExplorePage() {
             {detailModal.location_id && detailModal.info_type !== "food" && (
               <Link
                 href={`/map?loc=${detailModal.location_id}`}
-                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-xs"
+                className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-xs"
               >
                 <MapPin className="w-4 h-4" /> 在地圖中查看位置
               </Link>
@@ -251,7 +233,7 @@ export default function ExplorePage() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors border border-stone-300 shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition-colors border border-stone-300 shadow-xs"
             title="回到首頁"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -261,7 +243,7 @@ export default function ExplorePage() {
             <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
               中央相關資料
             </h1>
-            <p className="text-xs text-stone-500">
+            <p className="text-sm text-stone-500">
               點擊下方卡片即可展開該類別的詳細檢索與資料
             </p>
           </div>
@@ -271,14 +253,14 @@ export default function ExplorePage() {
         <div className="flex items-center gap-2">
           <Link
             href="/simulator"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium transition-all shadow-xs"
           >
             <Gamepad2 className="w-3.5 h-3.5" />
             <span>開始生活模擬</span>
           </Link>
           <Link
             href="/admin/dashboard"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-300 text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 border border-stone-300 text-xs transition-colors shadow-xs"
             title="管理後台"
           >
             <Shield className="w-3.5 h-3.5" />
@@ -304,23 +286,23 @@ export default function ExplorePage() {
                   <Link
                     key={card.id}
                     href={card.href}
-                    className="bg-white p-6 rounded-2xl border border-stone-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+                    className="bg-white p-6 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <div className={`w-11 h-11 rounded-xl ${card.bgColor} ${card.iconColor} flex items-center justify-center border ${card.borderColor}`}>
+                        <div className="w-11 h-11 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
                           <Icon className="w-5 h-5" />
                         </div>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 font-medium">
                           {card.badge}
                         </span>
                       </div>
 
-                      <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-emerald-700 transition-colors">
+                      <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-violet-700 transition-colors">
                         {card.title}
                       </h3>
 
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                      <p className="text-sm text-stone-600 leading-relaxed mb-4">
                         {card.description}
                       </p>
 
@@ -329,7 +311,7 @@ export default function ExplorePage() {
                         {card.highlights.map((h, i) => (
                           <span
                             key={i}
-                            className="text-[11px] px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600"
+                            className="text-xs px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600"
                           >
                             {h}
                           </span>
@@ -337,7 +319,7 @@ export default function ExplorePage() {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-emerald-600 group-hover:text-emerald-700">
+                    <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-violet-600 group-hover:text-violet-700">
                       <span>開啟 3D 校園地圖</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -353,19 +335,19 @@ export default function ExplorePage() {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className={`w-11 h-11 rounded-xl ${card.bgColor} ${card.iconColor} flex items-center justify-center border ${card.borderColor}`}>
+                      <div className="w-11 h-11 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
                         <Icon className="w-5 h-5" />
                       </div>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 font-medium">
                         {card.badge}
                       </span>
                     </div>
 
-                    <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-violet-700 transition-colors">
                       {card.title}
                     </h3>
 
-                    <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                    <p className="text-sm text-stone-600 leading-relaxed mb-4">
                       {card.description}
                     </p>
 
@@ -374,7 +356,7 @@ export default function ExplorePage() {
                       {card.highlights.map((h, i) => (
                         <span
                           key={i}
-                          className="text-[11px] px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600"
+                          className="text-xs px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600"
                         >
                           {h}
                         </span>
@@ -382,7 +364,7 @@ export default function ExplorePage() {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-blue-600 group-hover:text-blue-700">
+                  <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-violet-600 group-hover:text-violet-700">
                     <span>點擊查看詳細內容</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -395,17 +377,17 @@ export default function ExplorePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
             <Link
               href="/simulator"
-              className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-blue-300 hover:shadow-sm transition-all flex items-center justify-between group"
+              className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-sm transition-all flex items-center justify-between group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
+                <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-stone-900 group-hover:text-blue-600 transition-colors">
+                  <h4 className="text-sm font-bold text-stone-900 group-hover:text-violet-700 transition-colors">
                     校園一週生活模擬
                   </h4>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-sm text-stone-500">
                     模擬大一生活作息，排定課表並體驗突發隨機事件
                   </p>
                 </div>
@@ -418,14 +400,14 @@ export default function ExplorePage() {
               className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-sm transition-all flex items-center justify-between group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-300">
+                <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-stone-900 group-hover:text-stone-700 transition-colors">
                     管理控制台
                   </h4>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-sm text-stone-500">
                     檢視模擬次數、維護事件庫與同步課程資料
                   </p>
                 </div>
@@ -459,7 +441,7 @@ export default function ExplorePage() {
                       href={c.href}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-100 flex items-center gap-1.5 transition-colors"
                     >
-                      <Map className="w-3.5 h-3.5 text-emerald-600" />
+                      <Map className="w-3.5 h-3.5 text-stone-700" />
                       <span>{c.title}</span>
                     </Link>
                   );
@@ -471,7 +453,7 @@ export default function ExplorePage() {
                     onClick={() => setSelectedCategory(c.id as CategoryId)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       selectedCategory === c.id
-                        ? "bg-blue-600 text-white shadow-xs"
+                        ? "bg-violet-600 text-white shadow-xs"
                         : "text-stone-600 hover:bg-stone-100"
                     }`}
                   >
@@ -492,10 +474,10 @@ export default function ExplorePage() {
             <div className="flex flex-col gap-5">
               <div>
                 <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                  <Bus className="w-6 h-6 text-indigo-600" />
+                  <Bus className="w-6 h-6 text-stone-700" />
                   交通方式與聯外指引
                 </h2>
-                <p className="text-xs text-stone-600 mt-0.5">
+                <p className="text-sm text-stone-500 mt-0.5">
                   市區公車路線、高鐵接駁時刻建議、校園 YouBike 站點與停車資訊
                 </p>
               </div>
@@ -510,17 +492,17 @@ export default function ExplorePage() {
                     >
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200">
+                          <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200">
                             <Icon className="w-5 h-5" />
                           </div>
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 font-medium">
                             {item.tag}
                           </span>
                         </div>
                         <h3 className="text-base font-bold text-stone-900 mb-2">
                           {item.title}
                         </h3>
-                        <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                        <p className="text-sm text-stone-600 leading-relaxed mb-4">
                           {item.desc}
                         </p>
                       </div>
@@ -540,10 +522,10 @@ export default function ExplorePage() {
             <div className="flex flex-col gap-5">
               <div>
                 <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                  <Coffee className="w-6 h-6 text-amber-600" />
+                  <Coffee className="w-6 h-6 text-stone-700" />
                   飲食生活與周邊美食
                 </h2>
-                <p className="text-xs text-stone-600 mt-0.5">
+                <p className="text-sm text-stone-500 mt-0.5">
                   精選中大人必吃後門早餐、宵夜街排隊名店、校內學餐與超商資訊
                 </p>
               </div>
@@ -558,33 +540,33 @@ export default function ExplorePage() {
                   <div
                     key={item.id}
                     onClick={() => setDetailModal(item)}
-                    className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between"
+                    className="bg-white p-6 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-md shadow-xs flex flex-col justify-between cursor-pointer group"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-medium border border-amber-200">
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium border border-stone-200">
                           {item.tags[0] || "飲食"}
                         </span>
                         <span className="text-xs text-stone-500 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-amber-600" /> {item.location_name || "校園周邊"}
+                          <MapPin className="w-3.5 h-3.5 text-stone-400" /> {item.location_name || "校園周邊"}
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-stone-900 mb-2">
+                      <h3 className="text-base font-bold text-stone-900 mb-2 group-hover:text-violet-700 transition-colors">
                         {item.title}
                       </h3>
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                      <p className="text-sm text-stone-600 leading-relaxed mb-4">
                         {item.game_snippet}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {item.tags.slice(0, 5).map((tag) => (
-                          <span key={tag} className="text-[11px] px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600">
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200 text-stone-600">
                             {tag}
                           </span>
                         ))}
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-stone-100 text-xs text-stone-500">
+                    <div className="pt-3 border-t border-stone-100 text-xs font-semibold text-violet-600 group-hover:text-violet-700">
                       <span>點擊查看完整店家資訊</span>
                     </div>
                   </div>
@@ -599,10 +581,10 @@ export default function ExplorePage() {
             <div className="flex flex-col gap-5">
               <div>
                 <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                  <Home className="w-6 h-6 text-purple-600" />
+                  <Home className="w-6 h-6 text-stone-700" />
                   宿舍生活與入住須知
                 </h2>
-                <p className="text-xs text-stone-600 mt-0.5">
+                <p className="text-sm text-stone-500 mt-0.5">
                   寢室環境、冷氣卡水電儲值、洗衣烘衣設施與報修流程指南
                 </p>
               </div>
@@ -614,13 +596,13 @@ export default function ExplorePage() {
                     className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between"
                   >
                     <div>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-800 font-medium border border-purple-200 mb-3 inline-block">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium border border-stone-200 mb-3 inline-block">
                         {item.tag}
                       </span>
                       <h3 className="text-base font-bold text-stone-900 mb-2">
                         {item.title}
                       </h3>
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
+                      <p className="text-sm text-stone-600 leading-relaxed mb-4">
                         {item.desc}
                       </p>
                     </div>

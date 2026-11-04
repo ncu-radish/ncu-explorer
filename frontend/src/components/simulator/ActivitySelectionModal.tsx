@@ -48,7 +48,7 @@ export function ActivitySelectionModal({
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>("A");
   const [nightTab, setNightTab] = useState<"dorm" | "campus">("dorm");
   const effectiveMaxHours = Math.max(1, Math.min(4, maxAvailableHours));
-  const [durationMinutes, setDurationMinutes] = useState<number>(60); // 預設 60 分鐘
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -58,14 +58,12 @@ export function ActivitySelectionModal({
     setDurationMinutes((prev) => Math.max(15, Math.min(maxMins, prev + delta)));
   };
 
-  // Filter activities matching the category
   const targetCategory = category === "night_leisure" 
     ? (nightTab === "dorm" ? "dorm_leisure" : "campus_leisure") 
     : category;
 
   const categoryActivities = activities.filter((act) => act.category === targetCategory);
 
-  // Fallback preset options if DB activities are empty
   const dormItems = [
     {
       id: "act_dorm_leisure",
@@ -150,82 +148,60 @@ export function ActivitySelectionModal({
       title: "宵夜街 / 後門美味探訪",
       location_name: "後門宵夜街",
       options: [
-        { key: "A", name: "經典雞排與炒飯", effects: "+25體力, -$120" },
-        { key: "B", name: "外帶咖啡三明治回系館", effects: "+15體力, +8學術, -$95" },
+        { key: "A", name: "排骨炒飯搭配大杯冬瓜青", effects: "+22體力, -$110" },
+        { key: "B", name: "經典起司牛肉潛艇堡", effects: "+18體力, +5學術, -$100" },
+        { key: "C", name: "人氣燒烤肉燥乾拌麵", effects: "+20體力, -$95" },
       ],
     },
     {
       id: "act_lunch",
-      title: "全家超商微波便當",
-      location_name: "全家便利商店 (綜教/男九)",
+      title: "校園便利超商輕食野餐",
+      location_name: "全家/小七 / 大草坪",
       options: [
-        { key: "A", name: "快速微波便當加茶飲", effects: "+15體力, -$80" },
-        { key: "B", name: "飯糰拿鐵邊走邊吃", effects: "+10體力, -$60" },
+        { key: "A", name: "超商飯糰茶葉蛋高纖餐", effects: "+15體力, -$70" },
+        { key: "B", name: "微波義大利麵加氣泡水", effects: "+18體力, -$85" },
       ],
     },
   ];
 
-  const defaultItems = category === "lunch" 
-    ? lunchItems 
-    : (category === "night_leisure" 
-        ? (nightTab === "dorm" ? dormItems : campusItems) 
-        : (category === "dorm_leisure" ? dormItems : campusItems));
+  let fallbackList = lunchItems;
+  if (category === "dorm_leisure") fallbackList = dormItems;
+  if (category === "campus_leisure") fallbackList = campusItems;
+  if (category === "night_leisure") fallbackList = nightTab === "dorm" ? dormItems : campusItems;
 
-  // Pick first item by default if nothing selected
-  const activeList = categoryActivities.length > 0 ? categoryActivities : defaultItems;
-  const currentSelectedAct = activeList.find((a: any) => a.id === selectedActId) || activeList[0];
-
-  const handleConfirmAction = async () => {
-    if (!currentSelectedAct) return;
-    const actId = (currentSelectedAct as any).id || (targetCategory === "dorm_leisure" ? "act_dorm_leisure" : "act_campus_leisure");
-    const title = (currentSelectedAct as any).title;
-    const maxMins = effectiveMaxHours * 60;
-    const actualMins = Math.min(durationMinutes, maxMins);
-    const durHours = Math.round((actualMins / 60.0) * 100) / 100;
-    const customEndTime = calcEndTime(currentStartTime, actualMins);
-
-    // 立即關閉彈窗，直接回到主畫面欣賞時間流逝與日程更新
-    onClose();
-
-    // 執行排程與時間流逝推進
-    await onConfirm(actId, selectedOptionKey, durHours, title, actualMins, customEndTime);
-  };
+  const activeList = categoryActivities.length > 0 ? categoryActivities : fallbackList;
 
   const getHeaderInfo = () => {
     if (category === "lunch") {
       return {
-        icon: <Utensils className="w-5 h-5 text-amber-500" />,
-        badge: "午膳時段",
-        badgeBg: "bg-amber-100 text-amber-800 border-amber-300",
-        title: "請挑選你想進行的午餐行程",
-        subtitle: "12:00 中午無排定課程，選好美食後系統將即時在行事曆標記你的用餐時段",
+        icon: <Utensils className="w-5 h-5 text-stone-700" />,
+        badge: "午餐時段",
+        title: "正午十二點，你打算如何打發午膳？",
+        subtitle: "選擇今日的午餐地點與餐點偏好",
         showDuration: false,
       };
     }
     if (category === "night_leisure") {
       return {
-        icon: <Moon className="w-5 h-5 text-indigo-500" />,
-        badge: "晚間活動",
-        badgeBg: "bg-indigo-100 text-indigo-800 border-indigo-300",
-        title: "挑選宿舍放鬆或校園夜間休閒活動",
-        subtitle: "可自主選擇 1 ~ 3 小時（受 05:00 換日線防呆限制），完成後時間將向前推進",
+        icon: <Moon className="w-5 h-5 text-violet-600" />,
+        badge: "晚間作息",
+        title: "夜深了，你打算安排哪些晚間時光？",
+        subtitle: "可選擇在宿舍放鬆或進行校園夜間活動，並調整活動時長",
         showDuration: true,
       };
     }
     if (category === "dorm_leisure") {
       return {
-        icon: <Home className="w-5 h-5 text-indigo-500" />,
+        icon: <Home className="w-5 h-5 text-stone-700" />,
         badge: "宿舍休閒",
-        badgeBg: "bg-indigo-100 text-indigo-800 border-indigo-300",
         title: "回到宿舍，你打算安排哪些放鬆活動？",
         subtitle: "請選擇你想在宿舍進行的活動與預計時長 (1 ~ 3 小時不等)",
         showDuration: true,
       };
     }
     return {
-      icon: <Compass className="w-5 h-5 text-teal-600" />,
+      icon: <Compass className="w-5 h-5 text-stone-700" />,
       badge: "校園休閒",
-      badgeBg: "bg-teal-100 text-teal-800 border-teal-300",
       title: "漫步校園，你打算前往哪項休閒設施？",
       subtitle: "依仁堂健身房、總圖自習或百花川散步，可自主選擇 1 ~ 3 小時",
       showDuration: true,
@@ -234,26 +210,53 @@ export function ActivitySelectionModal({
 
   const header = getHeaderInfo();
 
+  const handleConfirmAction = async () => {
+    if (isSubmitting || isLoading) return;
+    setIsSubmitting(true);
+
+    const chosenAct = activeList.find((a) => a.id === selectedActId) || activeList[0];
+    const durationHours = Math.round((durationMinutes / 60) * 10) / 10;
+    const finalActId = chosenAct?.id || "act_lunch";
+    const customTitle = chosenAct?.title;
+    const customEndTime = currentStartTime ? calcEndTime(currentStartTime, durationMinutes) : undefined;
+
+    try {
+      onClose();
+      await onConfirm(
+        finalActId,
+        selectedOptionKey,
+        durationHours,
+        customTitle,
+        durationMinutes,
+        customEndTime
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-xl w-full border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-stone-100 bg-stone-50/80 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-2xl bg-white border border-stone-200 shadow-xs flex items-center justify-center shrink-0">
               {header.icon}
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${header.badgeBg}`}>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
                   {header.badge}
                 </span>
-                <span className="text-xs text-stone-400 font-mono">即時排入行事曆</span>
+                <span className="text-xs text-stone-500 font-mono">即時排入行事曆</span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
                 {header.title}
               </h3>
-              <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
                 {header.subtitle}
               </p>
             </div>
@@ -279,7 +282,7 @@ export function ActivitySelectionModal({
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   nightTab === "dorm"
-                    ? "bg-white text-indigo-700 shadow-xs border border-stone-200/80"
+                    ? "bg-white text-violet-700 shadow-xs border border-violet-200"
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -294,7 +297,7 @@ export function ActivitySelectionModal({
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   nightTab === "campus"
-                    ? "bg-white text-teal-700 shadow-xs border border-stone-200/80"
+                    ? "bg-white text-violet-700 shadow-xs border border-violet-200"
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -304,15 +307,15 @@ export function ActivitySelectionModal({
             </div>
           )}
 
-          {/* Custom Duration Selector (Only for leisure activities) */}
+          {/* Custom Duration Selector */}
           {header.showDuration && (
-            <div className="bg-gradient-to-br from-stone-50 to-blue-50/40 p-4 rounded-2xl border border-stone-200 shadow-2xs">
+            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 shadow-2xs">
               <div className="flex items-center justify-between mb-2.5">
                 <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <Clock className="w-3.5 h-3.5 text-stone-600" />
                   <span>自訂活動時長 (可自行調整分鐘)：</span>
                 </label>
-                <span className="text-[11px] font-mono font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md border border-blue-200">
+                <span className="text-xs font-mono font-semibold text-violet-700 bg-violet-50 px-2.5 py-0.5 rounded-md border border-violet-200">
                   上限可用：{effectiveMaxHours} 小時
                 </span>
               </div>
@@ -325,12 +328,12 @@ export function ActivitySelectionModal({
                       <span className="text-xl sm:text-2xl font-black font-mono text-stone-900 tracking-tight">
                         {Math.floor(durationMinutes / 60)} <span className="text-xs font-normal text-stone-500">小時</span> {durationMinutes % 60} <span className="text-xs font-normal text-stone-500">分鐘</span>
                       </span>
-                      <span className="text-xs font-mono font-semibold text-stone-400">
+                      <span className="text-xs font-mono font-semibold text-stone-500">
                         ({(durationMinutes / 60).toFixed(1)}h)
                       </span>
                     </div>
                     {currentStartTime && (
-                      <p className="text-[11px] text-stone-500 font-mono mt-0.5">
+                      <p className="text-xs text-stone-600 font-mono mt-0.5">
                         預計時間：{currentStartTime} ➔ {calcEndTime(currentStartTime, durationMinutes)}
                       </p>
                     )}
@@ -341,7 +344,7 @@ export function ActivitySelectionModal({
                     <button
                       type="button"
                       onClick={() => adjustMinutes(-30)}
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
                       title="減少 30 分鐘"
                     >
                       -30m
@@ -349,7 +352,7 @@ export function ActivitySelectionModal({
                     <button
                       type="button"
                       onClick={() => adjustMinutes(-15)}
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-xs font-mono font-bold transition-all cursor-pointer"
                       title="減少 15 分鐘"
                     >
                       -15m
@@ -357,7 +360,7 @@ export function ActivitySelectionModal({
                     <button
                       type="button"
                       onClick={() => adjustMinutes(15)}
-                      className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-mono font-bold transition-all cursor-pointer"
                       title="增加 15 分鐘"
                     >
                       +15m
@@ -365,7 +368,7 @@ export function ActivitySelectionModal({
                     <button
                       type="button"
                       onClick={() => adjustMinutes(30)}
-                      className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-mono font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-mono font-bold transition-all cursor-pointer"
                       title="增加 30 分鐘"
                     >
                       +30m
@@ -375,8 +378,8 @@ export function ActivitySelectionModal({
               </div>
 
               {/* Quick Preset Reference Chips */}
-              <div className="flex items-center gap-1.5 text-xs text-stone-500 overflow-x-auto pb-0.5">
-                <span className="text-[11px] shrink-0 font-medium">常見時長：</span>
+              <div className="flex items-center gap-1.5 text-xs text-stone-600 overflow-x-auto pb-0.5">
+                <span className="font-semibold text-stone-700 shrink-0">常見時長：</span>
                 {[30, 45, 60, 90, 120, 180].filter((m) => m <= effectiveMaxHours * 60).map((m) => {
                   const hLabel = m >= 60 ? (m % 60 === 0 ? `${m / 60}h` : `${(m / 60).toFixed(1)}h`) : `${m}m`;
                   return (
@@ -384,10 +387,10 @@ export function ActivitySelectionModal({
                       key={m}
                       type="button"
                       onClick={() => setDurationMinutes(m)}
-                      className={`text-[11px] px-2 py-0.5 rounded-md border font-mono transition-colors cursor-pointer ${
+                      className={`text-xs px-2.5 py-1 rounded-md border font-mono transition-colors cursor-pointer ${
                         durationMinutes === m
-                          ? "bg-blue-600 text-white border-blue-600 font-bold"
-                          : "bg-white text-stone-600 border-stone-200 hover:border-blue-300 hover:bg-stone-50"
+                          ? "bg-violet-600 text-white border-violet-600 font-bold"
+                          : "bg-white text-stone-700 border-stone-200 hover:border-violet-300 hover:bg-stone-50"
                       }`}
                     >
                       {hLabel}
@@ -417,29 +420,29 @@ export function ActivitySelectionModal({
                     }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-blue-50/50 border-blue-400 ring-2 ring-blue-500/30 shadow-xs"
+                        ? "bg-violet-50/50 border-violet-400 ring-2 ring-violet-500/20 shadow-xs"
                         : "bg-white border-stone-200 hover:border-stone-300 hover:bg-stone-50/60"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${
-                          isSelected ? "bg-blue-600 text-white" : "bg-stone-100 text-stone-600"
+                          isSelected ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-700"
                         }`}>
                           {idx + 1}
                         </span>
                         <h4 className="text-sm font-bold text-stone-900">{item.title}</h4>
                       </div>
-                      <span className="flex items-center gap-1 text-[11px] text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
-                        <MapPin className="w-3 h-3 text-blue-600" />
+                      <span className="flex items-center gap-1 text-xs text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">
+                        <MapPin className="w-3.5 h-3.5 text-stone-500" />
                         <span>{item.location_name || "校內設施"}</span>
                       </span>
                     </div>
 
                     {/* Sub-options for this activity */}
                     {isSelected && itemOptions.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-blue-100/80 space-y-1.5">
-                        <span className="text-[11px] text-stone-500 font-medium block mb-1">
+                      <div className="mt-3 pt-3 border-t border-violet-100 space-y-1.5">
+                        <span className="text-xs text-stone-600 font-semibold block mb-1">
                           詳細方案選擇：
                         </span>
                         {itemOptions.map((opt: any) => {
@@ -457,20 +460,20 @@ export function ActivitySelectionModal({
                               }}
                               className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between cursor-pointer ${
                                 isOptSelected
-                                  ? "bg-white border-blue-500 text-blue-900 font-bold shadow-xs"
+                                  ? "bg-white border-violet-500 text-violet-950 font-bold shadow-xs"
                                   : "bg-white/80 border-stone-200 text-stone-700 hover:bg-white"
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <span className={`w-5 h-5 rounded-md text-[10px] font-mono font-bold flex items-center justify-center ${
-                                  isOptSelected ? "bg-blue-600 text-white" : "bg-stone-100 text-stone-600"
+                                <span className={`w-5 h-5 rounded-md text-xs font-mono font-bold flex items-center justify-center ${
+                                  isOptSelected ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-700"
                                 }`}>
                                   {optKey}
                                 </span>
                                 <span>{optText}</span>
                               </div>
                               {opt.effects && typeof opt.effects === "string" ? (
-                                <span className="text-[11px] font-mono text-emerald-600 font-medium">
+                                <span className="text-xs font-mono text-stone-600 font-medium">
                                   {opt.effects}
                                 </span>
                               ) : null}
@@ -491,7 +494,7 @@ export function ActivitySelectionModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs font-semibold transition-colors cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 bg-white hover:bg-stone-100 text-xs font-semibold transition-colors cursor-pointer"
           >
             取消
           </button>
@@ -499,7 +502,7 @@ export function ActivitySelectionModal({
             type="button"
             disabled={isSubmitting || isLoading}
             onClick={handleConfirmAction}
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
