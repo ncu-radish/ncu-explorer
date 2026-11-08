@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Compass, RotateCcw, MapPin, Maximize2, ArrowLeft, CalendarDays } from "lucide-react";
+import { RotateCcw, MapPin, Maximize2, CalendarDays, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useSimulatorStore, ScheduleSlot } from "@/store/useSimulatorStore";
 import { OnboardingModal } from "@/components/simulator/OnboardingModal";
@@ -21,7 +21,7 @@ const CampusScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-black/40 text-gray-500 text-xs">
+      <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-500 text-xs">
         載入 3D 校園...
       </div>
     ),
@@ -313,69 +313,54 @@ export default function SimulatorPage() {
       />
 
       {/* Top Simulator Control Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-stone-200">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors border border-stone-300 shadow-xs"
-            title="回首頁"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>回首頁</span>
-          </Link>
-          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
-            <Compass className="w-5 h-5 animate-pulse" />
+      <header className="surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 rounded-full border border-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-600 transition hover:border-violet-300 hover:text-violet-700"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              首頁
+            </Link>
+            <span className="eyebrow">Week Simulator</span>
+            <span className="rounded-full bg-violet-50 px-2.5 py-0.5 font-mono text-xs font-medium text-violet-700">
+              Turn {Math.min(totalTurns, currentTurn + 1)} / {totalTurns}
+            </span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
-              中央大學一週生活模擬器
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Turn {Math.min(totalTurns, currentTurn + 1)} / {totalTurns}
-              </span>
-            </h1>
-            <p className="text-xs text-stone-500">
-              {currentSlotInfo.title ? `當前行程：${currentSlotInfo.title}` : "正在排程中..."}
-            </p>
-          </div>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+            中央大學一週生活模擬器
+          </h1>
+          <p className="mt-0.5 truncate text-sm text-stone-500">
+            {currentSlotInfo.title ? `當前行程：${currentSlotInfo.title}` : "正在排程中..."}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Pre-plan button */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => {
-              const nextDay = Math.min(5, (currentSlotInfo.day || 1) + 1);
-              setPrePlanTargetDay(nextDay);
-              setPrePlanModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+            onClick={handleOpenSleepModal}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 transition hover:border-violet-300 hover:text-violet-700"
             title="預先規劃明日行程"
           >
-            <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
-            <span>預排明日活動</span>
+            <CalendarDays className="h-3.5 w-3.5" />
+            預排明日活動
           </button>
-
-          <Link
-            href="/explore"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs transition-colors border border-stone-300 shadow-xs"
-          >
-            <span>相關資料</span>
-          </Link>
           <button
             onClick={resetSimulation}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs transition-colors border border-stone-300 shadow-xs cursor-pointer"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 transition hover:border-rose-300 hover:text-rose-600"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>重新開局</span>
+            <RotateCcw className="h-3.5 w-3.5" />
+            重新開局
           </button>
           <Link
             href="/map"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
           >
-            <Maximize2 className="w-3.5 h-3.5" />
-            <span>全螢幕 3D 地圖</span>
+            <Maximize2 className="h-3.5 w-3.5" />
+            全螢幕 3D 地圖
           </Link>
         </div>
-      </div>
+      </header>
 
       {/* Four Dimensions Stats Bar */}
       <StatsBar stats={stats} />
@@ -411,9 +396,9 @@ export default function SimulatorPage() {
         {/* Right Column: 3D PiP + Story Narrative (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-4">
           {/* 3D PiP Mini Map */}
-          <div className="h-48 sm:h-52 rounded-2xl bg-white overflow-hidden relative border border-stone-200 shadow-xs">
+          <div className="surface h-48 sm:h-52 overflow-hidden relative">
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
-              <MapPin className="w-3 h-3 text-blue-600" />
+              <MapPin className="w-3 h-3 text-violet-600" />
               <span>3D 場景：{currentLocationName || "中大校園"}</span>
             </div>
 

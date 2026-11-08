@@ -44,7 +44,7 @@ export function StoryDialog({
               <span>⚡ 突發狀況 · {story?.event_title || "突發事件"}</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-semibold">
               <Clock className="w-3.5 h-3.5" />
               {dayName} {slot?.display_time || slot?.time_label || slotName}
             </span>
@@ -61,9 +61,9 @@ export function StoryDialog({
             onClick={onFocusLocation}
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs transition-colors group cursor-pointer"
           >
-            <MapPin className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+            <MapPin className="w-3.5 h-3.5 text-violet-600 group-hover:scale-110 transition-transform" />
             <span>{locationName || "校園巡禮"}</span>
-            <span className="text-[10px] text-blue-600 underline ml-0.5">3D聚焦</span>
+            <span className="text-xs text-violet-600 underline ml-0.5">3D聚焦</span>
           </button>
 
           {slot?.course_category && (
@@ -77,7 +77,7 @@ export function StoryDialog({
                   ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                   : slot.course_category.includes("選修")
                   ? "bg-violet-50 text-violet-700 border-violet-200"
-                  : "bg-blue-50 text-blue-700 border-blue-200"
+                  : "bg-violet-50 text-violet-700 border-violet-200"
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5" />
@@ -105,7 +105,7 @@ export function StoryDialog({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black tracking-wider uppercase shadow-xs">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-black tracking-wider uppercase shadow-xs">
                     ⚡ 突發狀況
                   </span>
                   <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
@@ -123,8 +123,8 @@ export function StoryDialog({
         {/* Narrative Text */}
         <div className="min-h-[110px] mb-6 flex items-center">
           {isLoading ? (
-            <div className="flex items-center gap-3 text-blue-600 animate-pulse text-sm py-4">
-              <Sparkles className="w-5 h-5 animate-spin text-amber-500" />
+            <div className="flex items-center gap-3 text-violet-600 animate-pulse text-sm py-4">
+              <Sparkles className="w-5 h-5 animate-spin text-amber-600" />
               <span className="font-medium text-stone-700">活動進行中...</span>
             </div>
           ) : (
@@ -153,7 +153,7 @@ export function StoryDialog({
                   ? "bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-indigo-500/40 hover:border-indigo-400 shadow-md"
                   : isNightAct
                   ? "bg-slate-50 hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-300 text-stone-800 hover:text-stone-900 shadow-xs"
-                  : "bg-stone-50 hover:bg-blue-50 border-stone-200 hover:border-blue-300 text-stone-800 hover:text-stone-900"
+                  : "bg-stone-50 hover:bg-violet-50 border-stone-200 hover:border-violet-300 text-stone-800 hover:text-stone-900"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export function StoryDialog({
                       ? "bg-indigo-500/30 border border-indigo-400/40 text-amber-300"
                       : isNightAct
                       ? "bg-indigo-100 border border-indigo-200 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white"
-                      : "bg-blue-100 border border-blue-200 text-blue-800 group-hover:bg-blue-600 group-hover:text-white"
+                      : "bg-violet-100 border border-violet-200 text-violet-800 group-hover:bg-violet-600 group-hover:text-white"
                   }`}
                 >
                   {opt.option_key}
@@ -188,7 +188,7 @@ export function StoryDialog({
                     ? "text-amber-600 group-hover:text-amber-700 group-hover:translate-x-1"
                     : isSleep
                     ? "text-indigo-300 group-hover:translate-x-1"
-                    : "text-stone-400 group-hover:text-blue-600 group-hover:translate-x-1"
+                    : "text-stone-500 group-hover:text-violet-600 group-hover:translate-x-1"
                 }`}
               />
             </button>

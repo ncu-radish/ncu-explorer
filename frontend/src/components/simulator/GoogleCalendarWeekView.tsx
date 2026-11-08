@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Clock, MapPin, GraduationCap, Sparkles } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
@@ -16,104 +16,33 @@ function parseMinutes(timeStr?: string): number {
 }
 
 function getEventStyle(slot: ScheduleSlot) {
-  if (slot.type === "breakfast") {
-    return {
-      bg: "bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-950",
-      badge: "bg-yellow-200 text-yellow-800",
-      label: "晨光早餐",
-    };
-  }
-  if (slot.type === "lunch") {
-    return {
-      bg: "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900",
-      badge: "bg-amber-200 text-amber-800",
-      label: "午膳時光",
-    };
-  }
-  if (slot.type === "dinner") {
-    return {
-      bg: "bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-950",
-      badge: "bg-orange-200 text-orange-800",
-      label: "晚餐時光",
-    };
-  }
-  if (slot.type === "dorm") {
-    return {
-      bg: "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800",
-      badge: "bg-slate-200 text-slate-700",
-      label: "宿舍休閒",
-    };
-  }
-  if (slot.type === "campus_leisure") {
-    return {
-      bg: "bg-teal-50 hover:bg-teal-100 border-teal-300 text-teal-950",
-      badge: "bg-teal-200 text-teal-800",
-      label: "校園休閒",
-    };
-  }
-  if (slot.type === "club") {
-    return {
-      bg: "bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-900",
-      badge: "bg-purple-200 text-purple-800",
-      label: "社團活動",
-    };
-  }
-  if (slot.type === "free") {
-    return {
-      bg: "bg-stone-50 hover:bg-stone-100 border-stone-300 text-stone-700",
-      badge: "bg-stone-200 text-stone-600",
-      label: "自主充實",
-    };
-  }
-
-  const cat = slot.course_category || "";
-  if (cat.includes("雙主修")) {
-    return {
-      bg: "bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-950",
-      badge: "bg-rose-200 text-rose-800",
-      label: "雙主修",
-    };
-  }
-  if (cat.includes("輔系") || cat.includes("輔修")) {
+  if (slot.type === "breakfast" || slot.type === "lunch" || slot.type === "dinner") {
     return {
       bg: "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-950",
-      badge: "bg-amber-200 text-amber-800",
-      label: "輔系",
+      badge: "bg-amber-200 text-amber-900",
+      label: slot.type === "breakfast" ? "早餐" : slot.type === "lunch" ? "午膳" : "晚餐",
     };
   }
-  if (cat.includes("通識")) {
+  if (slot.type === "dorm" || slot.type === "free") {
+    return {
+      bg: "bg-stone-100 hover:bg-stone-200 border-stone-300 text-stone-800",
+      badge: "bg-stone-200 text-stone-800",
+      label: slot.type === "dorm" ? "宿舍" : "自由",
+    };
+  }
+  if (slot.type === "campus_leisure" || slot.type === "club") {
+    return {
+      bg: "bg-violet-50 hover:bg-violet-100 border-violet-200 text-violet-950",
+      badge: "bg-violet-200 text-violet-900",
+      label: slot.type === "club" ? "社團" : "活動",
+    };
+  }
 
-    return {
-      bg: "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-950",
-      badge: "bg-emerald-200 text-emerald-800",
-      label: "通識",
-    };
-  }
-  if (cat.includes("體育")) {
-    return {
-      bg: "bg-teal-50 hover:bg-teal-100 border-teal-300 text-teal-950",
-      badge: "bg-teal-200 text-teal-800",
-      label: "體育",
-    };
-  }
-  if (cat.includes("語言") || cat.includes("外文")) {
-    return {
-      bg: "bg-indigo-50 hover:bg-indigo-100 border-indigo-300 text-indigo-950",
-      badge: "bg-indigo-200 text-indigo-800",
-      label: "語言選修",
-    };
-  }
-  if (cat.includes("選修")) {
-    return {
-      bg: "bg-violet-50 hover:bg-violet-100 border-violet-300 text-violet-950",
-      badge: "bg-violet-200 text-violet-800",
-      label: "系選修",
-    };
-  }
+  // Course styles
   return {
-    bg: "bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-950",
-    badge: "bg-blue-200 text-blue-800",
-    label: "必修",
+    bg: "bg-violet-50 hover:bg-violet-100 border-violet-300 text-violet-950",
+    badge: "bg-violet-200 text-violet-900",
+    label: slot.course_category || "課程",
   };
 }
 
@@ -129,13 +58,11 @@ export function GoogleCalendarWeekView({
   const currentSlot = schedule[currentTurn];
   const activeDay = currentSlot?.day || 1;
 
-  // Group slots by day
   const slotsByDay = useMemo(() => {
     const map: Record<number, { slot: ScheduleSlot; index: number }[]> = {
       1: [], 2: [], 3: [], 4: [], 5: []
     };
     schedule.forEach((slot, index) => {
-      // 隱藏內部未觸發的提問檢查點，只顯示正式活動與課堂行程
       if (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") {
         return;
       }
@@ -153,7 +80,7 @@ export function GoogleCalendarWeekView({
       {/* Calendar Top Header: 5 Days */}
       <div className="grid grid-cols-[56px_repeat(5,1fr)] border-b border-stone-200 bg-stone-50/80 sticky top-0 z-20">
         <div className="py-2.5 px-1 border-r border-stone-200 text-center flex items-center justify-center">
-          <Clock className="w-3.5 h-3.5 text-stone-400" />
+          <Clock className="w-4 h-4 text-stone-500" />
         </div>
         {DAYS.map((dayName, idx) => {
           const dayNum = idx + 1;
@@ -162,13 +89,13 @@ export function GoogleCalendarWeekView({
             <div
               key={dayNum}
               className={`py-2 text-center border-r last:border-r-0 border-stone-200 transition-colors ${
-                isToday ? "bg-blue-50/70" : ""
+                isToday ? "bg-violet-50/50" : ""
               }`}
             >
               <span
-                className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                className={`inline-block px-3 py-0.5 rounded-full text-xs font-bold ${
                   isToday
-                    ? "bg-blue-600 text-white shadow-xs"
+                    ? "bg-violet-600 text-white shadow-xs"
                     : "text-stone-700"
                 }`}
               >
@@ -183,14 +110,14 @@ export function GoogleCalendarWeekView({
       <div className="flex-1 overflow-y-auto relative min-h-[520px]">
         <div
           className="grid grid-cols-[56px_repeat(5,1fr)] relative"
-          style={{ height: "960px" }} // 1 hour = 60px
+          style={{ height: "960px" }}
         >
           {/* Time Labels on the Left */}
           <div className="border-r border-stone-200 bg-stone-50/40 select-none">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="h-[60px] border-b border-stone-100 text-[10px] text-stone-400 font-mono pr-1.5 pt-1 text-right"
+                className="h-[60px] border-b border-stone-100 text-xs text-stone-500 font-mono pr-2 pt-1 text-right"
               >
                 {String(hour).padStart(2, "0")}:00
               </div>
@@ -207,7 +134,7 @@ export function GoogleCalendarWeekView({
               <div
                 key={dayNum}
                 className={`relative border-r last:border-r-0 border-stone-200 ${
-                  isToday ? "bg-blue-50/20" : ""
+                  isToday ? "bg-violet-50/20" : ""
                 }`}
               >
                 {/* Horizontal Hour Lines */}
@@ -225,7 +152,7 @@ export function GoogleCalendarWeekView({
                   const isSkipped = Boolean(slot.is_skipped);
                   const startM = parseMinutes(slot.start_time);
                   const endM = parseMinutes(slot.end_time);
-                  const durationM = Math.max(35, endM - startM);
+                  const durationM = Math.max(38, endM - startM);
 
                   const topPercent = (startM / totalMinutes) * 100;
                   const heightPercent = (durationM / totalMinutes) * 100;
@@ -239,13 +166,13 @@ export function GoogleCalendarWeekView({
                         top: `${topPercent}%`,
                         height: `${heightPercent}%`,
                       }}
-                      className={`absolute left-0.5 right-0.5 rounded-lg border p-1 sm:p-1.5 flex flex-col justify-between transition-all cursor-pointer shadow-2xs overflow-hidden ${
+                      className={`absolute left-0.5 right-0.5 rounded-lg border p-1.5 flex flex-col justify-between transition-all cursor-pointer shadow-2xs overflow-hidden ${
                         isSkipped
                           ? "border-dashed border-rose-300 bg-stone-100/90 text-stone-500 opacity-70 hover:opacity-100"
                           : styleMeta.bg
                       } ${
                         !isSkipped && isCurrent
-                          ? "ring-2 ring-blue-500 bg-white shadow-md z-10 scale-[1.01]"
+                          ? "ring-2 ring-violet-500 bg-white shadow-md z-10 scale-[1.01]"
                           : !isSkipped && isPast
                           ? "opacity-60 hover:opacity-100"
                           : "hover:shadow-xs"
@@ -255,7 +182,7 @@ export function GoogleCalendarWeekView({
                         {/* Event Header: Category badge & Time */}
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span
-                            className={`text-[8px] px-1 py-0.2 rounded font-semibold ${
+                            className={`text-xs px-1.5 py-0.2 rounded font-semibold ${
                               isSkipped
                                 ? "bg-rose-100 text-rose-700 border border-rose-200"
                                 : styleMeta.badge
@@ -263,29 +190,29 @@ export function GoogleCalendarWeekView({
                           >
                             {isSkipped ? "已跳過" : styleMeta.label}
                           </span>
-                          <span className="text-[9px] font-mono opacity-75 truncate">
+                          <span className="text-xs font-mono text-stone-600 truncate font-medium">
                             {slot.start_time}
                           </span>
                         </div>
 
                         {/* Title */}
-                        <h4 className={`text-[10px] sm:text-[11px] font-bold line-clamp-2 leading-tight ${
-                          isSkipped ? "line-through text-stone-400" : ""
+                        <h4 className={`text-xs font-bold line-clamp-2 leading-tight ${
+                          isSkipped ? "line-through text-stone-500" : "text-stone-900"
                         }`}>
                           {slot.title}
                         </h4>
                       </div>
 
                       {/* Footer: Location & Credits */}
-                      <div className="flex items-center justify-between text-[8px] sm:text-[9px] opacity-75 mt-0.5">
+                      <div className="flex items-center justify-between text-xs text-stone-600 mt-0.5">
                         {slot.location_name && (
                           <span className="truncate flex items-center gap-0.5">
-                            <MapPin className="w-2.5 h-2.5 shrink-0 text-blue-600" />
+                            <MapPin className="w-2.5 h-2.5 shrink-0 text-violet-600" />
                             <span className="truncate">{slot.location_name}</span>
                           </span>
                         )}
                         {slot.credits !== undefined && slot.credits > 0 && (
-                          <span className="font-mono font-bold text-blue-700 ml-auto shrink-0">
+                          <span className="font-mono font-bold text-violet-700 ml-auto shrink-0">
                             {slot.credits}學分
                           </span>
                         )}

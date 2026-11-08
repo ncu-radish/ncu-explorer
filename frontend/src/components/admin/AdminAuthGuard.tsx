@@ -80,7 +80,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   // While checking auth status on initial mount
   if (isAuthenticated === null) {
     return (
-      <div className="flex-1 min-h-[70vh] flex flex-col items-center justify-center bg-[#FAF8F5] text-stone-500 gap-3">
+      <div className="flex-1 min-h-[70vh] flex flex-col items-center justify-center bg-[#faf8ff] text-stone-500 gap-3">
         <div className="w-7 h-7 border-2 border-stone-300 border-t-blue-600 rounded-full animate-spin" />
         <span className="text-xs font-medium">驗證管理員身分中...</span>
       </div>
@@ -90,7 +90,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   // Not logged in: Show Password Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="flex-1 min-h-[85vh] flex items-center justify-center p-4 bg-[#FAF8F5]">
+      <div className="flex-1 min-h-[85vh] flex items-center justify-center p-4 bg-[#faf8ff]">
         <div className="w-full max-w-md bg-white rounded-3xl border border-stone-300/80 shadow-md p-6 sm:p-8">
           {/* Top Return Button */}
           <div className="flex items-center justify-between mb-6">
@@ -101,7 +101,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>回相關資料</span>
             </Link>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
+            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
               受保護的管理區域
             </span>
           </div>
@@ -129,14 +129,14 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
                 管理員帳號
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin"
                   required
-                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all shadow-2xs"
                 />
               </div>
             </div>
@@ -146,19 +146,19 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
                 管理員密碼
               </label>
               <div className="relative">
-                <KeyRound className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <KeyRound className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="請輸入密碼"
                   required
-                  className="w-full pl-9 pr-9 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-2xs"
+                  className="w-full pl-9 pr-9 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 rounded-md"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700 p-1 rounded-md"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -169,7 +169,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -183,7 +183,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
           </form>
 
           <div className="mt-6 pt-4 border-t border-stone-200 text-center">
-            <p className="text-[11px] text-stone-500">
+            <p className="text-xs text-stone-500">
               預設帳號: <span className="font-mono text-stone-700 font-bold">admin</span> / 預設密碼: <span className="font-mono text-stone-700 font-bold">adminpassword123</span>
             </p>
           </div>
@@ -194,14 +194,14 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
 
   // Logged in: Render children with admin status badge
   return (
-    <div className="w-full flex flex-col min-h-screen bg-[#FAF8F5]">
+    <div className="w-full flex flex-col min-h-screen bg-[#faf8ff]">
       {/* Admin Top Status Bar */}
       <div className="w-full bg-white border-b border-stone-200 px-4 py-2 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-stone-600">已登入管理員：</span>
           <span className="font-bold text-stone-900 font-mono">{adminUser?.username}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
             {adminUser?.role}
           </span>
         </div>

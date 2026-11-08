@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -131,7 +131,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#FAF8F5]">
+    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#faf8ff]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
         <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ function DashboardContent() {
         <div className="flex items-center gap-2">
           <Link
             href="/courses"
-            className="px-3.5 py-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-xs font-semibold text-cyan-800 border border-cyan-200 flex items-center gap-1.5 transition-colors shadow-xs"
+            className="px-3.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-xs font-semibold text-violet-800 border border-violet-200 flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <span>瀏覽前端課程頁面</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -183,7 +183,7 @@ function DashboardContent() {
           </div>
           <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
             <span className="text-xs text-stone-500 block mb-1">歷年課程資料總數</span>
-            <span className="text-2xl font-extrabold text-blue-600 font-mono">
+            <span className="text-2xl font-extrabold text-violet-700 font-mono">
               {metrics.total_courses} 門
             </span>
           </div>
@@ -212,7 +212,7 @@ function DashboardContent() {
               : "bg-white hover:bg-stone-100 text-stone-600 border border-stone-200"
           }`}
         >
-          <Compass className="w-3.5 h-3.5 text-cyan-400" />
+          <Compass className="w-3.5 h-3.5 text-violet-600" />
           <span>3D 向量星系宇宙 (Vector Universe)</span>
         </button>
 
@@ -255,7 +255,7 @@ function DashboardContent() {
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div>
                 <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
-                  <Cpu className="w-5 h-5 text-blue-600" />
+                  <Cpu className="w-5 h-5 text-violet-700" />
                   繁體中文開源推論模型配置
                 </h2>
                 <p className="text-xs text-stone-500 mt-0.5">
@@ -281,21 +281,21 @@ function DashboardContent() {
                     onClick={() => setActiveModel(mod.id)}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                       isSelected
-                        ? "bg-blue-50 border-blue-400 shadow-xs"
+                        ? "bg-violet-50 border-violet-400 shadow-xs"
                         : "bg-stone-50 border-stone-200 hover:border-stone-300"
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-stone-900">{mod.name}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-stone-600 border border-stone-200">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white text-stone-600 border border-stone-200">
                           {mod.org}
                         </span>
                       </div>
-                      <span className="text-[11px] text-stone-500">{mod.type}</span>
+                      <span className="text-xs text-stone-500">{mod.type}</span>
                     </div>
-                    <div className="mt-3 flex items-center gap-1.5 text-[10px] text-stone-500 font-mono">
-                      <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-blue-600" : "bg-stone-300"}`} />
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-stone-500 font-mono">
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-violet-600" : "bg-stone-300"}`} />
                       {isSelected ? "目前推論使用中" : "點擊切換"}
                     </div>
                   </div>
@@ -328,7 +328,7 @@ function DashboardContent() {
             <button
               onClick={handleSaveConfig}
               disabled={isSaving}
-              className="w-fit px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-fit px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               <span>儲存並套用設定</span>
@@ -415,7 +415,7 @@ function DashboardContent() {
                   已備份 ({modelInfo.backup_size_formatted})
                 </span>
               ) : (
-                <span className="text-stone-400">尚無前版備份</span>
+                <span className="text-stone-500">尚無前版備份</span>
               )}
             </div>
           </div>
@@ -427,7 +427,7 @@ function DashboardContent() {
               <p className="text-xs font-semibold text-stone-800">
                 點擊選擇或拖曳新版 .glb 檔案至此
               </p>
-              <p className="text-[11px] text-stone-400 mt-0.5">
+              <p className="text-xs text-stone-500 mt-0.5">
                 格式限 glTF Binary (.glb)，單檔上限 100MB，上傳後將自動備份當前版本
               </p>
             </div>
@@ -454,7 +454,7 @@ function DashboardContent() {
                   <span className="text-xs font-mono font-medium text-stone-800 truncate">
                     {selectedFile.name}
                   </span>
-                  <span className="text-[10px] text-stone-500 font-mono">
+                  <span className="text-xs text-stone-500 font-mono">
                     ({(selectedFile.size / 1024).toFixed(1)} KB)
                   </span>
                 </div>

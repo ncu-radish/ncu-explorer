@@ -210,7 +210,7 @@ function SelectedBuildingBeacon({
           <div className="pointer-events-none select-none flex flex-col items-center">
             <div className="bg-stone-900/90 text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg backdrop-blur-xs flex items-center gap-1.5 whitespace-nowrap border border-stone-700">
               {building.classroom_code && (
-                <span className="bg-blue-600 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                <span className="bg-violet-600 text-white text-xs font-mono px-1.5 py-0.5 rounded">
                   {building.classroom_code}
                 </span>
               )}
@@ -240,13 +240,13 @@ function HoverTooltip({
         <div className="pointer-events-none select-none flex flex-col items-center animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white/95 text-stone-900 px-2.5 py-1 rounded-md text-xs font-medium shadow-md border border-stone-300 flex items-center gap-1.5 whitespace-nowrap">
             {building.classroom_code && (
-              <span className="bg-stone-100 text-stone-700 text-[10px] font-mono px-1 rounded border border-stone-200">
+              <span className="bg-stone-100 text-stone-700 text-xs font-mono px-1 rounded border border-stone-200">
                 {building.classroom_code}
               </span>
             )}
             <span>{building.name_zh}</span>
             {building.alias && (
-              <span className="text-[10px] text-stone-600">({building.alias})</span>
+              <span className="text-xs text-stone-600">({building.alias})</span>
             )}
           </div>
         </div>
@@ -495,7 +495,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
           far: 3500,
         }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        style={{ background: "#FAF8F5" }}
+        style={{ background: "#faf8ff" }}
       >
         {/* Warm Natural Lighting Setup */}
         <ambientLight intensity={0.75} color="#FFFDF7" />
