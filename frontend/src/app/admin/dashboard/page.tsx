@@ -131,7 +131,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#FAF8F5]">
+    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#faf8ff]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
         <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ function DashboardContent() {
         <div className="flex items-center gap-2">
           <Link
             href="/courses"
-            className="px-3.5 py-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-xs font-semibold text-cyan-800 border border-cyan-200 flex items-center gap-1.5 transition-colors shadow-xs"
+            className="px-3.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-xs font-semibold text-violet-800 border border-violet-200 flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <span>瀏覽前端課程頁面</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ function DashboardContent() {
               : "bg-white hover:bg-stone-100 text-stone-600 border border-stone-200"
           }`}
         >
-          <Compass className="w-3.5 h-3.5 text-cyan-400" />
+          <Compass className="w-3.5 h-3.5 text-violet-400" />
           <span>3D 向量星系宇宙 (Vector Universe)</span>
         </button>
 
@@ -281,7 +281,7 @@ function DashboardContent() {
                     onClick={() => setActiveModel(mod.id)}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                       isSelected
-                        ? "bg-blue-50 border-blue-400 shadow-xs"
+                        ? "bg-violet-50 border-violet-400 shadow-xs"
                         : "bg-stone-50 border-stone-200 hover:border-stone-300"
                     }`}
                   >

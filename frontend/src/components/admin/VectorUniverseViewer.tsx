@@ -507,14 +507,14 @@ export function VectorUniverseViewer() {
       {/* 頂部控制面板 */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 border-b border-slate-800/80 gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Radio className="w-4 h-4 animate-pulse text-cyan-400" />
+          <div className="flex items-center space-x-2 text-violet-400 text-xs font-semibold uppercase tracking-wider mb-1">
+            <Radio className="w-4 h-4 animate-pulse text-violet-400" />
             <span>3D 向量星系投影 (3D Vector Universe)</span>
           </div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>全校課程語意向量宇宙</span>
             {stats && (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono font-normal">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-950 text-violet-300 border border-violet-800 font-mono font-normal">
                 {stats.total_courses.toLocaleString()} 節點 (512D → 3D UMAP)
               </span>
             )}
@@ -531,7 +531,7 @@ export function VectorUniverseViewer() {
             <button
               onClick={() => setColorMode("department")}
               className={`px-2.5 py-1 rounded-lg transition font-medium ${
-                colorMode === "department" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"
+                colorMode === "department" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               開課系所
@@ -539,7 +539,7 @@ export function VectorUniverseViewer() {
             <button
               onClick={() => setColorMode("semester")}
               className={`px-2.5 py-1 rounded-lg transition font-medium ${
-                colorMode === "semester" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"
+                colorMode === "semester" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               學期 (1151 / 1142)
@@ -547,7 +547,7 @@ export function VectorUniverseViewer() {
             <button
               onClick={() => setColorMode("credits")}
               className={`px-2.5 py-1 rounded-lg transition font-medium ${
-                colorMode === "credits" ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"
+                colorMode === "credits" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               學分數
@@ -558,7 +558,7 @@ export function VectorUniverseViewer() {
             onClick={() => setAutoRotate(!autoRotate)}
             className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center space-x-1 ${
               autoRotate
-                ? "bg-cyan-950 text-cyan-300 border-cyan-800"
+                ? "bg-violet-950 text-violet-300 border-violet-800"
                 : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
             }`}
           >
@@ -585,13 +585,13 @@ export function VectorUniverseViewer() {
             onChange={(e) => setQueryInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleProjectQuery()}
             placeholder="輸入即時選課需求，在 3D 空間定位查詢向量並拉出雷射連線（例如：機器學習與深度神經網路、日語會話、半導體材料）..."
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-xs"
+            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500 text-xs"
           />
         </div>
         <button
           onClick={handleProjectQuery}
           disabled={isProjecting || !queryInput.trim()}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs transition shadow-md shadow-cyan-600/30 disabled:opacity-50 whitespace-nowrap flex items-center justify-center space-x-1.5"
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-500 hover:to-violet-500 text-white font-semibold text-xs transition shadow-md shadow-violet-600/30 disabled:opacity-50 whitespace-nowrap flex items-center justify-center space-x-1.5"
         >
           {isProjecting ? (
             <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -611,15 +611,15 @@ export function VectorUniverseViewer() {
           {/* 載入中指示 */}
           {loading && (
             <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center space-y-3 z-10">
-              <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-xs text-slate-300 font-mono">載入 4,399 門課程 3D UMAP 向量幾何星系中...</p>
             </div>
           )}
 
           {/* 懸停 HUD 資訊卡 (Hovered Tooltip) */}
           {hoveredCourse && !pinnedCourse && (
-            <div className="absolute top-4 left-4 z-20 bg-slate-900/90 border border-cyan-500/40 backdrop-blur-md p-3.5 rounded-xl max-w-sm pointer-events-none shadow-xl text-xs space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-cyan-400 font-mono mb-0.5">
+            <div className="absolute top-4 left-4 z-20 bg-slate-900/90 border border-violet-500/40 backdrop-blur-md p-3.5 rounded-xl max-w-sm pointer-events-none shadow-xl text-xs space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-violet-400 font-mono mb-0.5">
                 <span>{hoveredCourse.semester === "1151" ? "1151 上學期" : "1142 下學期"}</span>
                 <span>流水號: {hoveredCourse.serial_no}</span>
               </div>
@@ -634,14 +634,14 @@ export function VectorUniverseViewer() {
                   {hoveredCourse.preview}
                 </div>
               )}
-              <div className="text-[10px] text-cyan-500 pt-1">點擊可釘選詳情</div>
+              <div className="text-[10px] text-violet-500 pt-1">點擊可釘選詳情</div>
             </div>
           )}
 
           {/* 畫布左下角指標說明 */}
           <div className="absolute bottom-4 left-4 z-10 bg-slate-900/70 border border-slate-800/80 backdrop-blur-md px-3 py-2 rounded-xl text-[11px] text-slate-400 flex items-center space-x-3">
             <span className="flex items-center space-x-1">
-              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span className="w-2 h-2 rounded-full bg-violet-400"></span>
               <span>1151 上學期 (2,251門)</span>
             </span>
             <span className="flex items-center space-x-1">
@@ -699,7 +699,7 @@ export function VectorUniverseViewer() {
           ) : (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 space-y-2">
               <div className="font-bold text-slate-300 flex items-center space-x-1.5">
-                <Info className="w-3.5 h-3.5 text-cyan-400" />
+                <Info className="w-3.5 h-3.5 text-violet-400" />
                 <span>3D 向量宇宙操作指南</span>
               </div>
               <ul className="space-y-1 text-[11px] text-slate-400 leading-relaxed list-disc list-inside">
@@ -715,7 +715,7 @@ export function VectorUniverseViewer() {
 
           {/* 釘選課程資訊卡 (Pinned Card) */}
           {pinnedCourse && (
-            <div className="bg-slate-900/90 border border-cyan-500/50 rounded-2xl p-4 space-y-2 shadow-xl relative">
+            <div className="bg-slate-900/90 border border-violet-500/50 rounded-2xl p-4 space-y-2 shadow-xl relative">
               <button
                 onClick={() => setPinnedCourse(null)}
                 className="absolute top-3 right-3 text-slate-400 hover:text-white p-1"
@@ -723,7 +723,7 @@ export function VectorUniverseViewer() {
                 <X className="w-3.5 h-3.5" />
               </button>
 
-              <div className="text-[11px] text-cyan-400 font-mono">
+              <div className="text-[11px] text-violet-400 font-mono">
                 {pinnedCourse.semester === "1151" ? "1151 上學期" : "1142 下學期"} | 流水號: {pinnedCourse.serial_no}
               </div>
               <h4 className="text-sm font-bold text-white">{pinnedCourse.name}</h4>

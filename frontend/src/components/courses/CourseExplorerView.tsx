@@ -243,10 +243,10 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             <Link
               href="/explore"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold transition-colors border border-stone-300 shadow-xs"
-              title="返回中央相關資料"
+              title="回到中大資訊"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>回相關資料</span>
+              <span>回到中大資訊</span>
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-stone-900 tracking-tight flex items-center gap-2">
@@ -521,7 +521,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                 return (
                   <div
                     key={c.id}
-                    className="bg-white border border-stone-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-sm transition-all flex flex-col justify-between group"
+                    className="bg-white border border-stone-200 rounded-2xl p-5 hover:border-violet-400 hover:shadow-sm transition-all flex flex-col justify-between group"
                   >
                     <div>
                       {/* 頂部標籤列 */}
@@ -1338,7 +1338,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                     {selectedCourse.schedules.map((s: any, idx: number) => (
                       <div
                         key={idx}
-                        className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-200 flex items-center justify-between"
+                        className="bg-violet-50/60 p-2.5 rounded-xl border border-violet-200 flex items-center justify-between"
                       >
                         <span className="font-mono text-stone-800 font-bold">{s.time}</span>
                         <span className="text-emerald-700 font-medium flex items-center gap-1">

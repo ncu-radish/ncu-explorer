@@ -30,7 +30,7 @@ const CATEGORY_MAP: Record<string, { label: string; icon: any; color: string; ba
   lunch: { label: "午餐", icon: Utensils, color: "text-emerald-700", badge: "bg-emerald-100 text-emerald-900 border-emerald-300" },
   dinner: { label: "晚餐", icon: Utensils, color: "text-orange-700", badge: "bg-orange-100 text-orange-900 border-orange-300" },
   dorm_leisure: { label: "宿舍休閒活動", icon: Moon, color: "text-indigo-700", badge: "bg-indigo-100 text-indigo-900 border-indigo-300" },
-  campus_leisure: { label: "校園休閒活動", icon: Compass, color: "text-cyan-700", badge: "bg-cyan-100 text-cyan-900 border-cyan-300" },
+  campus_leisure: { label: "校園休閒活動", icon: Compass, color: "text-violet-700", badge: "bg-violet-100 text-violet-900 border-violet-300" },
 };
 
 const TRIGGER_MODE_LABELS: Record<string, string> = {
@@ -452,7 +452,7 @@ function EventsContent() {
   });
 
   return (
-    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#FAF8F5] text-stone-900 min-h-screen">
+    <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6 bg-[#faf8ff] text-stone-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-stone-200 gap-4">
         <div className="flex items-center gap-3">
@@ -480,7 +480,7 @@ function EventsContent() {
             onClick={() => setActiveTab("activities")}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === "activities"
-                ? "bg-blue-600 text-white shadow-xs"
+                ? "bg-violet-600 text-white shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -491,7 +491,7 @@ function EventsContent() {
             onClick={() => setActiveTab("random_events")}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === "random_events"
-                ? "bg-blue-600 text-white shadow-xs"
+                ? "bg-violet-600 text-white shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -549,7 +549,7 @@ function EventsContent() {
                   placeholder="搜尋活動標題/地點..."
                   value={activitySearchQuery}
                   onChange={(e) => setActivitySearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                 />
               </div>
 
@@ -590,7 +590,7 @@ function EventsContent() {
               ) : (
                 filteredActivities.map((act) => {
                   const isSelected = (!isCreatingNewActivity && selectedActivity?.id === act.id);
-                  const catMeta = CATEGORY_MAP[act.category] || { label: act.category, icon: Compass, color: "text-blue-700", badge: "bg-blue-100 text-blue-900 border-blue-300" };
+                  const catMeta = CATEGORY_MAP[act.category] || { label: act.category, icon: Compass, color: "text-violet-700", badge: "bg-violet-100 text-violet-900 border-violet-300" };
                   const Icon = catMeta.icon;
 
                   return (
@@ -599,7 +599,7 @@ function EventsContent() {
                       onClick={() => selectActivityForEdit(act)}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative ${
                         isSelected
-                          ? "bg-blue-50/70 border-blue-500 shadow-xs ring-1 ring-blue-500"
+                          ? "bg-violet-50/70 border-violet-500 shadow-xs ring-1 ring-violet-500"
                           : "bg-stone-50/60 hover:bg-stone-100/80 border-stone-200 shadow-2xs"
                       }`}
                     >
@@ -620,8 +620,8 @@ function EventsContent() {
                           <span>{act.trigger_timing || "全天"}</span>
                         </span>
                         {act.location_name && (
-                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200 flex items-center gap-1 truncate max-w-[140px] font-medium">
-                            <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
+                          <span className="px-2 py-0.5 rounded bg-violet-50 text-violet-900 border border-violet-200 flex items-center gap-1 truncate max-w-[140px] font-medium">
+                            <MapPin className="w-3 h-3 text-violet-600 shrink-0" />
                             <span className="truncate">{act.location_name}</span>
                           </span>
                         )}
@@ -654,7 +654,7 @@ function EventsContent() {
                           </>
                         ) : (
                           <>
-                            <Utensils className="w-4 h-4 text-blue-600" />
+                            <Utensils className="w-4 h-4 text-violet-600" />
                             <span>編輯活動：{actTitle}</span>
                           </>
                         )}
@@ -690,7 +690,7 @@ function EventsContent() {
                         value={actId}
                         disabled={!isCreatingNewActivity}
                         onChange={(e) => setActId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-mono disabled:opacity-50 focus:bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-mono disabled:opacity-50 focus:bg-white focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                       />
                     </div>
 
@@ -702,7 +702,7 @@ function EventsContent() {
                         value={actTitle}
                         onChange={(e) => setActTitle(e.target.value)}
                         placeholder="例如：午膳美味時光、宿舍補眠放鬆..."
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                       />
                     </div>
 
@@ -712,7 +712,7 @@ function EventsContent() {
                       <select
                         value={actCategory}
                         onChange={(e) => setActCategory(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-blue-600 cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-violet-600 cursor-pointer"
                       >
                         <option value="breakfast">早餐 (Breakfast)</option>
                         <option value="lunch">午餐 (Lunch)</option>
@@ -728,7 +728,7 @@ function EventsContent() {
                       <select
                         value={actTriggerMode}
                         onChange={(e) => setActTriggerMode(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-blue-600 cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-violet-600 cursor-pointer"
                       >
                         <option value="manual_choice">主動選擇是否觸發 (要不要吃午餐 / 空檔選擇回宿舍或校園活動)</option>
                         <option value="auto_prompt">時間到達時自動提示與推薦</option>
@@ -758,7 +758,7 @@ function EventsContent() {
                         value={actTriggerTiming}
                         onChange={(e) => setActTriggerTiming(e.target.value)}
                         placeholder="例如：11:50~13:30、下課空閒時間、07:00~09:00..."
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-mono focus:bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-mono focus:bg-white focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                       />
                     </div>
 
@@ -773,7 +773,7 @@ function EventsContent() {
                           const found = PRESET_LOCATIONS.find((p) => p.id === lid);
                           if (found) setActLocationName(found.name);
                         }}
-                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-blue-600 cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-violet-600 cursor-pointer"
                       >
                         {PRESET_LOCATIONS.map((loc) => (
                           <option key={loc.id} value={loc.id}>
@@ -823,7 +823,7 @@ function EventsContent() {
                       value={actEventPrompt}
                       onChange={(e) => setActEventPrompt(e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 resize-none leading-relaxed"
+                      className="w-full px-3 py-2.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:bg-white focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 resize-none leading-relaxed"
                       placeholder="描述當前時間點的環境氣氛，引導玩家做出是否參與或何種方式參與之抉擇..."
                     />
                   </div>
@@ -843,7 +843,7 @@ function EventsContent() {
                         className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col gap-2.5"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="px-2 py-0.5 rounded-lg bg-blue-600 text-white font-mono font-bold text-xs">
+                          <span className="px-2 py-0.5 rounded-lg bg-violet-600 text-white font-mono font-bold text-xs">
                             選項 {opt.option_key}
                           </span>
                           <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5 cursor-pointer">
@@ -855,9 +855,9 @@ function EventsContent() {
                                 next[idx] = { ...next[idx], marks_activity: e.target.checked };
                                 setActOptions(next);
                               }}
-                              className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                              className="w-3.5 h-3.5 rounded accent-violet-600 cursor-pointer"
                             />
-                            <span className="text-blue-800">選擇後標記在行事曆上</span>
+                            <span className="text-violet-800">選擇後標記在行事曆上</span>
                           </label>
                         </div>
 
@@ -870,7 +870,7 @@ function EventsContent() {
                             setActOptions(next);
                           }}
                           placeholder={`方案 ${opt.option_key} 意圖提示...`}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                         />
 
                         {/* Effects sliders / numbers */}
@@ -888,12 +888,12 @@ function EventsContent() {
                                 };
                                 setActOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-violet-600"
                             />
                           </div>
 
                           <div>
-                            <span className="text-[11px] font-bold text-blue-800 block mb-0.5">學業 (Study)</span>
+                            <span className="text-[11px] font-bold text-violet-800 block mb-0.5">學業 (Study)</span>
                             <input
                               type="number"
                               value={opt.effects?.study ?? 0}
@@ -905,7 +905,7 @@ function EventsContent() {
                                 };
                                 setActOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-violet-600"
                             />
                           </div>
 
@@ -922,7 +922,7 @@ function EventsContent() {
                                 };
                                 setActOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-violet-600"
                             />
                           </div>
 
@@ -939,7 +939,7 @@ function EventsContent() {
                                 };
                                 setActOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 font-mono text-center focus:outline-none focus:border-violet-600"
                             />
                           </div>
                         </div>
@@ -951,7 +951,7 @@ function EventsContent() {
                   <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-stone-200">
                     <button
                       onClick={handleSaveActivity}
-                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                      className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
                     >
                       {isCreatingNewActivity ? "建立並儲存活動" : "儲存活動修改"}
                     </button>
@@ -1013,7 +1013,7 @@ function EventsContent() {
               </span>
               <button
                 onClick={handleStartCreateRandomEvent}
-                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer shadow-xs flex items-center gap-1 transition-all"
+                className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs cursor-pointer shadow-xs flex items-center gap-1 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>新增事件</span>
@@ -1029,14 +1029,14 @@ function EventsContent() {
                   onClick={() => selectRandomEventForEdit(ev)}
                   className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2 ${
                     isSelected
-                      ? "bg-blue-50/80 border-blue-500 ring-1 ring-blue-500 shadow-xs"
+                      ? "bg-violet-50/80 border-violet-500 ring-1 ring-violet-500 shadow-xs"
                       : "bg-stone-50/70 border-stone-200 hover:border-stone-400 hover:bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="truncate pr-2 text-xs font-bold text-stone-900">{ev.title}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-300 font-bold">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-violet-100 text-violet-900 border border-violet-300 font-bold">
                         機率 {trigRate}%
                       </span>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold">
@@ -1091,7 +1091,7 @@ function EventsContent() {
                       {isCreatingNewRandomEvent ? "✨ 新增自訂突發事件" : `編輯事件：${selectedRandomEvent?.title}`}
                     </h2>
                     {isCreatingNewRandomEvent && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800 border border-blue-200 font-bold">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-violet-100 text-violet-800 border border-violet-200 font-bold">
                         NEW
                       </span>
                     )}
@@ -1126,7 +1126,7 @@ function EventsContent() {
                       value={reId}
                       onChange={(e) => setReId(e.target.value)}
                       placeholder="例如 evt_library_exam"
-                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600 font-mono disabled:opacity-50"
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-violet-600 font-mono disabled:opacity-50"
                     />
                   </div>
                   <div className="sm:col-span-6">
@@ -1136,7 +1136,7 @@ function EventsContent() {
                       value={reTitle}
                       onChange={(e) => setReTitle(e.target.value)}
                       placeholder="例如：中午松果餐廳排隊大塞車"
-                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600 font-medium"
+                      className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-violet-600 font-medium"
                     />
                   </div>
                   <div className="sm:col-span-2 flex flex-col justify-center pt-3">
@@ -1145,7 +1145,7 @@ function EventsContent() {
                         type="checkbox"
                         checked={reIsActive}
                         onChange={(e) => setReIsActive(e.target.checked)}
-                        className="rounded accent-blue-600 cursor-pointer w-4 h-4"
+                        className="rounded accent-violet-600 cursor-pointer w-4 h-4"
                       />
                       <span>啟用事件</span>
                     </label>
@@ -1155,7 +1155,7 @@ function EventsContent() {
                 {/* 2. 獨立觸發機率與權重設定 */}
                 <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex flex-col gap-4">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-stone-900">
-                    <Zap className="w-4 h-4 text-blue-600" />
+                    <Zap className="w-4 h-4 text-violet-600" />
                     <span>觸發機率與抽籤權重配置</span>
                   </div>
 
@@ -1164,7 +1164,7 @@ function EventsContent() {
                     <div>
                       <div className="flex justify-between items-center text-xs font-semibold text-stone-700 mb-1">
                         <span>專屬觸發機率 (trigger_rate)</span>
-                        <span className="text-blue-700 font-mono font-extrabold text-sm">
+                        <span className="text-violet-700 font-mono font-extrabold text-sm">
                           {Math.round(reTriggerRate * 100)}%
                         </span>
                       </div>
@@ -1175,7 +1175,7 @@ function EventsContent() {
                         step="0.05"
                         value={reTriggerRate}
                         onChange={(e) => setReTriggerRate(parseFloat(e.target.value))}
-                        className="w-full accent-blue-600 cursor-pointer"
+                        className="w-full accent-violet-600 cursor-pointer"
                       />
                       <span className="text-[11px] text-stone-500 block mt-1">
                         滿足下方設定條件時，此事件單獨觸發的機率（設為 100% 則滿足條件即必定觸發）
@@ -1204,10 +1204,10 @@ function EventsContent() {
                 </div>
 
                 {/* 3. 觸發條件設定區 (Trigger Conditions) */}
-                <div className="p-4 rounded-xl bg-blue-50/40 border border-blue-200 flex flex-col gap-4">
+                <div className="p-4 rounded-xl bg-violet-50/40 border border-violet-200 flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-stone-900">
-                      <Filter className="w-4 h-4 text-blue-600" />
+                      <Filter className="w-4 h-4 text-violet-600" />
                       <span>觸發條件設定（未填寫者代表無限制）</span>
                     </div>
                     <span className="text-[11px] text-stone-500 font-medium">
@@ -1219,7 +1219,7 @@ function EventsContent() {
                   <div className="flex flex-col gap-2 pt-2 border-t border-stone-200">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <label className="text-xs text-stone-800 font-semibold flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        <Clock className="w-3.5 h-3.5 text-violet-600" />
                         <span>① 時間觸發範圍（在 OO:XX 時間內）</span>
                       </label>
                       {/* 快速填寫按鈕 */}
@@ -1234,7 +1234,7 @@ function EventsContent() {
                         <button
                           type="button"
                           onClick={() => { setReCondTimeStart("07:30"); setReCondTimeEnd("09:00"); }}
-                          className="px-2 py-0.5 rounded-lg bg-blue-100 border border-blue-300 hover:bg-blue-200 text-[11px] text-blue-900 font-medium cursor-pointer transition-colors"
+                          className="px-2 py-0.5 rounded-lg bg-violet-100 border border-violet-300 hover:bg-violet-200 text-[11px] text-violet-900 font-medium cursor-pointer transition-colors"
                         >
                           早晨 (07:30~09:00)
                         </button>
@@ -1270,7 +1270,7 @@ function EventsContent() {
                           value={reCondTimeStart}
                           onChange={(e) => setReCondTimeStart(e.target.value)}
                           placeholder="例如 12:00 (留空不限)"
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-blue-600 font-mono"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-violet-600 font-mono"
                         />
                       </div>
                       <div>
@@ -1280,7 +1280,7 @@ function EventsContent() {
                           value={reCondTimeEnd}
                           onChange={(e) => setReCondTimeEnd(e.target.value)}
                           placeholder="例如 13:30 (留空不限)"
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-blue-600 font-mono"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-violet-600 font-mono"
                         />
                       </div>
                     </div>
@@ -1299,7 +1299,7 @@ function EventsContent() {
                         <select
                           value={reCondActivityType}
                           onChange={(e) => setReCondActivityType(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-blue-600 cursor-pointer font-medium"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-violet-600 cursor-pointer font-medium"
                         >
                           <option value="">不限活動類型（任何活動時段）</option>
                           <option value="course">正式課程時段 (course)</option>
@@ -1317,7 +1317,7 @@ function EventsContent() {
                           value={reCondActivityTitle}
                           onChange={(e) => setReCondActivityTitle(e.target.value)}
                           placeholder="例如：微積分、羽球、宵夜 (留空不限)"
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-violet-600"
                         />
                       </div>
                     </div>
@@ -1340,7 +1340,7 @@ function EventsContent() {
                           value={reCondPrevActivity}
                           onChange={(e) => setReCondPrevActivity(e.target.value)}
                           placeholder="例如：體育、系學會、午餐 (留空不限)"
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-violet-600"
                         />
                         <span className="text-[10px] text-stone-500 block mt-0.5">
                           若填寫，玩家先前行程或日誌中必須包含該關鍵字才會觸發
@@ -1354,7 +1354,7 @@ function EventsContent() {
                         <select
                           value={reCondPrevEventId}
                           onChange={(e) => setReCondPrevEventId(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-blue-600 cursor-pointer font-medium"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-violet-600 cursor-pointer font-medium"
                         >
                           <option value="">無前置事件要求（可直接觸發）</option>
                           {randomEvents.map((ev) => (
@@ -1378,7 +1378,7 @@ function EventsContent() {
                         <select
                           value={reCondLocation}
                           onChange={(e) => setReCondLocation(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-blue-600 cursor-pointer font-medium"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 focus:outline-none focus:border-violet-600 cursor-pointer font-medium"
                         >
                           <option value="">全校園任意地點不限</option>
                           {PRESET_LOCATIONS.map((loc) => (
@@ -1400,7 +1400,7 @@ function EventsContent() {
                             max="100"
                             value={reCondMinStamina}
                             onChange={(e) => setReCondMinStamina(parseInt(e.target.value) || 0)}
-                            className="w-20 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 text-center font-mono focus:border-blue-600"
+                            className="w-20 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 text-center font-mono focus:border-violet-600"
                           />
                           <span className="text-stone-500 text-xs font-medium">至</span>
                           <input
@@ -1409,7 +1409,7 @@ function EventsContent() {
                             max="100"
                             value={reCondMaxStamina}
                             onChange={(e) => setReCondMaxStamina(parseInt(e.target.value) || 100)}
-                            className="w-20 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 text-center font-mono focus:border-blue-600"
+                            className="w-20 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs text-stone-900 text-center font-mono focus:border-violet-600"
                           />
                         </div>
                       </div>
@@ -1427,7 +1427,7 @@ function EventsContent() {
                     onChange={(e) => setRePrompt(e.target.value)}
                     rows={3}
                     placeholder="例如：突發事件：正值中午 12 點用餐尖峰時段，你來到學餐準備填飽肚子，赫然發現排隊人龍已經一路排到了門口..."
-                    className="w-full px-3 py-2.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-blue-600 resize-none font-normal leading-relaxed"
+                    className="w-full px-3 py-2.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-white focus:border-violet-600 resize-none font-normal leading-relaxed"
                   />
                 </div>
 
@@ -1468,7 +1468,7 @@ function EventsContent() {
                             setReOptions(next);
                           }}
                           placeholder={`例如：方案 ${opt.option_key} 睡衣套上外套開啟百米衝刺模式衝進教室...`}
-                          className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                          className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-violet-600 focus:ring-1 focus:ring-violet-600"
                         />
                       </div>
 
@@ -1491,11 +1491,11 @@ function EventsContent() {
                                 };
                                 setReOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-violet-600"
                             />
                           </div>
                           <div>
-                            <span className="text-[11px] font-bold text-blue-700 block mb-0.5">📚 學業 (Study)</span>
+                            <span className="text-[11px] font-bold text-violet-700 block mb-0.5">📚 學業 (Study)</span>
                             <input
                               type="number"
                               value={opt.effects?.study ?? 0}
@@ -1507,7 +1507,7 @@ function EventsContent() {
                                 };
                                 setReOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-violet-600"
                             />
                           </div>
                           <div>
@@ -1523,7 +1523,7 @@ function EventsContent() {
                                 };
                                 setReOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-violet-600"
                             />
                           </div>
                           <div>
@@ -1539,7 +1539,7 @@ function EventsContent() {
                                 };
                                 setReOptions(next);
                               }}
-                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-blue-600"
+                              className="w-full px-2 py-1.5 rounded-xl bg-stone-50 border border-stone-300 text-xs text-center text-stone-900 font-mono font-bold focus:bg-white focus:border-violet-600"
                             />
                           </div>
                         </div>
@@ -1558,7 +1558,7 @@ function EventsContent() {
                               next[idx] = { ...next[idx], time_action: e.target.value };
                               setReOptions(next);
                             }}
-                            className="flex-1 px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-medium focus:bg-white focus:border-blue-600"
+                            className="flex-1 px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs text-stone-900 font-medium focus:bg-white focus:border-violet-600"
                           >
                             <option value="none">⏱️ 不耗時間（立即進入原定行程，如衝去上課）</option>
                             <option value="jump_to_time">⏩ 跳到指定時間（如繼續睡跳到 12:00）</option>
@@ -1577,7 +1577,7 @@ function EventsContent() {
                                   next[idx] = { ...next[idx], target_time: e.target.value };
                                   setReOptions(next);
                                 }}
-                                className="px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:border-blue-600"
+                                className="px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:border-violet-600"
                               />
                             </div>
                           )}
@@ -1596,7 +1596,7 @@ function EventsContent() {
                                   next[idx] = { ...next[idx], duration_hours: parseFloat(e.target.value) || 1.0 };
                                   setReOptions(next);
                                 }}
-                                className="w-16 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-center text-stone-900 focus:border-blue-600"
+                                className="w-16 px-2 py-1.5 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-center text-stone-900 focus:border-violet-600"
                               />
                               <span className="text-xs text-stone-600 font-medium">小時</span>
                             </div>
@@ -1611,7 +1611,7 @@ function EventsContent() {
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     onClick={handleSaveRandomEvent}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer shadow-xs transition-all"
+                    className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs cursor-pointer shadow-xs transition-all"
                   >
                     {isCreatingNewRandomEvent ? "建立並儲存事件" : "儲存事件修改"}
                   </button>

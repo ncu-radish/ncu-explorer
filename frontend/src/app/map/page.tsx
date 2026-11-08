@@ -28,7 +28,7 @@ const CampusScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF8F5] text-stone-600 gap-3">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#faf8ff] text-stone-600 gap-3">
         <div className="w-8 h-8 border-3 border-stone-300 border-t-violet-600 rounded-full animate-spin" />
         <span className="text-sm font-medium tracking-wide">載入中央大學 3D 校園地圖...</span>
       </div>
@@ -168,7 +168,7 @@ function MapContent() {
   };
 
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-[#FAF8F5]">
+    <div className="flex w-full h-screen overflow-hidden bg-[#faf8ff]">
       {/* ================= LEFT SIDEBAR: Search & Building List ================= */}
       <aside className="w-full md:w-[440px] lg:w-[480px] h-full flex flex-col bg-white border-r border-stone-200 z-10 shrink-0 shadow-sm">
         {/* Sidebar Header */}
@@ -179,7 +179,7 @@ function MapContent() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-stone-50 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>回中央相關資料</span>
+              <span>回到中大資訊</span>
             </Link>
             <span className="text-xs font-mono font-medium text-stone-700 bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200">
               {buildings.length} 棟館舍
@@ -427,7 +427,7 @@ function MapContent() {
       </aside>
 
       {/* ================= RIGHT 3D CANVAS ================= */}
-      <main className="flex-1 h-full relative overflow-hidden bg-[#FAF8F5]">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#faf8ff]">
         {/* Top Control Bar Overlay */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <button
@@ -477,7 +477,7 @@ export default function MapPage() {
   return (
     <Suspense
       fallback={
-        <div className="w-full h-screen flex items-center justify-center bg-[#FAF8F5] text-stone-600 text-sm">
+        <div className="w-full h-screen flex items-center justify-center bg-[#faf8ff] text-stone-600 text-sm">
           載入中...
         </div>
       }
