@@ -348,14 +348,49 @@ export function FutureMapExplorerView() {
         });
 
         // 2. 本系數理／工程基礎必修
+        // 僅理工實驗型學系（物理、電機、機械、光電、化材、土木、地科、大氣、太空）納入普通物理實驗；資工、資管、文學院與商管學院等完全排除
+        const needsPhysicsLab = (
+          pDom.includes("物理") ||
+          pDom.includes("電機") ||
+          pDom.includes("機械") ||
+          pDom.includes("光電") ||
+          pDom.includes("化材") ||
+          pDom.includes("土木") ||
+          pDom.includes("地球") ||
+          pDom.includes("大氣") ||
+          pDom.includes("太空")
+        ) && !pDom.includes("資訊工程") && !pDom.includes("資訊管理") && pTag !== "資工" && pTag !== "資管";
+
+        const isLiberalArtsOrLaw = (
+          pDom.includes("文學") ||
+          pDom.includes("法語") ||
+          pDom.includes("語文") ||
+          pDom.includes("法律") ||
+          pDom.includes("客家")
+        );
+
         if (i === 0) {
-          courses.push({ course_name: "MA1001 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "極限連續與單變數微積分核心定理" });
-          courses.push({ course_name: "PH1003 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "古典力學與熱學精準實驗操作" });
+          if (!isLiberalArtsOrLaw) {
+            courses.push({ course_name: "MA1001 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "極限連續與單變數微積分核心定理" });
+          }
+          if (needsPhysicsLab) {
+            courses.push({ course_name: "PH1003 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "古典力學與熱學精準實驗操作" });
+          } else if (pDom.includes("資訊工程") || pTag === "資工") {
+            courses.push({ course_name: "CE2003 離散數學", credits: 3, category: "必修", tag: `${pTag}核心`, note: "集合論、邏輯命題、圖形理論與遞迴關係" });
+          }
         } else if (i === 1) {
-          courses.push({ course_name: "MA1002 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "多變數微積分與高維向量場分析" });
-          courses.push({ course_name: "PH1004 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "電磁光學示波器與干涉儀實作" });
+          if (!isLiberalArtsOrLaw) {
+            courses.push({ course_name: "MA1002 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "多變數微積分與高維向量場分析" });
+          }
+          if (needsPhysicsLab) {
+            courses.push({ course_name: "PH1004 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "電磁光學示波器與干涉儀實作" });
+          } else if (pDom.includes("資訊工程") || pTag === "資工") {
+            courses.push({ course_name: "CE1006 工程數學", credits: 3, category: "必修", tag: `${pTag}工數`, note: "線性聯立方程組、特徵值分解與微分方程基礎" });
+          }
         } else if (i === 2) {
-          courses.push({ course_name: "CO1007 工程數學-線性代數", credits: 3, category: "必修", tag: `${pTag}工數`, note: "抽象向量空間與矩陣對角化分解" });
+          if (!isLiberalArtsOrLaw) {
+            courses.push({ course_name: "CO1007 工程數學-線性代數", credits: 3, category: "必修", tag: `${pTag}工數`, note: "抽象向量空間與矩陣對角化分解" });
+          }
           const sec = primaryElectives[1 % primaryElectives.length];
           if (sec && sec.name !== majorCore.name) {
             courses.push({ course_name: sec.name, credits: sec.credits, category: "必修", tag: `${pTag}專業`, note: sec.description, ruleNote: sec.ruleNote });
