@@ -162,7 +162,7 @@ export function DynamicActivityBar() {
                     {act.title}
                   </span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
               </div>
               <span className="text-xs text-stone-600 font-mono line-clamp-1">
                 {act.timeHint}
@@ -195,7 +195,7 @@ export function DynamicActivityBar() {
 
               <button
                 onClick={() => setSelectedAct(null)}
-                className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-500 hover:text-stone-700 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -101,7 +101,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>回相關資料</span>
             </Link>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
+            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">
               受保護的管理區域
             </span>
           </div>
@@ -129,7 +129,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
                 管理員帳號
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={username}
@@ -146,7 +146,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
                 管理員密碼
               </label>
               <div className="relative">
-                <KeyRound className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <KeyRound className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -158,7 +158,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 rounded-md"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700 p-1 rounded-md"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -183,7 +183,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
           </form>
 
           <div className="mt-6 pt-4 border-t border-stone-200 text-center">
-            <p className="text-[11px] text-stone-500">
+            <p className="text-xs text-stone-500">
               預設帳號: <span className="font-mono text-stone-700 font-bold">admin</span> / 預設密碼: <span className="font-mono text-stone-700 font-bold">adminpassword123</span>
             </p>
           </div>
@@ -201,7 +201,7 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-stone-600">已登入管理員：</span>
           <span className="font-bold text-stone-900 font-mono">{adminUser?.username}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
             {adminUser?.role}
           </span>
         </div>

@@ -86,7 +86,7 @@ export function SummaryModal({ isOpen }: { isOpen: boolean }) {
                   href={`/map?loc=${loc.id}`}
                   className="text-xs px-2 py-1 rounded-md bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 transition-colors flex items-center gap-1 shadow-2xs"
                 >
-                  {loc.name} <ArrowRight className="w-2.5 h-2.5 text-stone-400" />
+                  {loc.name} <ArrowRight className="w-2.5 h-2.5 text-stone-500" />
                 </Link>
               ))}
             </div>
@@ -123,7 +123,7 @@ export function SummaryModal({ isOpen }: { isOpen: boolean }) {
                     {course.credits !== undefined && (
                       <span className="text-stone-700 font-semibold">{course.credits}學分</span>
                     )}
-                    <ArrowRight className="w-3 h-3 text-stone-400" />
+                    <ArrowRight className="w-3 h-3 text-stone-500" />
                   </div>
                 </Link>
               ))}

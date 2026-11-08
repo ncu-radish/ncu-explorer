@@ -105,7 +105,7 @@ export function StoryDialog({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black tracking-wider uppercase shadow-xs">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-black tracking-wider uppercase shadow-xs">
                     ⚡ 突發狀況
                   </span>
                   <h3 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
@@ -124,7 +124,7 @@ export function StoryDialog({
         <div className="min-h-[110px] mb-6 flex items-center">
           {isLoading ? (
             <div className="flex items-center gap-3 text-violet-600 animate-pulse text-sm py-4">
-              <Sparkles className="w-5 h-5 animate-spin text-amber-500" />
+              <Sparkles className="w-5 h-5 animate-spin text-amber-600" />
               <span className="font-medium text-stone-700">活動進行中...</span>
             </div>
           ) : (
@@ -188,7 +188,7 @@ export function StoryDialog({
                     ? "text-amber-600 group-hover:text-amber-700 group-hover:translate-x-1"
                     : isSleep
                     ? "text-indigo-300 group-hover:translate-x-1"
-                    : "text-stone-400 group-hover:text-violet-600 group-hover:translate-x-1"
+                    : "text-stone-500 group-hover:text-violet-600 group-hover:translate-x-1"
                 }`}
               />
             </button>

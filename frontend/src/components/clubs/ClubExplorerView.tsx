@@ -159,18 +159,18 @@ export function ClubExplorerView({ isEmbedded = false }: ClubExplorerViewProps) 
       {/* Search Input Bar */}
       <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-2xs flex items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="搜尋社團中文名稱、英文簡稱或縮寫（例：吉他社、熱舞、NCUFCS、資管系學會）..."
-            className="w-full pl-9 pr-8 py-2 text-sm bg-stone-50 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all text-stone-900 placeholder-stone-400"
+            className="w-full pl-9 pr-8 py-2 text-sm bg-stone-50 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all text-stone-900 placeholder-stone-500"
           />
           {keyword && (
             <button
               onClick={() => setKeyword("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -194,7 +194,7 @@ export function ClubExplorerView({ isEmbedded = false }: ClubExplorerViewProps) 
       {/* Empty State */}
       {!isLoading && filteredClubs.length === 0 && (
         <div className="bg-white rounded-2xl border border-stone-200 p-10 text-center flex flex-col items-center justify-center gap-2">
-          <Users className="w-8 h-8 text-stone-400 mb-1" />
+          <Users className="w-8 h-8 text-stone-500 mb-1" />
           <h3 className="text-sm font-bold text-stone-800">查無符合的社團</h3>
           <p className="text-xs text-stone-600 max-w-sm">
             找不到符合關鍵字「{keyword}」的社團名稱。請嘗試縮短搜尋詞或切換其他分類。
@@ -289,7 +289,7 @@ export function ClubExplorerView({ isEmbedded = false }: ClubExplorerViewProps) 
 
               <button
                 onClick={() => setActiveModalClub(null)}
-                className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 title="關閉"
               >
                 <X className="w-4 h-4" />
@@ -324,7 +324,7 @@ export function ClubExplorerView({ isEmbedded = false }: ClubExplorerViewProps) 
                         前往官方網站 <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : (
-                      <div className="font-semibold text-xs text-stone-400">未填寫社團網站</div>
+                      <div className="font-semibold text-xs text-stone-500">未填寫社團網站</div>
                     )}
                   </div>
                 </div>

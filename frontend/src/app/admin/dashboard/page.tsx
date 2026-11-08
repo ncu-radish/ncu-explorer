@@ -212,7 +212,7 @@ function DashboardContent() {
               : "bg-white hover:bg-stone-100 text-stone-600 border border-stone-200"
           }`}
         >
-          <Compass className="w-3.5 h-3.5 text-violet-400" />
+          <Compass className="w-3.5 h-3.5 text-violet-600" />
           <span>3D 向量星系宇宙 (Vector Universe)</span>
         </button>
 

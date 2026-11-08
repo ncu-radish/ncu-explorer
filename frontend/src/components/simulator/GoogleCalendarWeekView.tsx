@@ -182,7 +182,7 @@ export function GoogleCalendarWeekView({
                         {/* Event Header: Category badge & Time */}
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                            className={`text-xs px-1.5 py-0.2 rounded font-semibold ${
                               isSkipped
                                 ? "bg-rose-100 text-rose-700 border border-rose-200"
                                 : styleMeta.badge
@@ -190,21 +190,21 @@ export function GoogleCalendarWeekView({
                           >
                             {isSkipped ? "已跳過" : styleMeta.label}
                           </span>
-                          <span className="text-[10px] font-mono text-stone-600 truncate font-medium">
+                          <span className="text-xs font-mono text-stone-600 truncate font-medium">
                             {slot.start_time}
                           </span>
                         </div>
 
                         {/* Title */}
                         <h4 className={`text-xs font-bold line-clamp-2 leading-tight ${
-                          isSkipped ? "line-through text-stone-400" : "text-stone-900"
+                          isSkipped ? "line-through text-stone-500" : "text-stone-900"
                         }`}>
                           {slot.title}
                         </h4>
                       </div>
 
                       {/* Footer: Location & Credits */}
-                      <div className="flex items-center justify-between text-[10px] text-stone-600 mt-0.5">
+                      <div className="flex items-center justify-between text-xs text-stone-600 mt-0.5">
                         {slot.location_name && (
                           <span className="truncate flex items-center gap-0.5">
                             <MapPin className="w-2.5 h-2.5 shrink-0 text-violet-600" />

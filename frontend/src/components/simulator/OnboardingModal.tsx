@@ -127,7 +127,7 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
               onChange={(e) => setInput(e.target.value)}
               placeholder="例如：我是資管大二，想雙主修資工系，參加熱舞社，對演算法與深度學習有興趣...（亦支援自然輸入輔系）"
               rows={2}
-              className="w-full px-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 text-xs focus:outline-none focus:border-violet-500 transition-colors resize-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-500 text-xs focus:outline-none focus:border-violet-500 transition-colors resize-none"
             />
 
           </div>
@@ -146,7 +146,7 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
                   className="text-left text-xs p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 text-stone-700 transition-all flex items-center justify-between group cursor-pointer"
                 >
                   <span className="truncate pr-2">{preset.text}</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 group-hover:text-violet-600 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-stone-500 group-hover:text-violet-600 shrink-0" />
                 </button>
               ))}
             </div>

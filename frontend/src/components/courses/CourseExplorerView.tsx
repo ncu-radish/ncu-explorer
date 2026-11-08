@@ -368,13 +368,13 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             <form onSubmit={handleExactSearchSubmit} className="flex flex-col gap-4">
               {/* 關鍵字搜尋列 */}
               <div className="relative flex items-center">
-                <Search className="absolute left-3.5 w-4 h-4 text-stone-400" />
+                <Search className="absolute left-3.5 w-4 h-4 text-stone-500" />
                 <input
                   type="text"
                   value={exactKeyword}
                   onChange={(e) => setExactKeyword(e.target.value)}
                   placeholder="搜尋課名、課號代碼、教師姓名、大綱關鍵字（如：機器學習、演算法、微積分、日文）..."
-                  className="w-full pl-9 pr-24 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:border-violet-500 text-xs"
+                  className="w-full pl-9 pr-24 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-500 focus:outline-none focus:border-violet-500 text-xs"
                 />
                 <button
                   type="submit"
@@ -508,7 +508,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             </div>
           ) : exactCourses.length === 0 ? (
             <div className="py-16 text-center bg-white rounded-2xl border border-stone-200">
-              <AlertCircle className="w-9 h-9 text-stone-400 mx-auto mb-2" />
+              <AlertCircle className="w-9 h-9 text-stone-500 mx-auto mb-2" />
               <p className="text-stone-800 font-bold text-sm">查無符合條件的課程</p>
               <p className="text-xs text-stone-500 mt-1">請嘗試放寬篩選條件或更換搜尋關鍵字</p>
             </div>
@@ -549,7 +549,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600">
                             {c.degree || "學士班"}
                           </span>
-                          <span className="text-xs text-stone-400 font-mono">
+                          <span className="text-xs text-stone-500 font-mono">
                             流水號: {c.serial_no}
                           </span>
                         </div>
@@ -571,7 +571,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                         {c.course_name_zh}
                       </h3>
                       {c.course_name_en && (
-                        <p className="text-xs text-stone-400 line-clamp-1 italic mb-2">
+                        <p className="text-xs text-stone-500 line-clamp-1 italic mb-2">
                           {c.course_name_en}
                         </p>
                       )}
@@ -579,19 +579,19 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                       {/* 課號、系所與教師 */}
                       <div className="text-xs text-stone-600 space-y-1 my-2.5 bg-stone-50 p-2.5 rounded-xl border border-stone-200/80">
                         <div className="flex items-center justify-between">
-                          <span className="text-stone-400">課號：</span>
+                          <span className="text-stone-500">課號：</span>
                           <span className="font-mono text-violet-700 font-bold">{c.course_code || "未定"}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-stone-400">系所：</span>
+                          <span className="text-stone-500">系所：</span>
                           <span className="font-medium text-stone-800 truncate max-w-[180px]">{c.department}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-stone-400">授課教師：</span>
+                          <span className="text-stone-500">授課教師：</span>
                           <span className="text-stone-700">{c.teacher || "未定"}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-stone-400">學分數：</span>
+                          <span className="text-stone-500">學分數：</span>
                           <span className="font-bold text-emerald-600">{c.credits} 學分</span>
                         </div>
                       </div>
@@ -608,7 +608,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                               <span>{s.time}</span>
                               {s.location && (
                                 <>
-                                  <span className="text-stone-300">|</span>
+                                  <span className="text-stone-500">|</span>
                                   <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
                                   <span className="truncate">{s.location}</span>
                                 </>
@@ -694,7 +694,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                   onChange={(e) => setFuzzyQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleFuzzySearch()}
                   placeholder="例如：想學習前端網頁設計與使用者體驗、機器學習與大數據分析、日語會話、智慧財產權與商法..."
-                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:border-purple-500 text-xs"
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-500 focus:outline-none focus:border-purple-500 text-xs"
                 />
               </div>
               <button
@@ -744,7 +744,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
             </div>
           ) : fuzzySearched && fuzzyResults.length === 0 ? (
             <div className="py-16 text-center bg-white rounded-2xl border border-stone-200">
-              <AlertCircle className="w-9 h-9 text-stone-400 mx-auto mb-2" />
+              <AlertCircle className="w-9 h-9 text-stone-500 mx-auto mb-2" />
               <p className="text-stone-800 font-bold text-sm">未找到高相關度的課程</p>
               <p className="text-xs text-stone-500 mt-1">請嘗試更換描述方式或點擊上方的靈感推薦</p>
             </div>
@@ -754,7 +754,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                 <span>
                   依語意關聯度排序，共找出 <span className="font-bold text-purple-700">{fuzzyResults.length}</span> 門相關課程
                 </span>
-                <span className="font-mono text-stone-400">向量庫: ChromaDB (BAAI/bge-small-zh-v1.5)</span>
+                <span className="font-mono text-stone-500">向量庫: ChromaDB (BAAI/bge-small-zh-v1.5)</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -804,7 +804,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                           {c.course_name_zh}
                         </h3>
                         {c.course_name_en && (
-                          <p className="text-xs text-stone-400 italic line-clamp-1 mb-2">
+                          <p className="text-xs text-stone-500 italic line-clamp-1 mb-2">
                             {c.course_name_en}
                           </p>
                         )}
@@ -826,7 +826,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                                 <span>{s.time}</span>
                                 {s.location && (
                                   <>
-                                    <span className="text-stone-300">|</span>
+                                    <span className="text-stone-500">|</span>
                                     <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
                                     <span className="truncate">{s.location}</span>
                                   </>
@@ -883,7 +883,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                   onChange={(e) => setRecommendQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRecommend()}
                   placeholder="輸入學習目標，例如：半導體晶片製造與量子物理、UI/UX 設計與人機介面、金融大數據與風險管理..."
-                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:border-emerald-500 text-xs"
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-500 focus:outline-none focus:border-emerald-500 text-xs"
                 />
               </div>
               <button
@@ -982,7 +982,7 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
 
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <span className="text-xs text-stone-400 block">最高相符度</span>
+                            <span className="text-xs text-stone-500 block">最高相符度</span>
                             <span className="text-base font-mono font-bold text-emerald-600">
                               {dept.match_score}%
                             </span>
@@ -1099,9 +1099,9 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                         </div>
 
                         {cList.length === 0 ? (
-                          <div className="py-8 text-center text-stone-400 text-xs">
+                          <div className="py-8 text-center text-stone-500 text-xs">
                             <p>本學期無指定必修</p>
-                            <span className="text-xs text-stone-400 mt-1 block">（主要為彈性專業選修與畢業學分）</span>
+                            <span className="text-xs text-stone-500 mt-1 block">（主要為彈性專業選修與畢業學分）</span>
                           </div>
                         ) : (
                           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -1131,8 +1131,8 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
                                     </div>
                                   </div>
                                   {c.raw_schedule && c.raw_schedule !== "安排中" && (
-                                    <div className="text-xs text-stone-400 font-mono mt-1 flex items-center gap-1 truncate">
-                                      <Clock className="w-2.5 h-2.5 shrink-0 text-stone-400" />
+                                    <div className="text-xs text-stone-500 font-mono mt-1 flex items-center gap-1 truncate">
+                                      <Clock className="w-2.5 h-2.5 shrink-0 text-stone-500" />
                                       <span className="truncate">{c.raw_schedule}</span>
                                     </div>
                                   )}
@@ -1304,25 +1304,25 @@ export function CourseExplorerView({ isEmbedded = false }: CourseExplorerViewPro
               {/* 基本資訊格網 */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
                 <div>
-                  <div className="text-stone-400 mb-0.5 text-xs">開課系所</div>
+                  <div className="text-stone-500 mb-0.5 text-xs">開課系所</div>
                   <div className="font-bold text-stone-900 truncate">{selectedCourse.department}</div>
                 </div>
                 <div>
-                  <div className="text-stone-400 mb-0.5 text-xs">修別</div>
+                  <div className="text-stone-500 mb-0.5 text-xs">修別</div>
                   <div className={`font-bold ${selectedCourse.required_or_elective === "必修" ? "text-amber-800" : "text-stone-800"}`}>
                     {selectedCourse.required_or_elective || "未定"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-stone-400 mb-0.5 text-xs">授課教師</div>
+                  <div className="text-stone-500 mb-0.5 text-xs">授課教師</div>
                   <div className="font-bold text-stone-900">{selectedCourse.teacher || "未定"}</div>
                 </div>
                 <div>
-                  <div className="text-stone-400 mb-0.5 text-xs">學分數</div>
+                  <div className="text-stone-500 mb-0.5 text-xs">學分數</div>
                   <div className="font-bold text-emerald-600">{selectedCourse.credits} 學分</div>
                 </div>
                 <div>
-                  <div className="text-stone-400 mb-0.5 text-xs">領域標籤</div>
+                  <div className="text-stone-500 mb-0.5 text-xs">領域標籤</div>
                   <div className="font-bold text-violet-700 truncate">{selectedCourse.fields || "專業必選修"}</div>
                 </div>
               </div>

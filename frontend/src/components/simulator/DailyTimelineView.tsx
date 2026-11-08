@@ -112,11 +112,11 @@ export function DailyTimelineView({
 
           let cardBorder = "border-stone-200 bg-stone-50/60";
           if (isSkipped) {
-            cardBorder = "border-dashed border-rose-300 bg-rose-50/30 opacity-75";
+            cardBorder = "border-dashed border-rose-300 bg-rose-50/30";
           } else if (isCurrent) {
             cardBorder = "ring-2 ring-violet-500 bg-white shadow-md border-violet-300 scale-[1.01]";
           } else if (isPast) {
-            cardBorder = "border-stone-200 bg-stone-50/40 opacity-70";
+            cardBorder = "border-stone-200 bg-stone-50/40";
           }
 
           return (
@@ -150,7 +150,7 @@ export function DailyTimelineView({
                       進行中
                     </span>
                   ) : isPast ? (
-                    <span className="text-stone-400" title="已完成">
+                    <span className="text-stone-500" title="已完成">
                       <CheckCircle2 className="w-4 h-4" />
                     </span>
                   ) : null}
@@ -167,7 +167,7 @@ export function DailyTimelineView({
               {/* Skipped Reason Badge */}
               {isSkipped && slot.skip_reason && (
                 <div className="mb-2 px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 flex items-center gap-1.5 text-xs text-rose-700">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                   <span className="font-medium">{slot.skip_reason}</span>
                 </div>
               )}

@@ -33,7 +33,7 @@ export function StatsBar({ stats }: { stats: Stats }) {
                 <span className="text-xs font-medium text-stone-500">{item.label}</span>
                 <span className="font-mono text-sm font-bold text-stone-900">
                   {item.value}
-                  <span className="ml-0.5 text-[10px] font-normal text-stone-400">{item.unit}</span>
+                  <span className="ml-0.5 text-xs font-normal text-stone-500">{item.unit}</span>
                 </span>
               </div>
               <div

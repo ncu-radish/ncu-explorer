@@ -619,7 +619,7 @@ export function VectorUniverseViewer() {
           {/* 懸停 HUD 資訊卡 (Hovered Tooltip) */}
           {hoveredCourse && !pinnedCourse && (
             <div className="absolute top-4 left-4 z-20 bg-slate-900/90 border border-violet-500/40 backdrop-blur-md p-3.5 rounded-xl max-w-sm pointer-events-none shadow-xl text-xs space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-violet-400 font-mono mb-0.5">
+              <div className="flex items-center justify-between text-xs text-violet-400 font-mono mb-0.5">
                 <span>{hoveredCourse.semester === "1151" ? "1151 上學期" : "1142 下學期"}</span>
                 <span>流水號: {hoveredCourse.serial_no}</span>
               </div>
@@ -630,16 +630,16 @@ export function VectorUniverseViewer() {
                 {hoveredCourse.dept} | 教師：{hoveredCourse.teacher || "未定"} | {hoveredCourse.credits} 學分
               </div>
               {hoveredCourse.preview && (
-                <div className="text-[11px] text-slate-400 line-clamp-2 mt-1 italic">
+                <div className="text-xs text-slate-400 line-clamp-2 mt-1 italic">
                   {hoveredCourse.preview}
                 </div>
               )}
-              <div className="text-[10px] text-violet-500 pt-1">點擊可釘選詳情</div>
+              <div className="text-xs text-violet-300 pt-1">點擊可釘選詳情</div>
             </div>
           )}
 
           {/* 畫布左下角指標說明 */}
-          <div className="absolute bottom-4 left-4 z-10 bg-slate-900/70 border border-slate-800/80 backdrop-blur-md px-3 py-2 rounded-xl text-[11px] text-slate-400 flex items-center space-x-3">
+          <div className="absolute bottom-4 left-4 z-10 bg-slate-900/70 border border-slate-800/80 backdrop-blur-md px-3 py-2 rounded-xl text-xs text-slate-400 flex items-center space-x-3">
             <span className="flex items-center space-x-1">
               <span className="w-2 h-2 rounded-full bg-violet-400"></span>
               <span>1151 上學期 (2,251門)</span>
@@ -667,7 +667,7 @@ export function VectorUniverseViewer() {
                   <Target className="w-3.5 h-3.5" />
                   <span>3D 鄰近雷射連線</span>
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   [{projectResult.coord[0]}, {projectResult.coord[1]}, {projectResult.coord[2]}]
                 </span>
               </div>
@@ -689,7 +689,7 @@ export function VectorUniverseViewer() {
                       <span className="font-bold text-white truncate max-w-[120px]">{nc.name}</span>
                       <span className="font-mono text-amber-400 font-bold">{nc.similarity}%</span>
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate">
+                    <div className="text-xs text-slate-400 truncate">
                       {nc.dept} | {nc.teacher || "教師未定"}
                     </div>
                   </div>
@@ -702,7 +702,7 @@ export function VectorUniverseViewer() {
                 <Info className="w-3.5 h-3.5 text-violet-400" />
                 <span>3D 向量宇宙操作指南</span>
               </div>
-              <ul className="space-y-1 text-[11px] text-slate-400 leading-relaxed list-disc list-inside">
+              <ul className="space-y-1 text-xs text-slate-400 leading-relaxed list-disc list-inside">
                 <li>滑鼠左鍵拖曳：360° 自由旋轉視角</li>
                 <li>滑鼠右鍵拖曳：平移視角中心</li>
                 <li>滾輪滑動：縮放拉近拉遠</li>
@@ -723,7 +723,7 @@ export function VectorUniverseViewer() {
                 <X className="w-3.5 h-3.5" />
               </button>
 
-              <div className="text-[11px] text-violet-400 font-mono">
+              <div className="text-xs text-violet-400 font-mono">
                 {pinnedCourse.semester === "1151" ? "1151 上學期" : "1142 下學期"} | 流水號: {pinnedCourse.serial_no}
               </div>
               <h4 className="text-sm font-bold text-white">{pinnedCourse.name}</h4>
@@ -731,7 +731,7 @@ export function VectorUniverseViewer() {
                 {pinnedCourse.dept} | {pinnedCourse.teacher || "教師未定"} | {pinnedCourse.credits} 學分
               </div>
               {pinnedCourse.preview && (
-                <p className="text-[11px] text-slate-400 leading-relaxed max-h-32 overflow-y-auto bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                <p className="text-xs text-slate-400 leading-relaxed max-h-32 overflow-y-auto bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                   {pinnedCourse.preview}
                 </p>
               )}

@@ -98,7 +98,7 @@ export default function FoodPage() {
                     {item.tags[0] || "飲食"}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-stone-500">
-                    <MapPin className="h-3.5 w-3.5 text-stone-400" /> {item.location_name || "校園周邊"}
+                    <MapPin className="h-3.5 w-3.5 text-stone-500" /> {item.location_name || "校園周邊"}
                   </span>
                 </div>
                 <h2 className="mb-2 text-base font-bold text-stone-900 transition-colors group-hover:text-violet-700">

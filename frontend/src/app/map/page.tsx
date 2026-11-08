@@ -198,18 +198,18 @@ function MapContent() {
 
           {/* Search Bar */}
           <div className="relative mt-3">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜尋代號 (如 E6)、館名、系所、別名..."
-              className="w-full pl-9 pr-8 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all shadow-2xs"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition-all shadow-2xs"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-md hover:bg-stone-200 transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700 p-0.5 rounded-md hover:bg-stone-200 transition-colors"
                 title="清除搜尋"
               >
                 <X className="w-3.5 h-3.5" />
@@ -268,7 +268,7 @@ function MapContent() {
               </div>
               <button
                 onClick={() => selectBuilding(null)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-md hover:bg-stone-200/50 transition-colors"
+                className="text-stone-500 hover:text-stone-700 p-1 rounded-md hover:bg-stone-200/50 transition-colors"
                 title="關閉詳細資訊"
               >
                 <X className="w-4 h-4" />
@@ -321,7 +321,7 @@ function MapContent() {
                 <RotateCcw className="w-3.5 h-3.5" />
                 重新聚焦視角
               </button>
-              <span className="text-stone-300">|</span>
+              <span className="text-stone-500">|</span>
               <span className="text-xs text-stone-500 font-mono">
                 ID: {selectedBuildingDetail.id}
               </span>
@@ -341,7 +341,7 @@ function MapContent() {
             </div>
           ) : buildings.length === 0 ? (
             <div className="py-16 text-center text-stone-500">
-              <Building2 className="w-8 h-8 mx-auto mb-2 text-stone-400" />
+              <Building2 className="w-8 h-8 mx-auto mb-2 text-stone-500" />
               <p className="text-sm font-medium text-stone-700">找不到符合條件的建築物</p>
               <p className="text-xs text-stone-500 mt-1">
                 請嘗試搜尋代號 (如 E6)、系所或別名 (如工五)
@@ -415,7 +415,7 @@ function MapContent() {
 
                     <ChevronRight
                       className={`w-4 h-4 mt-2 shrink-0 transition-transform ${
-                        isSelected ? "text-violet-600 translate-x-0.5" : "text-stone-400"
+                        isSelected ? "text-violet-600 translate-x-0.5" : "text-stone-500"
                       }`}
                     />
                   </div>

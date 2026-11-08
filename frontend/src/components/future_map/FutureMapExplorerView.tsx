@@ -678,14 +678,14 @@ export function FutureMapExplorerView() {
 
         <div className="flex flex-col sm:flex-row gap-2">
           <label className="flex flex-1 items-center gap-2.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-200">
-            <Sparkles className="w-4 h-4 text-violet-500 shrink-0" />
+            <Sparkles className="w-4 h-4 text-violet-600 shrink-0" />
             <input
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
               placeholder="輸入你的夢想（例：想讀資工＋學法文、機械＋電機…）"
-              className="w-full bg-transparent text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-stone-900 placeholder-stone-500 focus:outline-none"
             />
           </label>
           <button
@@ -763,11 +763,11 @@ export function FutureMapExplorerView() {
                 >
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
                         Option {opt.n}
                       </span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                           active ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-600"
                         }`}
                       >
@@ -781,7 +781,7 @@ export function FutureMapExplorerView() {
                   </div>
                   <span
                     className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${
-                      active ? "text-violet-700" : "text-stone-400"
+                      active ? "text-violet-700" : "text-stone-500"
                     }`}
                   >
                     {active ? (
@@ -805,7 +805,7 @@ export function FutureMapExplorerView() {
 
       {plans && !selectedTier && (
         <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-8 text-center">
-          <MousePointerClick className="mx-auto w-6 h-6 text-violet-500" />
+          <MousePointerClick className="mx-auto w-6 h-6 text-violet-600" />
           <h3 className="mt-2 text-base font-bold text-stone-900">請先選擇一條核心學制主線</h3>
           <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed text-stone-500">
             選定後會顯示方案概覽、課程候選名單與四年課表，並可進一步加入出國交換加值方案。
@@ -871,7 +871,7 @@ export function FutureMapExplorerView() {
                   <button
                     type="button"
                     onClick={() => setCustomMotivationOverride(true)}
-                    className="shrink-0 cursor-pointer rounded-full border border-violet-200 bg-white px-3 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-100"
+                    className="shrink-0 cursor-pointer rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
                   >
                     改選其他動機
                   </button>
@@ -897,11 +897,11 @@ export function FutureMapExplorerView() {
                               : "border-stone-200 bg-white hover:border-violet-300"
                           }`}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
                             {m.tag}
                           </span>
                           <span className="text-sm font-bold text-stone-900">{m.title}</span>
-                          <span className="text-[11px] leading-snug text-stone-500">{m.desc}</span>
+                          <span className="text-xs leading-snug text-stone-500">{m.desc}</span>
                         </button>
                       );
                     })}
@@ -956,7 +956,7 @@ export function FutureMapExplorerView() {
                     依國際處甄選簡章，精選 {filteredSchools.length} 所目標姊妹校
                   </span>
                   {selectedExchangeSchool && (
-                    <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-semibold text-violet-800">
+                    <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
                       已選定：{selectedExchangeSchool.name_zh}
                     </span>
                   )}
@@ -988,20 +988,20 @@ export function FutureMapExplorerView() {
                             <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
                               <span>{school.flag}</span>
                               <span>{school.country}</span>
-                              <span className="text-[10px] font-normal text-stone-400">({school.region})</span>
+                              <span className="text-xs font-normal text-stone-500">({school.region})</span>
                             </span>
                             {school.is_restricted_program && (
-                              <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
                                 限定學院／專案
                               </span>
                             )}
                           </div>
                           <h5 className="text-sm font-bold leading-snug text-stone-900">{school.name_zh}</h5>
                           {school.name_en && (
-                            <p className="text-[11px] leading-tight text-stone-500">{school.name_en}</p>
+                            <p className="text-xs leading-tight text-stone-500">{school.name_en}</p>
                           )}
-                          <p className="mt-2 text-[11px] leading-relaxed text-stone-600">{reason}</p>
-                          <div className="mt-2 rounded-lg bg-stone-50 p-2.5 text-[11px] leading-relaxed text-stone-600">
+                          <p className="mt-2 text-xs leading-relaxed text-stone-600">{reason}</p>
+                          <div className="mt-2 rounded-lg bg-stone-50 p-2.5 text-xs leading-relaxed text-stone-600">
                             <span className="mb-0.5 block font-semibold text-stone-800">國際處甄選與申請規定</span>
                             {school.official_note}
                           </div>
@@ -1145,11 +1145,11 @@ export function FutureMapExplorerView() {
                 >
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-1">
-                      <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
+                      <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">
                         {cand.stage}
                       </span>
                       <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                           cand.type === "交換"
                             ? "bg-purple-50 text-purple-700"
                             : cand.type === "檢定"
@@ -1168,7 +1168,7 @@ export function FutureMapExplorerView() {
                     <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-stone-500">{cand.description}</p>
                   </div>
                   <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2 text-xs">
-                    <span className="text-[11px] text-stone-400 group-hover:text-violet-600">{cand.tag} · 課綱與規章 ↗</span>
+                    <span className="text-xs text-stone-500 group-hover:text-violet-600">{cand.tag} · 課綱與規章 ↗</span>
                     <span className="font-bold text-violet-700">{cand.credits} 學分</span>
                   </div>
                 </button>
@@ -1196,7 +1196,7 @@ export function FutureMapExplorerView() {
                 <div>
                   <div className="mb-3 flex items-center justify-between border-b border-stone-100 pb-3">
                     <div>
-                      <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-stone-500">
                         Semester {sem.semester_index}
                       </span>
                       <h4 className="text-base font-bold text-stone-900">{sem.semester_label}</h4>
@@ -1211,7 +1211,7 @@ export function FutureMapExplorerView() {
                   </p>
 
                   <div className="mb-4 flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold text-stone-400">當學期排入科目</span>
+                    <span className="text-xs font-semibold text-stone-500">當學期排入科目</span>
                     {sem.courses.map((c, cIdx) => {
                       const isExchange = c.tag.includes("交換");
                       const isDouble = c.tag.includes("雙主修");
@@ -1244,7 +1244,7 @@ export function FutureMapExplorerView() {
                           </span>
                           <span className="flex items-center gap-1.5">
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
                                 isExchange
                                   ? "bg-purple-100 text-purple-800"
                                   : isDouble || isMinor
@@ -1254,8 +1254,8 @@ export function FutureMapExplorerView() {
                             >
                               {c.tag}
                             </span>
-                            <span className="flex-1 truncate text-[11px] text-stone-500">{c.note}</span>
-                            <span className="shrink-0 text-[10px] text-stone-400 group-hover:text-violet-700">課綱 ↗</span>
+                            <span className="flex-1 truncate text-xs text-stone-500">{c.note}</span>
+                            <span className="shrink-0 text-xs text-stone-500 group-hover:text-violet-700">課綱 ↗</span>
                           </span>
                         </button>
                       );
@@ -1264,13 +1264,13 @@ export function FutureMapExplorerView() {
                 </div>
 
                 <div className="border-t border-stone-100 pt-3">
-                  <span className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-stone-700">
+                  <span className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-stone-700">
                     <Clock className="w-3 h-3 text-violet-600" />
                     本學期重要時程
                   </span>
                   <ul className="flex flex-col gap-1">
                     {sem.key_deadlines.map((d, dIdx) => (
-                      <li key={dIdx} className="flex items-start gap-1.5 text-[11px] leading-tight text-stone-600">
+                      <li key={dIdx} className="flex items-start gap-1.5 text-xs leading-tight text-stone-600">
                         <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
                         <span>{d}</span>
                       </li>
@@ -1300,7 +1300,7 @@ export function FutureMapExplorerView() {
               type="button"
               aria-label="關閉"
               onClick={() => setModalCourse(null)}
-              className="absolute right-4 top-4 cursor-pointer rounded-full p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+              className="absolute right-4 top-4 cursor-pointer rounded-full p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1346,7 +1346,7 @@ export function FutureMapExplorerView() {
             )}
 
             {modalCourse.isLoading && (
-              <div className="flex flex-col items-center justify-center gap-2 py-8 text-stone-400">
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-stone-500">
                 <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
                 <span className="text-xs">連線中央大學課程資料庫，檢索即時課綱、教室與授課師資…</span>
               </div>
@@ -1356,19 +1356,19 @@ export function FutureMapExplorerView() {
               <div className="flex flex-col gap-4 text-xs text-stone-700">
                 <div className="grid grid-cols-1 gap-2.5 rounded-xl bg-stone-50 p-3.5 sm:grid-cols-2">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-stone-400" />
+                    <User className="w-4 h-4 text-stone-500" />
                     <span>
                       授課教師：<strong className="text-stone-900">{modalCourse.liveData?.teacher || "中央大學專任師資"}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-stone-400" />
+                    <Building2 className="w-4 h-4 text-stone-500" />
                     <span>
                       開課學系：<strong className="text-stone-900">{modalCourse.liveData?.department || "中央大學"}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 sm:col-span-2">
-                    <MapPin className="w-4 h-4 shrink-0 text-stone-400" />
+                    <MapPin className="w-4 h-4 shrink-0 text-stone-500" />
                     <span>
                       上課時間與教室：
                       <strong className="ml-1 text-stone-900">
@@ -1404,7 +1404,7 @@ export function FutureMapExplorerView() {
                     modalCourse.liveData.distribution_conditions.length > 0 ? (
                       modalCourse.liveData.distribution_conditions.map((dist, dIdx) => (
                         <div key={dIdx} className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
-                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
                             順位 {dist.priority}
                           </span>
                           <span className="leading-relaxed">{dist.condition}</span>
@@ -1413,7 +1413,7 @@ export function FutureMapExplorerView() {
                     ) : (
                       <>
                         <div className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
-                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
                             分發保障
                           </span>
                           <span className="leading-relaxed">
@@ -1421,7 +1421,7 @@ export function FutureMapExplorerView() {
                           </span>
                         </div>
                         <div className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
-                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
                             先修建議
                           </span>
                           <span className="leading-relaxed">
@@ -1463,7 +1463,7 @@ export function FutureMapExplorerView() {
                       </div>
                     </div>
                     <div className="flex items-start gap-2.5 rounded-lg border border-stone-200 bg-white p-2.5">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                       <div>
                         <span className="mb-0.5 block font-bold text-stone-900">重疊科目免修與補修原則</span>
                         <span className="leading-relaxed text-stone-600">
