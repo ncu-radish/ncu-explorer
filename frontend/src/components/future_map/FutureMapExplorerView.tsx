@@ -1527,38 +1527,89 @@ export function FutureMapExplorerView() {
                   </div>
                 </div>
 
-                {/* 指定教材 */}
-                {modalCourse.liveData?.textbooks && (
-                  <div>
-                    <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      指定教材與經典參考書目
-                    </h4>
-                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 leading-relaxed text-stone-600">
-                      {modalCourse.liveData.textbooks}
-                    </div>
-                  </div>
-                )}
-
-                {/* 核心能力指標 */}
-                {modalCourse.liveData?.core_skills && modalCourse.liveData.core_skills.length > 0 && (
-                  <div>
-                    <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      培育核心能力指標 (Core Competencies)
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {modalCourse.liveData.core_skills.slice(0, 4).map((sk, skIdx) => (
-                        <div key={skIdx} className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 flex items-center justify-between">
-                          <span className="font-medium text-stone-800 truncate pr-2">{sk.ability}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-200 text-amber-900 shrink-0">
-                            強度 {sk.strength}
+                {/* 選項一：選課資格限制與先修科目鏈 */}
+                <div>
+                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                    <ListFilter className="w-4 h-4 text-sky-600" />
+                    選課資格限制與先修科目鏈
+                  </h4>
+                  <div className="p-3.5 rounded-2xl bg-sky-50/50 border border-sky-200/80 flex flex-col gap-2">
+                    {modalCourse.liveData?.distribution_conditions && modalCourse.liveData.distribution_conditions.length > 0 ? (
+                      <div className="flex flex-col gap-1.5">
+                        {modalCourse.liveData.distribution_conditions.map((dist, dIdx) => (
+                          <div key={dIdx} className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-sky-100 text-xs">
+                            <span className="px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 text-[10px] shrink-0 mt-0.5">
+                              順位 {dist.priority}
+                            </span>
+                            <span className="text-stone-700 font-medium leading-relaxed">{dist.condition}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2 text-xs text-stone-600">
+                        <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-sky-100">
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 text-[10px] shrink-0 mt-0.5">
+                            分發保障
+                          </span>
+                          <span className="text-stone-700 leading-relaxed">
+                            本系生享有第 1 順位優先選課保障；獲教務處核定之雙主修／輔系生享有第 2 順位保障名額。
                           </span>
                         </div>
-                      ))}
+                        <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-sky-100">
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 text-[10px] shrink-0 mt-0.5">
+                            先修建議
+                          </span>
+                          <span className="text-stone-700 leading-relaxed">
+                            修習本課程前，建議依序修畢各學期對應之基礎科目鏈，以利銜接中高階專業論述與專題實作。
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 選項二：跨域學分採計與畢業抵免規則 */}
+                <div>
+                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                    <GraduationCap className="w-4 h-4 text-emerald-600" />
+                    跨域學分採計與畢業抵免規則
+                  </h4>
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 flex flex-col gap-2.5 text-xs text-stone-700">
+                    <div className="flex items-start gap-2.5 bg-white/90 p-2.5 rounded-xl border border-emerald-100">
+                      <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-stone-900 block mb-0.5">
+                          {modalCourse.tag?.includes("輔系")
+                            ? "【輔系指定學分認列】"
+                            : modalCourse.tag?.includes("雙主修")
+                            ? "【雙主修學位學分認列】"
+                            : modalCourse.tag?.includes("交換")
+                            ? "【海外交換全額抵免】"
+                            : "【主修學系核心學分認列】"}
+                        </span>
+                        <span className="text-stone-600 leading-relaxed">
+                          {modalCourse.tag?.includes("輔系")
+                            ? "本課程修習成績達 60 分（等級制 C- 以上），全額計入該學系輔系規章之最低學分要求。"
+                            : modalCourse.tag?.includes("雙主修")
+                            ? "本課程為第二專長雙主修核心必備學分，完整修畢全數核發國立中央大學雙學士學位證明書。"
+                            : modalCourse.tag?.includes("交換")
+                            ? "交換期間於海外姊妹校所修之專業課程，返校填具學分抵免審查表，經系主任核可全數抵免選修學分。"
+                            : "本課程計入主修學系 128 學分畢業最低門檻，為本系授予學士學位之骨幹必修科目。"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 bg-white/90 p-2.5 rounded-xl border border-emerald-100">
+                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-stone-900 block mb-0.5">重疊科目免修與補修防呆原則</span>
+                        <span className="text-stone-600 leading-relaxed">
+                          依中大教務處雙主修／輔系辦法：若主修與輔系有相同必修科目，不得重複採計。學生得以本系科目抵免，但須另補修該系指定之專業選修，以補足輔系／雙主修規章規定之總學分數。
+                        </span>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
 
