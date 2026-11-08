@@ -72,6 +72,7 @@ interface CandidateCourse {
   description: string;
   tag: string;
   ruleNote?: string;
+  track?: "primary" | "secondary" | "exchange";
 }
 
 interface TierRoadmap {
@@ -138,6 +139,7 @@ export function FutureMapExplorerView() {
     } | null;
   }
   const [modalCourse, setModalCourse] = useState<CourseModalState | null>(null);
+  const [candidateFilter, setCandidateFilter] = useState<"all" | "primary" | "secondary">("all");
 
   const handleOpenCourseModal = async (course: {
     name: string;
@@ -311,7 +313,7 @@ export function FutureMapExplorerView() {
     return { pDom, sDom };
   };
 
-  // 根據使用者輸入之需求與交換加值設定，動態生成 3 條徹底解耦之學制路線
+  // 根據使用者輸入之需求與交換加值設定，動態生成 3 條徹底解耦且完整呈現主修+輔修之學制路線
   const generateRoadmapPlans = (q: string, withExchange: boolean = isExchangeEnabled) => {
     const { pDom, sDom } = parseDomainsFromQuery(q);
 
@@ -332,23 +334,81 @@ export function FutureMapExplorerView() {
       for (let i = 0; i < 8; i++) {
         const grade = Math.floor(i / 2) + 1;
         const term = (i % 2) + 1;
-        const majorItem = defaultSchedule[i] || defaultSchedule[defaultSchedule.length - 1];
+        const courses: CourseItem[] = [];
 
-        // 挑選主修第二門真實課程（來自該系之核心課程）
-        const secondMajorCourse = primaryElectives[(i + 1) % primaryElectives.length];
+        // 1. 本系核心必修（確保本系大一至大四骨幹必修 100% 完整保留）
+        const majorCore = defaultSchedule[i] || defaultSchedule[defaultSchedule.length - 1];
+        courses.push({
+          course_name: majorCore.name,
+          credits: majorCore.cred,
+          category: "必修",
+          tag: `${pTag}核心`,
+          note: majorCore.note,
+          ruleNote: `★ 教務處規章：${pDom}本系畢業 128 學分核心必修科目。`
+        });
 
-        const courses: CourseItem[] = [
-          { course_name: majorItem.name, credits: majorItem.cred, category: "必修", tag: `${pTag}核心`, note: majorItem.note },
-          {
-            course_name: secondMajorCourse.name,
-            credits: secondMajorCourse.credits,
-            category: i < 4 ? "必修" : "選修",
-            tag: `${pTag}專業`,
-            note: secondMajorCourse.description,
-            ruleNote: secondMajorCourse.ruleNote
+        // 2. 本系數理／工程基礎必修
+        if (i === 0) {
+          courses.push({ course_name: "MA1001 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "極限連續與單變數微積分核心定理" });
+          courses.push({ course_name: "PH1003 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "古典力學與熱學精準實驗操作" });
+        } else if (i === 1) {
+          courses.push({ course_name: "MA1002 微積分", credits: 4, category: "必修", tag: `${pTag}數理`, note: "多變數微積分與高維向量場分析" });
+          courses.push({ course_name: "PH1004 普通物理實驗", credits: 1, category: "必修", tag: `${pTag}實習`, note: "電磁光學示波器與干涉儀實作" });
+        } else if (i === 2) {
+          courses.push({ course_name: "CO1007 工程數學-線性代數", credits: 3, category: "必修", tag: `${pTag}工數`, note: "抽象向量空間與矩陣對角化分解" });
+          const sec = primaryElectives[1 % primaryElectives.length];
+          if (sec && sec.name !== majorCore.name) {
+            courses.push({ course_name: sec.name, credits: sec.credits, category: "必修", tag: `${pTag}專業`, note: sec.description, ruleNote: sec.ruleNote });
           }
-        ];
+        } else if (i === 3) {
+          const sec = primaryElectives[2 % primaryElectives.length];
+          if (sec && sec.name !== majorCore.name) {
+            courses.push({ course_name: sec.name, credits: sec.credits, category: "必修", tag: `${pTag}專業`, note: sec.description, ruleNote: sec.ruleNote });
+          }
+        } else if (i === 4) {
+          const sec = primaryElectives[3 % primaryElectives.length];
+          if (sec && sec.name !== majorCore.name) {
+            courses.push({ course_name: sec.name, credits: sec.credits, category: "選修", tag: `${pTag}高階`, note: sec.description, ruleNote: sec.ruleNote });
+          }
+        } else if (i === 5) {
+          const sec = primaryElectives[4 % primaryElectives.length];
+          if (sec && sec.name !== majorCore.name) {
+            courses.push({ course_name: sec.name, credits: sec.credits, category: "選修", tag: `${pTag}高階`, note: sec.description, ruleNote: sec.ruleNote });
+          }
+        } else if (i === 6) {
+          // 大四上：若開啟交換，加入交換模組，且絕不刪除畢業專題
+          if (withExchange) {
+            const schoolTitle = selectedExchangeSchool
+              ? `海外交換：${selectedExchangeSchool.name_zh} (${selectedExchangeSchool.country}) 研習模組`
+              : "海外姐妹校留學交換研習模組 (全英語授課抵免)";
+            const schoolNote = selectedExchangeSchool
+              ? `赴 ${selectedExchangeSchool.name_zh} 交換研習一學期。返校依規章全額抵免主修選修。`
+              : "赴歐美頂尖姊妹校交換研習一學期，修得學分可全數返校抵免相關選修學分";
+            courses.push({
+              course_name: schoolTitle,
+              credits: 12,
+              category: "交換",
+              tag: "海外交換加值",
+              note: schoolNote,
+              ruleNote: "★ 國際處 OIA：出國交換期間所修學分返校依系所審查全額抵免。"
+            });
+          } else {
+            const sec = primaryElectives[5 % primaryElectives.length];
+            if (sec && sec.name !== majorCore.name) {
+              courses.push({ course_name: sec.name, credits: sec.credits, category: "選修", tag: `${pTag}專案`, note: sec.description, ruleNote: sec.ruleNote });
+            }
+          }
+        } else if (i === 7) {
+          courses.push({
+            course_name: `${pTag}跨領域畢業成果審查`,
+            credits: 2,
+            category: "必修",
+            tag: `${pTag}畢業總整`,
+            note: "本系四年完整修業學分預審與成果驗收"
+          });
+        }
 
+        // 3. 第二專長 / 輔系 / 雙主修科目注入
         if (tier === "basic") {
           if (i < candidates.basic.length) {
             const cand = candidates.basic[i];
@@ -362,21 +422,28 @@ export function FutureMapExplorerView() {
             });
           }
         } else if (tier === "intermediate") {
-          if (i < candidates.intermediate.length) {
-            const cand = candidates.intermediate[i];
-            courses.push({
-              course_name: cand.name,
-              credits: cand.credits,
-              category: cand.type === "必修" ? "輔系必修" : "輔系選修",
-              tag: `${sTag}輔系`,
-              note: cand.description,
-              ruleNote: cand.ruleNote || `★ 官方規章：滿足${sDom}輔系${candidates.minorCredits}學分要求`
-            });
+          // 輔系：大一、大二、大三按部就班修畢全套 20~28 學分指定必修
+          const intList = candidates.intermediate;
+          if (i === 0 && intList.length > 0) {
+            courses.push({ course_name: intList[0].name, credits: intList[0].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[0].description, ruleNote: intList[0].ruleNote });
+            if (intList[1]) courses.push({ course_name: intList[1].name, credits: intList[1].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[1].description, ruleNote: intList[1].ruleNote });
+          } else if (i === 1 && intList.length > 2) {
+            courses.push({ course_name: intList[2].name, credits: intList[2].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[2].description, ruleNote: intList[2].ruleNote });
+            if (intList[3]) courses.push({ course_name: intList[3].name, credits: intList[3].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[3].description, ruleNote: intList[3].ruleNote });
+          } else if (i === 2 && intList.length > 4) {
+            courses.push({ course_name: intList[4].name, credits: intList[4].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[4].description, ruleNote: intList[4].ruleNote });
+          } else if (i === 3 && intList.length > 5) {
+            courses.push({ course_name: intList[5].name, credits: intList[5].credits, category: "輔系必修", tag: `${sTag}輔系`, note: intList[5].description, ruleNote: intList[5].ruleNote });
+          } else if (i === 4 && intList.length > 6) {
+            courses.push({ course_name: intList[6].name, credits: intList[6].credits, category: "輔系選修", tag: `${sTag}輔系`, note: intList[6].description, ruleNote: intList[6].ruleNote });
+          } else if (i === 5 && intList.length > 7) {
+            courses.push({ course_name: intList[7].name, credits: intList[7].credits, category: "輔系選修", tag: `${sTag}輔系`, note: intList[7].description, ruleNote: intList[7].ruleNote });
           }
         } else {
-          // 純學制雙主修路線 (不與交換綁定)
-          if (i < candidates.advanced.length) {
-            const cand = candidates.advanced[i];
+          // 雙主修：高強度完整修習
+          const advList = candidates.advanced;
+          if (i < advList.length) {
+            const cand = advList[i];
             courses.push({
               course_name: cand.name,
               credits: cand.credits,
@@ -386,24 +453,6 @@ export function FutureMapExplorerView() {
               ruleNote: cand.ruleNote || `★ 官方規章：滿足${sDom}雙主修${candidates.doubleCredits}學分要求`
             });
           }
-        }
-
-        // 第二階段加值：若開啟出國交換，在任何主線的大四上 (i === 6) 動態疊加出國交換模組！
-        if (withExchange && i === 6) {
-          const schoolTitle = selectedExchangeSchool
-            ? `海外交換：${selectedExchangeSchool.name_zh} (${selectedExchangeSchool.country}) 研習模組`
-            : "海外姐妹校留學交換研習模組 (全英語授課抵免)";
-          const schoolNote = selectedExchangeSchool
-            ? `赴 ${selectedExchangeSchool.name_zh} 交換研習一學期。${selectedExchangeSchool.official_note}`
-            : "赴歐美頂尖姊妹校交換研習一學期，修得學分可全數返校抵免相關選修學分";
-          courses.push({
-            course_name: schoolTitle,
-            credits: 12,
-            category: "交換",
-            tag: "海外交換加值",
-            note: schoolNote,
-            ruleNote: "★ 國際處 OIA：出國交換期間所修學分返校依系所審查全額抵免。"
-          });
         }
 
         let deadlines = ["確認本學期學分符應教務處畢業預審進度"];
@@ -429,7 +478,7 @@ export function FutureMapExplorerView() {
 
         const semHighlight = (withExchange && i === 6)
           ? "大四上遠赴海外名校留學交換！沉浸國際學術環境與建立跨國人脈網絡。"
-          : `精準推進 ${pTag} 與 ${sTag} 官方專業學習軌跡`;
+          : `穩健修習 ${pTag} 核心專業與 ${sTag} 跨域學程`;
 
         sems.push({
           semester_index: i + 1,
@@ -445,56 +494,88 @@ export function FutureMapExplorerView() {
       return sems;
     };
 
-    const candidatesWithExchange = (cList: CandidateCourse[]) => withExchange ? [
-      ...cList,
-      { name: "海外姐妹校名校交換研習模組", credits: 12, type: "交換" as const, stage: "大四上", description: "赴海外姐妹名校交換留學，學分回台全數抵免選修", tag: "海外交換加值", ruleNote: "★ 國際處規章：海外姊妹校全英語授課抵免。" }
-    ] : cList;
+    const buildCandidatePool = (trackCourses: CandidateCourse[]) => {
+      // 1. 本系主修核心必修代表科目 (取自 pCur)
+      const primaryItems: CandidateCourse[] = (pCur.intermediate || []).slice(0, 6).map((item) => ({
+        name: item.name,
+        credits: item.credits,
+        type: "必修" as const,
+        stage: item.stage,
+        description: `【${pDom}核心必修】${item.description}`,
+        tag: `${pTag}主修核心`,
+        ruleNote: item.ruleNote || `★ 教務處規章：滿足${pDom}本系畢業 128 學分核心必修科目。`,
+        track: "primary" as const
+      }));
+
+      // 2. 第二專長/輔系/雙主修指定規章科目
+      const secondaryItems: CandidateCourse[] = trackCourses.map((item) => ({
+        ...item,
+        tag: item.tag.includes("輔系") || item.tag.includes("雙主修") ? item.tag : `${sTag}${item.tag}`,
+        track: "secondary" as const
+      }));
+
+      // 3. 若有出國交換
+      const exchangeItems: CandidateCourse[] = withExchange ? [
+        {
+          name: selectedExchangeSchool ? `海外交換：${selectedExchangeSchool.name_zh}` : "海外姐妹校名校交換研習模組",
+          credits: 12,
+          type: "交換" as const,
+          stage: "大四上",
+          description: selectedExchangeSchool ? `赴 ${selectedExchangeSchool.country} 交換研習一學期。${selectedExchangeSchool.official_note}` : "赴海外姐妹名校交換留學，學分回台全數抵免選修",
+          tag: "海外交換加值",
+          ruleNote: "★ 國際處規章：海外姊妹校全英語授課抵免。",
+          track: "exchange" as const
+        }
+      ] : [];
+
+      return [...primaryItems, ...secondaryItems, ...exchangeItems];
+    };
 
     return {
       basic: {
         tier_id: "basic" as const,
-        tier_name: `基礎方案（主修${pTag} ＋ ${sTag}探索）`,
-        target_summary: `扎實修畢 ${pDom} 核心專業 128 學分，課餘無修業負擔修習 8~12 學分 ${sDom} 關鍵選修，維持頂尖 GPA。`,
+        tier_name: `基礎方案（主修${pTag} 128學分 ＋ ${sTag}探索 8~12學分）`,
+        target_summary: `扎實修畢 ${pDom} 完整核心專業 128 學分，課餘無修業負擔修習 8~12 學分 ${sDom} 關鍵選修，維持頂尖 GPA。`,
         total_credits_estimate: withExchange ? 148 : 136,
         weekly_intensity: withExchange ? "平穩充實（含一學期海外交換）" : "平穩充實（每學期約 16~19 學分）",
         semesters: buildSemesters("basic"),
         career_and_advantage: [
-          `紮實掌握中央${pTag}核心專業工程與底層技術`,
+          `紮實掌握中央${pTag}核心專業工程與底層技術（128 學分一門不少）`,
           `具備${sTag}跨領域溝通與實務基礎，履歷格外亮眼`,
           "課業負擔適中，有充分時間維持頂尖 GPA 銜接頂尖研究所推甄",
           ...(withExchange ? ["結合大四海外名校出國交換經歷，兼備國際移動力與全球視野"] : [])
         ],
-        candidate_courses: candidatesWithExchange(candidates.basic)
+        candidate_courses: buildCandidatePool(candidates.basic)
       },
       intermediate: {
         tier_id: "intermediate" as const,
-        tier_name: `中階方案（主修${pTag} ＋ ${sTag}輔系 ${candidates.minorCredits} 學分）`,
-        target_summary: `在 ${pDom} 專業基礎上，額外修畢 ${sDom} 官方「輔系」門檻所需的 ${candidates.minorCredits} 學分指定科目。${candidates.ruleSummary}`,
+        tier_name: `中階方案（主修${pTag} 128學分 ＋ ${sTag}輔系 ${candidates.minorCredits} 學分）`,
+        target_summary: `在 ${pDom} 完整 128 學分基礎上，額外修畢 ${sDom} 官方「輔系」門檻所需的 ${candidates.minorCredits} 學分指定科目。主修與輔系雙軌並進，${candidates.ruleSummary}`,
         total_credits_estimate: withExchange ? 148 + candidates.minorCredits : 128 + candidates.minorCredits,
-        weekly_intensity: withExchange ? "精實挑戰（含一學期海外交換）" : "精實挑戰（每學期約 19~22 學分）",
+        weekly_intensity: withExchange ? "精實挑戰（含一學期海外交換）" : "精實挑戰（每學期約 18~22 學分）",
         semesters: buildSemesters("intermediate"),
         career_and_advantage: [
           `畢業證書正式加註「${sDom}輔系」官方榮銜，跨域專長認證`,
-          `深入掌握${sTag}核心必修與先修鏈，具備實戰研發能力`,
+          `兼備${pTag}完整主修必修骨幹與${sTag}核心先修鏈，具備實戰研發能力`,
           "專業技術與跨領域素養兼備，國內外頂尖機構求才首選",
           ...(withExchange ? ["結合大四海外名校出國交換經歷，兼備國際移動力與全球視野"] : [])
         ],
-        candidate_courses: candidatesWithExchange(candidates.intermediate)
+        candidate_courses: buildCandidatePool(candidates.intermediate)
       },
       advanced: {
         tier_id: "advanced" as const,
-        tier_name: `高階方案（主修${pTag} ╳ ${sTag}雙主修 ${candidates.doubleCredits} 學分）`,
-        target_summary: `挑戰雙學士學位（跨修 ${sDom} ${candidates.doubleCredits} 學分核心與專案），取得中大「${pDom} ╳ ${sDom}」雙主修學位。`,
+        tier_name: `高階方案（主修${pTag} 128學分 ╳ ${sTag}雙主修 ${candidates.doubleCredits} 學分）`,
+        target_summary: `挑戰雙學士學位（本系 128 學分 ＋ 跨修 ${sDom} ${candidates.doubleCredits} 學分），取得中大「${pDom} ╳ ${sDom}」雙主修學位。兩系核心全數修畢。`,
         total_credits_estimate: withExchange ? 148 + candidates.doubleCredits : 128 + candidates.doubleCredits,
         weekly_intensity: withExchange ? "頂尖卓越（含一學期海外交換）" : "頂尖卓越（每學期約 22~25 學分，需強大自主規劃能力）",
         semesters: buildSemesters("advanced"),
         career_and_advantage: [
           `獲得中央大學「${pDom} ╳ ${sDom}」雙學士學位，全台稀缺雙專長頂尖人才`,
-          `兼具${pTag}硬核專業與${sTag}領域精深素養，具備跨領域溝通與專案領導能力`,
+          `${pTag}本系專業完全不妥協，同時具備${sTag}領域精深素養`,
           "直通國內外頂尖名校跨領域研究所推甄或跨國企業核心研發團隊",
           ...(withExchange ? ["結合大四海外名校出國交換經歷，履歷具備高度國際化競爭優勢"] : [])
         ],
-        candidate_courses: candidatesWithExchange(candidates.advanced)
+        candidate_courses: buildCandidatePool(candidates.advanced)
       }
     };
   };
@@ -1127,27 +1208,52 @@ export function FutureMapExplorerView() {
       {/* 點擊特定按鈕後：展開該路線該選的「課程候選名單 (Candidate Courses)」 */}
       {activePlan && activePlan.candidate_courses && (
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-amber-200 shadow-xs flex flex-col gap-4 animate-fadeIn">
-          <div className="flex items-center justify-between pb-3 border-b border-amber-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100">
             <div>
               <h3 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
                 <BookmarkCheck className="w-5 h-5 text-amber-600" />
-                該路線應選之「課程候選名單」
+                該路線應選之「雙軌課程候選名單」（主修本系 ＋ 第二專長）
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
-                {selectedTier === "advanced"
-                  ? "為達成雙主修學位與海外交換資格，建議優先納入修習之重要候選科目"
-                  : selectedTier === "intermediate"
-                  ? "為取得輔系資格 (24 學分門檻)，建議優先排入之核心與選修候選科目"
-                  : "無修業負擔之自由興趣探索候選科目"}
+                完整列出【主修學系核心必修】與【第二專長/輔系指定科目】，兩者並行不排擠，清楚檢視修業全貌
               </p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900">
-              共 {activePlan.candidate_courses.length} 門候選科目
-            </span>
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl text-xs font-bold self-start sm:self-auto">
+              <button
+                onClick={() => setCandidateFilter("all")}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  candidateFilter === "all" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                全部科目 ({activePlan.candidate_courses.length})
+              </button>
+              <button
+                onClick={() => setCandidateFilter("primary")}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  candidateFilter === "primary" ? "bg-emerald-600 text-white shadow-xs" : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                主修核心
+              </button>
+              <button
+                onClick={() => setCandidateFilter("secondary")}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  candidateFilter === "secondary" ? "bg-amber-600 text-white shadow-xs" : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                第二專長規章
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {activePlan.candidate_courses.map((cand, cIdx) => (
+            {activePlan.candidate_courses
+              .filter(cand => {
+                if (candidateFilter === "primary") return cand.track === "primary" || cand.tag.includes("主修") || cand.tag.includes("核心");
+                if (candidateFilter === "secondary") return cand.track === "secondary" || cand.tag.includes("輔系") || cand.tag.includes("雙主修");
+                return true;
+              })
+              .map((cand, cIdx) => (
               <div
                 key={cIdx}
                 onClick={() => handleOpenCourseModal({
