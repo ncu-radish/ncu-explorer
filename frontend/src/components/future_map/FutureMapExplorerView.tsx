@@ -904,7 +904,7 @@ export function FutureMapExplorerView() {
             </div>
           </div>
 
-          {/* 當開啟出國交換加值時：展開基於使用者動機的智慧交換學校篩選器 (116.md) */}
+          {/* 當開啟出國交換加值時：展開基於使用者動機的智慧交換學校篩選器 (中大國際處甄選簡章) */}
           {isExchangeEnabled && (
             <div className="mt-5 pt-5 border-t border-sky-400/20 flex flex-col gap-4 animate-fadeIn">
               {/* 第一步：意圖預判與動機詢問 */}
@@ -1061,12 +1061,12 @@ export function FutureMapExplorerView() {
                 )}
               </div>
 
-              {/* 第三步：結果呈現（附帶明確推薦理由與 116.md 官方規範） */}
+              {/* 第三步：結果呈現（附帶明確推薦理由與中大國際處官方規範） */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-sky-200 flex items-center gap-1.5">
                     <GraduationCap className="w-3.5 h-3.5" />
-                    第三步：依據《116.md》甄選名冊，共精選推薦 {filteredSchools.length} 所目標姊妹校：
+                    第三步：依據中大國際處出國交換甄選簡章，共精選推薦 {filteredSchools.length} 所目標姊妹校：
                   </span>
                   {selectedExchangeSchool && (
                     <span className="text-[11px] text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
@@ -1082,7 +1082,7 @@ export function FutureMapExplorerView() {
                     if (exchangeMotivation === "language") {
                       recommendationReason = `🎯 語言意圖推薦：位於「${school.country}」${selectedLanguage}母語生活圈，全天候沉浸式外語聽說與跨文化實踐。`;
                     } else if (exchangeMotivation === "academic") {
-                      recommendationReason = `🎓 專業精進推薦：中央 116.md 官方備註特別限定「${selectedDiscipline}」相關學院或專案，學分抵免高度契合。`;
+                      recommendationReason = `🎓 專業精進推薦：國際處官方簡章特別限定「${selectedDiscipline}」相關學院或專案，學分抵免高度契合。`;
                     } else {
                       recommendationReason = `🌍 生活體驗推薦：符合「${selectedLifestyle}」風格偏好，無嚴苛院系限制，深度探索在地人文與校園生活。`;
                     }
@@ -1124,9 +1124,9 @@ export function FutureMapExplorerView() {
                             {recommendationReason}
                           </div>
 
-                          {/* 116.md 官方備註與申請門檻 */}
+                          {/* 國際處官方備註與申請門檻 */}
                           <div className="mt-1.5 text-[11px] text-stone-300 opacity-90 leading-relaxed bg-black/20 p-2 rounded-xl">
-                            <span className="font-bold text-amber-300 block mb-0.5">📌 116.md 官方申請規定：</span>
+                            <span className="font-bold text-amber-300 block mb-0.5">📌 國際處官方甄選與申請規定：</span>
                             {school.official_note}
                           </div>
                         </div>
