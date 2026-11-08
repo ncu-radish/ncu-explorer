@@ -419,16 +419,6 @@
     "description": ""
   },
   {
-    "id": "bldg_exper_1",
-    "name_zh": "實習一廠",
-    "name_en": "Experimental Building #1",
-    "category": "teaching",
-    "classroom_code": "EH",
-    "departments": [],
-    "alias": null,
-    "description": ""
-  },
-  {
     "id": "bldg_exper_3",
     "name_zh": "實習三廠",
     "name_en": "Experimental Building #3",
@@ -869,7 +859,7 @@
     "description": ""
   },
   {
-    "id": "view_lake",
+    "id": "bldg_view_lake",
     "name_zh": "中大胡",
     "name_en": "NCU Lake",
     "category": "view",

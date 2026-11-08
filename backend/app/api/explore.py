@@ -15,7 +15,10 @@ from app.schemas.explore import (
     ClubResponse,
     LocationDetailResponse,
     LocationResponse,
+    RoadNetworkResponse,
+    RouteResponse,
 )
+from app.services.road_network import RoadNetworkError, RouteNotFoundError, get_network
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
@@ -72,6 +75,46 @@ COMMON_ACRONYMS = {
     "地科": "地球科學",
     "大氣": "大氣科學",
 }
+
+
+@router.get("/road-network", response_model=RoadNetworkResponse)
+def get_road_network():
+    """回傳整個路網的路段，供前端在地圖上繪製。"""
+    try:
+        network = get_network()
+    except RoadNetworkError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return RoadNetworkResponse(
+        segments=[
+            [[round(c, 3) for c in network.nodes[a]], [round(c, 3) for c in network.nodes[b]]]
+            for a, b in network.edges
+            if network.nodes[a] != network.nodes[b]
+        ]
+    )
+
+
+@router.get("/route", response_model=RouteResponse)
+def get_route(
+    from_id: str = Query(..., description="起點建築 id"),
+    to_id: str = Query(..., description="終點建築 id"),
+):
+    """沿路網計算兩棟建築之間的最短路徑。"""
+    try:
+        distance, path = get_network().route(from_id, to_id)
+    except RoadNetworkError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=f"找不到建築或無法接入路網：{exc.args[0]}"
+        ) from exc
+    except RouteNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return RouteResponse(
+        from_id=from_id,
+        to_id=to_id,
+        distance=round(distance, 3),
+        path=[[round(c, 3) for c in p] for p in path],
+    )
 
 
 @router.get("/buildings", response_model=list[BuildingResponse])

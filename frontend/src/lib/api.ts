@@ -297,6 +297,17 @@ export interface Building {
   description?: string | null;
 }
 
+export interface RouteResult {
+  from_id: string;
+  to_id: string;
+  distance: number;
+  path: [number, number, number][];
+}
+
+export interface RoadNetworkData {
+  segments: [[number, number, number], [number, number, number]][];
+}
+
 export interface ClubItem {
   id: string;
   name: string;
@@ -355,6 +366,11 @@ export const exploreApi = {
     if (params?.category) query.append("category", params.category);
     const qs = query.toString();
     return fetchApi<Building[]>(`/explore/buildings${qs ? `?${qs}` : ""}`);
+  },
+  getRoadNetwork: () => fetchApi<RoadNetworkData>(`/explore/road-network`),
+  getRoute: (fromId: string, toId: string) => {
+    const query = new URLSearchParams({ from_id: fromId, to_id: toId });
+    return fetchApi<RouteResult>(`/explore/route?${query.toString()}`);
   },
   getBuildingDetail: (id: string) => fetchApi<Building>(`/explore/buildings/${id}`),
   getLocations: (category?: string) => {

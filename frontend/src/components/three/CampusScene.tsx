@@ -2,10 +2,10 @@
 
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Html } from "@react-three/drei";
+import { OrbitControls, useGLTF, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { useMapStore, DEFAULT_CAMERA_POS, DEFAULT_CAMERA_TARGET } from "@/store/useMapStore";
-import { Building, exploreApi } from "@/lib/api";
+import { Building, RoadNetworkData, exploreApi } from "@/lib/api";
 
 // Campus geometry center offset to bring the model origin to (0, 0, 0)
 // Blender ground height Z = 0 corresponds directly to Three.js Y = 0
@@ -227,6 +227,115 @@ function SelectedBuildingBeacon({
   );
 }
 
+// The whole road network drawn as flat ribbons with a real width.
+// (The planned route is drawn separately as a thin line.)
+const ROAD_WIDTH = 6; // scene units (~meters)
+const ROAD_LIFT = 0.15; // above the ground plane, below the route line
+const ROAD_COLOR = "#5A6378";
+const JOINT_SEGMENTS = 12;
+
+function RoadNetworkLayer() {
+  const [network, setNetwork] = useState<RoadNetworkData | null>(null);
+
+  useEffect(() => {
+    exploreApi.getRoadNetwork().then(setNetwork).catch(console.error);
+  }, []);
+
+  const geometry = useMemo(() => {
+    if (!network || network.segments.length === 0) return null;
+    const half = ROAD_WIDTH / 2;
+    const pos: number[] = [];
+    const joints = new Map<string, [number, number, number]>();
+
+    for (const [a, b] of network.segments) {
+      const dx = b[0] - a[0];
+      const dz = b[2] - a[2];
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-6) continue;
+      const nx = (-dz / len) * half;
+      const nz = (dx / len) * half;
+      const y = a[1] + ROAD_LIFT;
+      const y2 = b[1] + ROAD_LIFT;
+      // two triangles forming the ribbon quad
+      pos.push(a[0] + nx, y, a[2] + nz, a[0] - nx, y, a[2] - nz, b[0] + nx, y2, b[2] + nz);
+      pos.push(a[0] - nx, y, a[2] - nz, b[0] - nx, y2, b[2] - nz, b[0] + nx, y2, b[2] + nz);
+      for (const p of [a, b]) joints.set(`${p[0].toFixed(2)},${p[2].toFixed(2)}`, p);
+    }
+
+    // round joints so bends and junctions have no gaps
+    joints.forEach((p) => {
+      const y = p[1] + ROAD_LIFT;
+      for (let i = 0; i < JOINT_SEGMENTS; i++) {
+        const t0 = (i / JOINT_SEGMENTS) * Math.PI * 2;
+        const t1 = ((i + 1) / JOINT_SEGMENTS) * Math.PI * 2;
+        pos.push(
+          p[0], y, p[2],
+          p[0] + Math.cos(t0) * half, y, p[2] + Math.sin(t0) * half,
+          p[0] + Math.cos(t1) * half, y, p[2] + Math.sin(t1) * half
+        );
+      }
+    });
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    return geo;
+  }, [network]);
+
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} raycast={() => null} renderOrder={1}>
+      <meshBasicMaterial color={ROAD_COLOR} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+// Route line along the road network with a marker walking along it
+const ROUTE_LIFT = 0.8; // keep the line above the ground plane
+const WALK_SPEED = 60; // scene units per second
+
+function RouteLayer() {
+  const route = useMapStore((s) => s.route);
+  const markerRef = useRef<THREE.Mesh>(null);
+
+  const { points, cumulative, total } = useMemo(() => {
+    const pts = (route?.path ?? []).map(([x, y, z]) => new THREE.Vector3(x, y + ROUTE_LIFT, z));
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    }
+    return { points: pts, cumulative: cum, total: cum[cum.length - 1] ?? 0 };
+  }, [route]);
+
+  useFrame((state) => {
+    const marker = markerRef.current;
+    if (!marker || points.length < 2 || total <= 0) return;
+    const pause = 0.8; // seconds to rest at the destination
+    const duration = total / WALK_SPEED;
+    const t = state.clock.getElapsedTime() % (duration + pause);
+    const dist = Math.min(t / duration, 1) * total;
+    let i = 1;
+    while (i < cumulative.length - 1 && cumulative[i] < dist) i++;
+    const segLen = cumulative[i] - cumulative[i - 1] || 1;
+    const k = (dist - cumulative[i - 1]) / segLen;
+    marker.position.lerpVectors(points[i - 1], points[i], Math.min(Math.max(k, 0), 1));
+    marker.position.y += 2.2;
+  });
+
+  if (!route || points.length < 2) return null;
+
+  return (
+    <group>
+      <Line points={points} color="#7C3AED" lineWidth={5} />
+      <mesh ref={markerRef}>
+        <sphereGeometry args={[2.2, 16, 16]} />
+        <meshStandardMaterial color="#F5F3FF" emissive="#8B5CF6" emissiveIntensity={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
 // Hover Tooltip Tag
 function HoverTooltip({
   bounds,
@@ -374,6 +483,7 @@ export function CampusScene({
     hoveredBuildingId,
     resetTrigger,
     focusTrigger,
+    route,
   } = useMapStore();
   const [internalBuildings, setInternalBuildings] = useState<Building[]>([]);
   const [extraBuilding, setExtraBuilding] = useState<Building | null>(null);
@@ -454,6 +564,24 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   const { targetPos, targetLookAt } = useMemo(() => {
     void resetTrigger;
     void focusTrigger;
+
+    // Fit the whole planned route in view (while its destination is the selected building)
+    if (route && route.path.length >= 2 && selectedBuildingId === route.toId) {
+      const xs = route.path.map((p) => p[0]);
+      const zs = route.path.map((p) => p[2]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minZ = Math.min(...zs);
+      const maxZ = Math.max(...zs);
+      const cx = (minX + maxX) / 2;
+      const cz = (minZ + maxZ) / 2;
+      const span = Math.max(maxX - minX, maxZ - minZ, 80);
+      return {
+        targetPos: new THREE.Vector3(cx + span * 0.25, span * 1.15 + 40, cz + span * 0.6),
+        targetLookAt: new THREE.Vector3(cx, 0, cz),
+      };
+    }
+
     if (!selectedBuildingId || !boundsMap.has(selectedBuildingId)) {
       return {
         targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
@@ -481,9 +609,9 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
     return { targetPos: pos, targetLookAt: lookAt };
-  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger]);
+  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route]);
 
-  const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${
+  const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${route ? `${route.fromId}>${route.toId}` : "noroute"}-${
     boundsMap.size > 0 ? 1 : 0
   }`;
 
@@ -543,6 +671,9 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
           onSelectBuilding={handleSelect}
           onBoundsComputed={setBoundsMap}
         />
+
+        <RoadNetworkLayer />
+        <RouteLayer />
 
         {/* Selected Beacon & Hover Tooltip */}
         {selectedBuilding && (

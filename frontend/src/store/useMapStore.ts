@@ -11,7 +11,19 @@ export interface BuildingData {
   description?: string | null;
 }
 
+export interface MapRoute {
+  fromId: string;
+  toId: string;
+  distance: number;
+  path: [number, number, number][];
+}
+
 interface MapState {
+  routeOriginId: string | null;
+  route: MapRoute | null;
+  setRouteOrigin: (id: string | null) => void;
+  setRoute: (route: MapRoute | null) => void;
+
   selectedBuildingId: string | null;
   hoveredBuildingId: string | null;
   cameraPosition: [number, number, number];
@@ -36,6 +48,10 @@ export const DEFAULT_CAMERA_POS: [number, number, number] = [0, 480, 520];
 export const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 0, 0];
 
 export const useMapStore = create<MapState>((set) => ({
+  routeOriginId: null,
+  route: null,
+  setRouteOrigin: (id) => set({ routeOriginId: id }),
+  setRoute: (route) => set({ route }),
   selectedBuildingId: null,
   hoveredBuildingId: null,
   cameraPosition: DEFAULT_CAMERA_POS,
