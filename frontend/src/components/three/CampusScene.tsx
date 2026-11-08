@@ -13,12 +13,15 @@ const CAMPUS_OFFSET: [number, number, number] = [-535.8, 0, 344.54];
 
 // Category color palettes for subtle architectural clay materials
 const CATEGORY_MATERIALS: Record<string, { color: string; emissive?: string }> = {
-  teaching: { color: "#EDE7DE" },   // Warm architectural stone
-  dorm: { color: "#E5E7EE" },       // Soft mist slate
-  function: { color: "#ECE6DB" },   // Warm ivory sandstone
-  sport: { color: "#E0EAE2" },      // Soft sage
-  restaurant: { color: "#EFE5E0" }, // Terracotta cream
-  default: { color: "#EAE6DE" },
+  teaching: { color: "#E8C48A" },   // Sand
+  dorm: { color: "#E58FB5" },       // Pink
+  function: { color: "#6F9BD9" },   // Blue
+  sport: { color: "#6FCF97" },      // Green
+  restaurant: { color: "#F28C52" }, // Orange
+  youbike: { color: "#D4C27A" },    // Muted yellow
+  bus: { color: "#B87671" },        // Muted brick
+  view: { color: "#2F8FA8" },       // Teal
+  default: { color: "#B8B4AC" },
 };
 
 interface BuildingBounds {
@@ -83,18 +86,18 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
 
     // Pre-create highlight materials
     const selectedMat = new THREE.MeshStandardMaterial({
-      color: "#2563EB",
+      color: "#7C3AED",
       roughness: 0.35,
       metalness: 0.1,
-      emissive: "#1D4ED8",
+      emissive: "#6D28D9",
       emissiveIntensity: 0.35,
     });
 
     const hoveredMat = new THREE.MeshStandardMaterial({
-      color: "#60A5FA",
+      color: "#A78BFA",
       roughness: 0.4,
       metalness: 0.05,
-      emissive: "#3B82F6",
+      emissive: "#8B5CF6",
       emissiveIntensity: 0.2,
     });
 
@@ -198,8 +201,8 @@ function SelectedBuildingBeacon({
         <mesh>
           <octahedronGeometry args={[2.5, 0]} />
           <meshStandardMaterial
-            color="#2563EB"
-            emissive="#3B82F6"
+            color="#7C3AED"
+            emissive="#8B5CF6"
             emissiveIntensity={0.6}
             roughness={0.2}
           />
@@ -462,10 +465,18 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     const { center, size } = bounds;
     const radius = Math.max(size.x, size.z, 35);
 
+    // Flat objects (track, courts, lake...) get a steeper, near top-down view
+    // instead of the default oblique one, which looks too horizontal for them.
+    const isFlat = size.y < 3;
+    const offset = isFlat ? radius * 0.9 : radius * 1.3;
+    const height = isFlat
+      ? Math.max(offset * Math.SQRT2 * 1.7, 60)
+      : Math.max(size.y * 1.4, 45);
+
     const pos = new THREE.Vector3(
-      center.x + radius * 1.3,
-      center.y + Math.max(size.y * 1.4, 45),
-      center.z + radius * 1.3
+      center.x + offset,
+      center.y + height,
+      center.z + offset
     );
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
@@ -495,7 +506,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
           far: 3500,
         }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        style={{ background: "#faf8ff" }}
+        style={{ background: "#1c2029" }}
       >
         {/* Warm Natural Lighting Setup */}
         <ambientLight intensity={0.75} color="#FFFDF7" />
@@ -520,11 +531,11 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
         {/* Flat Warm Architectural Ground Plane */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
           <planeGeometry args={[2400, 2400]} />
-          <meshStandardMaterial color="#EFECE5" roughness={0.9} metalness={0.0} />
+          <meshStandardMaterial color="#262b36" roughness={0.95} metalness={0.0} />
         </mesh>
 
         {/* Subtle grid lines for depth perception */}
-        <gridHelper args={[1400, 70, "#D5CFC5", "#E8E3DA"]} position={[0, -0.02, 0]} />
+        <gridHelper args={[1400, 70, "#3a4150", "#2f3542"]} position={[0, -0.02, 0]} />
 
         {/* Campus 3D Model */}
         <CampusModel

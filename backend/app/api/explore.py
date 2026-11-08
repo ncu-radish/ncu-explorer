@@ -19,26 +19,36 @@ from app.schemas.explore import (
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
+_buildings_synced_mtime: float | None = None
+
+
 def ensure_buildings_seeded(db: Session):
+    """Upsert buildings from data/buildings.json whenever the file changes."""
+    global _buildings_synced_mtime
     Base.metadata.create_all(bind=engine)
-    count = db.query(Building).count()
-    if count == 0:
-        buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
-        if buildings_file.exists():
-            with open(buildings_file, encoding="utf-8") as f:
-                bldgs = json.load(f)
-            for b in bldgs:
-                db.add(Building(
-                    id=b["id"],
-                    name_zh=b["name_zh"],
-                    name_en=b.get("name_en"),
-                    category=b.get("category"),
-                    classroom_code=b.get("classroom_code"),
-                    departments=b.get("departments") or [],
-                    alias=b.get("alias"),
-                    description=b.get("description"),
-                ))
-            db.commit()
+    buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
+    if not buildings_file.exists():
+        return
+    mtime = buildings_file.stat().st_mtime
+    if _buildings_synced_mtime == mtime and db.query(Building).count() > 0:
+        return
+    with open(buildings_file, encoding="utf-8") as f:
+        bldgs = json.load(f)
+    existing = {b.id: b for b in db.query(Building).all()}
+    for b in bldgs:
+        row = existing.get(b["id"])
+        if row is None:
+            row = Building(id=b["id"])
+            db.add(row)
+        row.name_zh = b["name_zh"]
+        row.name_en = b.get("name_en")
+        row.category = b.get("category")
+        row.classroom_code = b.get("classroom_code")
+        row.departments = b.get("departments") or []
+        row.alias = b.get("alias")
+        row.description = b.get("description")
+    db.commit()
+    _buildings_synced_mtime = mtime
 
 
 # Common NCU department/school abbreviations for smarter search

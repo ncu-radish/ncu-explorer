@@ -19,6 +19,9 @@ import {
   Landmark,
   Layers,
   Info,
+  Bike,
+  Bus,
+  Trees,
 } from "lucide-react";
 import { useMapStore } from "@/store/useMapStore";
 import { exploreApi, Building } from "@/lib/api";
@@ -28,7 +31,7 @@ const CampusScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-[#faf8ff] text-stone-600 gap-3">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#1c2029] text-stone-300 gap-3">
         <div className="w-8 h-8 border-3 border-stone-300 border-t-violet-600 rounded-full animate-spin" />
         <span className="text-sm font-medium tracking-wide">載入中央大學 3D 校園地圖...</span>
       </div>
@@ -43,6 +46,9 @@ const CATEGORIES = [
   { key: "function", label: "行政功能", icon: Landmark },
   { key: "sport", label: "運動場館", icon: Trophy },
   { key: "restaurant", label: "生活餐飲", icon: Utensils },
+  { key: "youbike", label: "YouBike", icon: Bike },
+  { key: "bus", label: "公車站", icon: Bus },
+  { key: "view", label: "校園景觀", icon: Trees },
 ];
 
 function CategoryBadge({ category }: { category?: string | null }) {
@@ -62,6 +68,15 @@ function CategoryBadge({ category }: { category?: string | null }) {
       break;
     case "restaurant":
       label = "生活餐飲";
+      break;
+    case "youbike":
+      label = "YouBike";
+      break;
+    case "bus":
+      label = "公車站";
+      break;
+    case "view":
+      label = "校園景觀";
       break;
     default:
       label = "校園館舍";
@@ -427,7 +442,7 @@ function MapContent() {
       </aside>
 
       {/* ================= RIGHT 3D CANVAS ================= */}
-      <main className="flex-1 h-full relative overflow-hidden bg-[#faf8ff]">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#1c2029]">
         {/* Top Control Bar Overlay */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <button

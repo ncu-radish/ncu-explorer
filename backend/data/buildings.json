@@ -9,7 +9,7 @@
       "北區傳達室"
     ],
     "alias": null,
-    "description": "<ol>\n<li>依地形分為 A 棟與 B 棟，為男女分棟之性別友善宿舍。</li>\n<li>宿舍設有 3 部電梯。</li>\n<li>房型分雙人與單人套房宿舍。</li>\n<li>2 人房分為床組同側與雙側之上鋪床型，</li>\n<li>單人房為下鋪床型。</li>\n<li>夜間自主熄大燈、24 小時刷卡門禁。</li>\n<li>寢室無公用電扇，需自備。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+    "description": "<ol><li>依地形分為 A 棟與 B 棟，為男女分棟之性別友善宿舍。</li><li>宿舍設有 3 部電梯。</li><li>房型分雙人與單人套房宿舍。</li>\n<li>2 人房分為床組同側與雙側之上鋪床型，</li><li>單人房為下鋪床型。</li><li>夜間自主熄大燈、24 小時刷卡門禁。</li><li>寢室無公用電扇，需自備。</li><li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li><li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li></ol>"
   },
   {
     "id": "bldg_dorm_ncu_guest_house",
@@ -19,7 +19,7 @@
     "classroom_code": "HO2",
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層，地上 5 層之建物。</li>\n<li>走廊末端設有 B1 ~ 5 樓無障礙電梯一座。</li>\n<li>性別友善宿舍，提供大學部、碩、博之男、女、多元性別同學申請。</li>\n<li>寢室分為單人與雙人寢室，申請性別僅以寢室為單位區分，其他資源共享。</li>\n<li>5 樓分配以任務使用作導向，部分期間提供教務處當作闈場使用。</li>\n<li>位置坐落於北區宿舍群，由北區傳達室處理宿舍事務。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n<li>計算機中心不提供宿舍網路，同學需自備或洽詢電信廠商。</li>\n<li>宿舍無提供冰箱、吹風機、床墊等用品，同學需自備（現場若有可使用，但損壞不維修）。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層，地上 5 層之建物。</li><li>走廊末端設有 B1 ~ 5 樓無障礙電梯一座。</li><li>性別友善宿舍，提供大學部、碩、博之男、女、多元性別同學申請。</li><li>寢室分為單人與雙人寢室，申請性別僅以寢室為單位區分，其他資源共享。</li><li>5 樓分配以任務使用作導向，部分期間提供教務處當作闈場使用。</li>\n<li>位置坐落於北區宿舍群，由北區傳達室處理宿舍事務。</li><li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li><li>計算機中心不提供宿舍網路，同學需自備或洽詢電信廠商。</li><li>宿舍無提供冰箱、吹風機、床墊等用品，同學需自備（現場若有可使用，但損壞不維修）。</li></ol>"
   },
   {
     "id": "bldg_dorm_international",
@@ -31,7 +31,7 @@
       "住宿服務組"
     ],
     "alias": null,
-    "description": "<ol>\n<li>112 年更為大學部女生宿舍，為 2 人一寢之套房宿舍，申請方式為舊生登記抽籤。</li>\n<li>為下鋪型床組，書桌無檯燈需自備。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n</ol>"
+    "description": "<ol><li>112 年更為大學部女生宿舍，為 2 人一寢之套房宿舍，申請方式為舊生登記抽籤。</li><li>為下鋪型床組，書桌無檯燈需自備。</li><li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li></ol>"
   },
   {
     "id": "bldg_dorm_g1",
@@ -41,7 +41,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地上 3 層 4 人雅房舊生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+    "description": "<ol><li>為地上 3 層 4 人雅房舊生宿舍，無電梯。</li><li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li><li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li><li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li></ol>"
   },
   {
     "id": "bldg_dorm_g2",
@@ -51,7 +51,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地上 3 層 4 人雅房新生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+    "description": "<ol><li>為地上 3 層 4 人雅房新生宿舍，無電梯。</li><li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li><li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li><li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li></ol>"
   },
   {
     "id": "bldg_dorm_g3",
@@ -63,7 +63,7 @@
       "西區傳達室"
     ],
     "alias": null,
-    "description": "<ol>\n<li>為地上 3 層 4 人雅房舊生宿舍，設有無障礙電梯 1 部。</li>\n<li>1 樓為共用之室內洗、曬衣場；韻律室與交誼廳暨簡易廚房，無寢室設備。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+    "description": "<ol><li>為地上 3 層 4 人雅房舊生宿舍，設有無障礙電梯 1 部。</li><li>1 樓為共用之室內洗、曬衣場；韻律室與交誼廳暨簡易廚房，無寢室設備。</li><li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>寢室衣櫃或抽屜安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li><li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li></ol>"
   },
   {
     "id": "bldg_dorm_g4",
@@ -73,7 +73,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地上 5 層建物，4 人雅房新生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+    "description": "<ol><li>為地上 5 層建物，4 人雅房新生宿舍，無電梯。</li><li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li><li>寢室夜間 12 點自動熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li><li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li></ol>"
   },
   {
     "id": "bldg_dorm_g14",
@@ -85,7 +85,7 @@
       "東區傳達室"
     ],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層，地上 12 層之 4 人套房宿舍，設有 4 部電梯</li>\n<li>1 樓有愛心寢室 10 間，設有下鋪提供有需要或臨時受傷學生申請。</li>\n<li>8 ~ 12 樓為研究生宿舍；2 ~ 7 樓為大學部舊生宿舍</li>\n<li>寢室浴室不含浴簾，需要可自行購買。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層，地上 12 層之 4 人套房宿舍，設有 4 部電梯</li><li>1 樓有愛心寢室 10 間，設有下鋪提供有需要或臨時受傷學生申請。</li><li>8 ~ 12 樓為研究生宿舍；2 ~ 7 樓為大學部舊生宿舍</li><li>寢室浴室不含浴簾，需要可自行購買。</li><li>寢室內電費自付（購買電力計費儲值卡插卡供電）。</li></ol>"
   },
   {
     "id": "bldg_dorm_b3",
@@ -95,7 +95,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地上 3 層之 4 人雅房舊生宿舍，無電梯。</li>\n<li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+    "description": "<ol><li>為地上 3 層之 4 人雅房舊生宿舍，無電梯。</li><li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li></ol>"
   },
   {
     "id": "bldg_dorm_b5",
@@ -107,7 +107,7 @@
       "南區傳達室"
     ],
     "alias": null,
-    "description": "<ol>\n<li>為地上 3 層建物，2人雅房，男研究生宿舍，設有無障礙電梯一座。</li>\n<li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li>\n<li>寢室夜間 12 點自主熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li>\n</ol>"
+    "description": "<ol><li>為地上 3 層建物，2人雅房，男研究生宿舍，設有無障礙電梯一座。</li><li>寢室冷氣電力自付，使用冷氣需至西區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>寢室衣櫃安裝鎖片供學生存放重要物品，請自備小型號碼鎖（不建議鑰匙鎖）。</li><li>寢室夜間 12 點自主熄大燈，書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li><li>請勿擅自黏貼或裝訂掛勾釘子，損壞需照價賠償。</li></ol>"
   },
   {
     "id": "bldg_dorm_b6",
@@ -117,7 +117,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層、地上 3 層之雅房宿舍； 1、2 樓為雙人寢室、3 樓為單人寢室。</li>\n<li>寢室無公用電扇、無桌燈需自備。</li>\n<li>部分公共空間與男七舍共同使用。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層、地上 3 層之雅房宿舍； 1、2 樓為雙人寢室、3 樓為單人寢室。</li><li>寢室無公用電扇、無桌燈需自備。</li><li>部分公共空間與男七舍共同使用。</li></ol>"
   },
   {
     "id": "bldg_dorm_b7",
@@ -127,17 +127,27 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層地上 3 層之 4 人雅房舊生宿舍。</li>\n<li>部分公共空間與男六舍共同使用</li>\n<li>一樓為松果餐廳。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層地上 3 層之 4 人雅房舊生宿舍。</li><li>部分公共空間與男六舍共同使用</li><li>一樓為松果餐廳。</li></ol>"
   },
   {
-    "id": "bldg_dorm_b9",
-    "name_zh": "學生男九舍",
-    "name_en": "Male Dorm #9",
+    "id": "bldg_dorm_b9a",
+    "name_zh": "學生男九A舍",
+    "name_en": "Male Dorm #9A",
     "category": "dorm",
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層地上 5 層之 4 人雅房新生宿舍。</li>\n<li>3 ~ 5 樓均設有室內曬衣場、2 樓設有簡易廚房。</li>\n<li>男9A舍、男9B舍 中間連接處 3 樓設有共用之多功能活動室，4 樓有閱讀室。</li>\n<li>寢室冷氣電力自付，使用冷氣可至北區傳達室旁之儲值機購買電力計費儲值卡。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層地上 5 層之 4 人雅房新生宿舍。</li><li>3 ~ 5 樓均設有室內曬衣場、2 樓設有簡易廚房。</li><li>男9A舍、男9B舍 中間連接處 3 樓設有共用之多功能活動室，4 樓有閱讀室。</li><li>寢室冷氣電力自付，使用冷氣可至北區傳達室旁之儲值機購買電力計費儲值卡。</li></ol>"
+  },
+  {
+    "id": "bldg_dorm_b9b",
+    "name_zh": "學生男九B舍",
+    "name_en": "Male Dorm #9B",
+    "category": "dorm",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": "<ol><li>為地下 1 層地上 5 層之 4 人雅房舊生宿舍。</li><li>2 ~ 5 樓均設有室內曬衣場、1 樓交誼廳與簡易廚房併用。</li><li>男9A舍、男9B舍 中間連接之 3 樓設有共用多功能活動室，4 樓設置閱讀室。</li><li>寢室冷氣電力自付，使用冷氣可至北區傳達室旁之儲值機購買電力計費儲值卡。</li></ol>"
   },
   {
     "id": "bldg_dorm_b11",
@@ -147,7 +157,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地下 1 層、地上 5 層之 4 人雅房舊生宿舍，有電梯；地下室為書局、眼鏡行商場。</li>\n<li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女 14 舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n</ol>"
+    "description": "<ol><li>為地下 1 層、地上 5 層之 4 人雅房舊生宿舍，有電梯；地下室為書局、眼鏡行商場。</li><li>寢室冷氣電力自付，使用冷氣可至松果餐廳或女 14 舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li></ol>"
   },
   {
     "id": "bldg_dorm_b12",
@@ -157,7 +167,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>為地上 5 層之 4 人雅房舊生宿舍，無電梯。</li>\n<li>一樓有 4 間特殊房，下鋪床位，床組尺寸 220 &times; 110 cm，提供受傷同學或身材壯碩同學住宿</li>\n<li>寢室冷氣電力自付，使用冷氣需至北區傳達室旁之儲值機購買電力計費儲值卡。</li>\n<li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li>\n<li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li>\n<li>寢室床組四角落各有 5 &times; 5cm柱子</li>\n</ol>"
+    "description": "<ol><li>為地上 5 層之 4 人雅房舊生宿舍，無電梯。</li><li>一樓有 4 間特殊房，下鋪床位，床組尺寸 220 &times; 110 cm，提供受傷同學或身材壯碩同學住宿</li><li>寢室冷氣電力自付，使用冷氣需至北區傳達室旁之儲值機購買電力計費儲值卡。</li><li>宿舍採 24 小時門禁，住宿學生可用學生證感應進出。</li><li>書桌備有桌燈，是否攜帶檯燈可自行斟酌。</li><li>寢室床組四角落各有 5 &times; 5cm柱子</li></ol>"
   },
   {
     "id": "bldg_dorm_b13",
@@ -167,7 +177,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": "<ol>\n<li>因位於坡地，面對校園為 5 樓之 8 層樓建物，無電梯。</li>\n<li>為 4 人上舖之套房宿舍。</li>\n<li>分別於 1 樓、3 樓與5 樓設置 24 小時門禁刷卡大門。</li>\n<li>1 樓、5 樓設有簡易廚房，各樓層均設有公用空間。</li>\n<li>0 時 ~ 6 時自主熄大燈、24 小時刷卡門禁。</li>\n<li>寢室無公用電扇，若有需要請自備小型電扇</li>\n<li>為大一新生宿舍，建議自備掃具維護浴廁整潔。</li>\n<li>寢室內電費自付（購買電力計費儲值卡插卡供電），可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li>\n</ol>"
+    "description": "<ol><li>因位於坡地，面對校園為 5 樓之 8 層樓建物，無電梯。</li><li>為 4 人上舖之套房宿舍。</li><li>分別於 1 樓、3 樓與5 樓設置 24 小時門禁刷卡大門。</li>\n<li>1 樓、5 樓設有簡易廚房，各樓層均設有公用空間。</li><li>0 時 ~ 6 時自主熄大燈、24 小時刷卡門禁。</li><li>寢室無公用電扇，若有需要請自備小型電扇</li><li>為大一新生宿舍，建議自備掃具維護浴廁整潔。</li><li>寢室內電費自付（購買電力計費儲值卡插卡供電），可至松果餐廳或女14舍 1 樓交誼廳之儲值機購買電力計費儲值卡。</li></ol>"
   },
   {
     "id": "bldg_dorm_staff",
@@ -177,7 +187,7 @@
     "classroom_code": null,
     "departments": [],
     "alias": null,
-    "description": ""
+    "description": "教職員宿舍"
   },
   {
     "id": "bldg_hong_jing",
@@ -430,7 +440,7 @@
   },
   {
     "id": "bldg_art_1",
-    "name_zh": "文學⼀館",
+    "name_zh": "文學?館",
     "name_en": "Liberal Arts Building #1",
     "category": "teaching",
     "classroom_code": "A",
@@ -639,6 +649,36 @@
     "description": ""
   },
   {
+    "id": "bldg_res_b9",
+    "name_zh": "男九餐廳",
+    "name_en": "Male Dorm #9 Restaurant",
+    "category": "restaurant",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_res_core",
+    "name_zh": "松果餐廳",
+    "name_en": "Pine Core Restaurant",
+    "category": "restaurant",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_res_waffles",
+    "name_zh": "小木屋鬆餅",
+    "name_en": "Cabin Waffles",
+    "category": "restaurant",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
     "id": "bldg_swim",
     "name_zh": "室內游泳池",
     "name_en": "Indoor Swimming Pool",
@@ -654,6 +694,186 @@
     "name_en": "Yi-Reng Hall",
     "category": "sport",
     "classroom_code": "YH",
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_sport",
+    "name_zh": "桃園市中大國民運動中心",
+    "name_en": "Taoyuan City NCU Civil Sports Center",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_badminton",
+    "name_zh": "羽球館",
+    "name_en": "Badminton Hall",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_volley",
+    "name_zh": "室外排球場",
+    "name_en": "Outdoor Volleyball Court",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_tennis",
+    "name_zh": "網球場",
+    "name_en": "Tennis Court",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_basket",
+    "name_zh": "室外籃/排球場",
+    "name_en": "Outdoor Basketball Court",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_baseball",
+    "name_zh": "棒壘球場",
+    "name_en": "Baseball Field",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_run",
+    "name_zh": "田徑場",
+    "name_en": "Sports Field",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_soccer",
+    "name_zh": "大草坪(足球場)",
+    "name_en": "Lawn",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_climb",
+    "name_zh": "攀岩場",
+    "name_en": "Climbing Tower",
+    "category": "sport",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bike_lib",
+    "name_zh": "中央大學圖書館 YouBike",
+    "name_en": "NCU Library YouBike Station",
+    "category": "youbike",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bike_yireng",
+    "name_zh": "中央大學依仁堂 YouBike",
+    "name_en": "NCU Yi-Reng Hall YouBike Station",
+    "category": "youbike",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bike_sport",
+    "name_zh": "中央大學國民運動中心 YouBike",
+    "name_en": "Taoyuan City NCU Civil Sports Center YouBike Station",
+    "category": "youbike",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bus_guard",
+    "name_zh": "中央大學警衛室公車站",
+    "name_en": "NCU Guard Bus Station",
+    "category": "bus",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bus_lake",
+    "name_zh": "中大湖公車站",
+    "name_en": "NCU Lake Bus Station",
+    "category": "bus",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bus_yireng",
+    "name_zh": "中央大學依仁堂公車站",
+    "name_en": "NCU Yi-Reng Hall Bus Station",
+    "category": "bus",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bus_backdoor",
+    "name_zh": "中央大學後門公車站",
+    "name_en": "NCU Back Door Bus Station",
+    "category": "bus",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_bus_view",
+    "name_zh": "中央大學觀景台公車站",
+    "name_en": "NCU Observation Deck Bus Station",
+    "category": "bus",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "view_lake",
+    "name_zh": "中大胡",
+    "name_en": "NCU Lake",
+    "category": "view",
+    "classroom_code": null,
     "departments": [],
     "alias": null,
     "description": ""
