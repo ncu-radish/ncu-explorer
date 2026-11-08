@@ -145,7 +145,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="全心投入專題研究與系統底層開發。"
         ),
         SemesterPlan(
-            semester_index=6, grade=3, term: 2, semester_label="大三下學期", total_credits=5,
+            semester_index=6, grade=3, term=2, semester_label="大三下學期", total_credits=5,
             courses=[
                 CourseItem(course_name="專案專題（二）", credits=2, category="必修", tag=f"{primary_domain[:2]}專業", note="系統實作完成與公開成果發表"),
                 CourseItem(course_name=f"{primary_domain[:2]}專業高階選修", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="依個人志向選修專業前瞻領域")
@@ -154,7 +154,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="收穫專題作品集，奠定紮實專業實戰能力。"
         ),
         SemesterPlan(
-            semester_index=7, grade=4, term: 1, semester_label="大四上學期", total_credits=6,
+            semester_index=7, grade=4, term=1, semester_label="大四上學期", total_credits=6,
             courses=[
                 CourseItem(course_name="高階架構專案選修（一）", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="前沿領域實務應用"),
                 CourseItem(course_name="高階架構專案選修（二）", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="大型系統分析設計")
@@ -163,7 +163,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="補齊專業選修學分，銜接頂尖就業或升學。"
         ),
         SemesterPlan(
-            semester_index=8, grade=4, term: 2, semester_label="大四下學期", total_credits=3,
+            semester_index=8, grade=4, term=2, semester_label="大四下學期", total_credits=3,
             courses=[
                 CourseItem(course_name="畢業學分清查與自主專案", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note=f"檢核 {primary_domain} 128 畢業總學分")
             ],
@@ -186,7 +186,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"同時啟動{primary_domain[:2]}與{secondary_domain[:2]}一年級專業核心。"
         ),
         SemesterPlan(
-            semester_index=2, grade=1, term: 2, semester_label="大一下學期", total_credits=17,
+            semester_index=2, grade=1, term=2, semester_label="大一下學期", total_credits=17,
             courses=[
                 CourseItem(course_name=f"{primary_domain}核心實務（二）", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="物件導向/進階設計"),
                 CourseItem(course_name="微積分與數理基礎（二）", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="數理分析完結"),
@@ -211,7 +211,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"{primary_domain[:2]}骨幹與{secondary_domain[:2]}進階實作同步邁進。"
         ),
         SemesterPlan(
-            semester_index=4, grade=2, term: 2, semester_label="大二下學期", total_credits=13,
+            semester_index=4, grade=2, term=2, semester_label="大二下學期", total_credits=13,
             courses=[
                 CourseItem(course_name="演算法與最佳化理論", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="演算法設計分析"),
                 CourseItem(course_name="機率與統計模型", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="隨機分佈與檢定"),
@@ -223,7 +223,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"完成{secondary_domain}輔系規定（核心必修+高階選修）。"
         ),
         SemesterPlan(
-            semester_index=5, grade=3, term: 1, semester_label="大三上學期", total_credits=7,
+            semester_index=5, grade=3, term=1, semester_label="大三上學期", total_credits=7,
             courses=[
                 CourseItem(course_name="作業系統與底層架構", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="核心系統排程"),
                 CourseItem(course_name="分散式網路通訊協定", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="通訊協定安全"),
@@ -233,7 +233,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"重心回歸{primary_domain[:2]}高階專案研究與工程實作。"
         ),
         SemesterPlan(
-            semester_index=6, grade=3, term: 2, semester_label="大三下學期", total_credits=5,
+            semester_index=6, grade=3, term=2, semester_label="大三下學期", total_credits=5,
             courses=[
                 CourseItem(course_name="專案專題（二）", credits=2, category="必修", tag=f"{primary_domain[:2]}專業", note="成果實作發表與評審"),
                 CourseItem(course_name=f"{primary_domain[:2]}專業高階選修", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="高階前瞻領域選修")
@@ -242,7 +242,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"完成專案實作，取得{secondary_domain[:2]}輔系之雙專長競爭力。"
         ),
         SemesterPlan(
-            semester_index=7, grade=4, term: 1, semester_label="大四上學期", total_credits=6,
+            semester_index=7, grade=4, term=1, semester_label="大四上學期", total_credits=6,
             courses=[
                 CourseItem(course_name="前沿領域架構選修（一）", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="高階架構實務"),
                 CourseItem(course_name="前沿領域架構選修（二）", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="工程整合實務")
@@ -251,7 +251,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="專業學分完整達標，具備跨文化跨領域團隊合作優勢。"
         ),
         SemesterPlan(
-            semester_index=8, grade=4, term: 2, semester_label="大四下學期", total_credits=3,
+            semester_index=8, grade=4, term=2, semester_label="大四下學期", total_credits=3,
             courses=[
                 CourseItem(course_name="畢業資格確認與專案審核", credits=3, category="選修", tag=f"{primary_domain[:2]}專業", note="畢業學分清查")
             ],
@@ -275,7 +275,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="雙主修高強度啟航，奠定數理與跨領域雙軌核心。"
         ),
         SemesterPlan(
-            semester_index=2, grade=1, term: 2, semester_label="大一下學期", total_credits=17,
+            semester_index=2, grade=1, term=2, semester_label="大一下學期", total_credits=17,
             courses=[
                 CourseItem(course_name=f"{primary_domain}核心實務（二）", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="物件導向/軟體架構"),
                 CourseItem(course_name="微積分與數理基礎（二）", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="微積分完結"),
@@ -287,7 +287,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"完成大一雙核心，大二正式獲取雙主修資格。"
         ),
         SemesterPlan(
-            semester_index=3, grade=2, term: 1, semester_label="大二上學期", total_credits=17,
+            semester_index=3, grade=2, term=1, semester_label="大二上學期", total_credits=17,
             courses=[
                 CourseItem(course_name="線性代數與空間運算", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="大二核心必修"),
                 CourseItem(course_name="核心資料結構設計", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="核心資料結構"),
@@ -300,7 +300,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="硬核專業設計與跨域思維強勢並進。"
         ),
         SemesterPlan(
-            semester_index=4, grade=2, term: 2, semester_label="大二下學期", total_credits=14,
+            semester_index=4, grade=2, term=2, semester_label="大二下學期", total_credits=14,
             courses=[
                 CourseItem(course_name="演算法與最佳化理論", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="演算法分析"),
                 CourseItem(course_name="機率與統計模型", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="統計推論檢定"),
@@ -315,7 +315,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="通過檢定取得雙主修鑰匙，解鎖海外交換門檻！"
         ),
         SemesterPlan(
-            semester_index=5, grade=3, term: 1, semester_label="大三上學期", total_credits=13,
+            semester_index=5, grade=3, term=1, semester_label="大三上學期", total_credits=13,
             courses=[
                 CourseItem(course_name="作業系統與底層架構", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="系統核心排程"),
                 CourseItem(course_name="分散式網路通訊協定", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="通訊安全機制"),
@@ -330,7 +330,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="專題進駐、跨域思維與海外交換甄選申請決勝期！"
         ),
         SemesterPlan(
-            semester_index=6, grade=3, term: 2, semester_label="大三下學期", total_credits=5,
+            semester_index=6, grade=3, term=2, semester_label="大三下學期", total_credits=5,
             courses=[
                 CourseItem(course_name="專案專題（二）", credits=2, category="必修", tag=f"{primary_domain[:2]}專業", note="專案提前結案並完成公開發表評審"),
                 CourseItem(course_name=f"{secondary_domain}高階實務選修", credits=3, category="選修", tag=f"{secondary_domain[:2]}雙主修", note="累積雙主修應修學分")
@@ -342,7 +342,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="完成專案成果發表，啟動海外名校留學交換行前準備。"
         ),
         SemesterPlan(
-            semester_index=7, grade=4, term: 1, semester_label=f"大四上學期（海外交換研習）", total_credits=12,
+            semester_index=7, grade=4, term=1, semester_label=f"大四上學期（海外交換研習）", total_credits=12,
             courses=[
                 CourseItem(course_name=f"海外名校研習：前沿專業工程模組", credits=4, category="交換", tag="海外交換", note="全英語修習尖端工程，學分回台抵免主系選修"),
                 CourseItem(course_name=f"海外名校研習：國際跨域研究專案", credits=4, category="交換", tag="海外交換", note="跨國頂尖實驗室合作實作"),
@@ -355,7 +355,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight=f"大四上遠赴海外交換！達成國際化工程視野與外語實踐。"
         ),
         SemesterPlan(
-            semester_index=8, grade=4, term: 2, semester_label="大四下學期", total_credits=3,
+            semester_index=8, grade=4, term=2, semester_label="大四下學期", total_credits=3,
             courses=[
                 CourseItem(course_name="雙主修學分總清查與抵免確認", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note=f"主修 + {secondary_domain}雙主修全面結算")
             ],
