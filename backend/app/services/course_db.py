@@ -291,6 +291,68 @@ class CourseDatabaseService:
         conn.close()
         return course_detail
 
+    def get_course_by_code(self, course_code: str) -> dict[str, Any] | None:
+        """依據課程代碼 (如 IM4048, EE1003) 查詢最新的完整課綱、師資與教室"""
+        clean_code = course_code.strip().upper()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT semester, serial_no, course_code, department, teacher,
+                   course_name_zh, course_name_en, degree, credits,
+                   required_or_elective,
+                   objectives, content, textbooks, fields, embedding_text
+            FROM courses
+            WHERE UPPER(TRIM(course_code)) = ? OR UPPER(course_code) LIKE ?
+            ORDER BY semester DESC
+            LIMIT 1
+            """,
+            [clean_code, f"{clean_code}%"],
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return None
+
+        course_detail = dict(row)
+        semester = course_detail["semester"]
+        serial_no = course_detail["serial_no"]
+        course_detail["id"] = f"{semester}_{serial_no}"
+
+        # 1. 課表時段與教室
+        cursor.execute(
+            "SELECT time, location FROM schedules WHERE semester = ? AND serial_no = ? ORDER BY id",
+            [semester, serial_no],
+        )
+        course_detail["schedules"] = [dict(r) for r in cursor.fetchall()]
+
+        # 2. 核心能力指標
+        cursor.execute(
+            "SELECT ability, strength, assessment_method FROM core_skills WHERE semester = ? AND serial_no = ?",
+            [semester, serial_no],
+        )
+        course_detail["core_skills"] = [dict(r) for r in cursor.fetchall()]
+
+        # 3. 分發限制條件
+        cursor.execute(
+            "SELECT priority, condition FROM distribution_conditions WHERE semester = ? AND serial_no = ? ORDER BY priority ASC",
+            [semester, serial_no],
+        )
+        course_detail["distribution_conditions"] = [dict(r) for r in cursor.fetchall()]
+
+        conn.close()
+        return course_detail
+
+    def get_courses_by_codes(self, course_codes: list[str]) -> dict[str, dict[str, Any]]:
+        """批次依據多筆課號取得真實課程資訊映射 (code -> course_detail)"""
+        results: dict[str, dict[str, Any]] = {}
+        for code in course_codes:
+            detail = self.get_course_by_code(code)
+            if detail:
+                results[code.strip().upper()] = detail
+        return results
+
     def get_department_roadmap(self, dept: str) -> dict[str, list[dict[str, Any]]]:
         """
         取得指定系所的大一至大四必修課程學習脈絡：

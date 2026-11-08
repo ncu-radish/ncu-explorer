@@ -29,8 +29,16 @@ import {
   Check,
   ExternalLink,
   School,
-  Building2
+  Building2,
+  X,
+  MapPin,
+  User,
+  AlertCircle
 } from "lucide-react";
+import {
+  DEPARTMENT_CURRICULUMS
+} from "@/data/departmentCurriculums";
+import { courseApi } from "@/lib/api";
 import {
   ExchangeSchoolItem,
   NCU_AY116_EXCHANGE_DATABASE
@@ -42,6 +50,7 @@ interface CourseItem {
   category: string;
   tag: string;
   note: string;
+  ruleNote?: string;
 }
 
 interface SemesterPlan {
@@ -62,6 +71,7 @@ interface CandidateCourse {
   stage: string;
   description: string;
   tag: string;
+  ruleNote?: string;
 }
 
 interface TierRoadmap {
@@ -101,6 +111,73 @@ export function FutureMapExplorerView() {
 
   // 使用者選定之特定交換姐妹校
   const [selectedExchangeSchool, setSelectedExchangeSchool] = useState<ExchangeSchoolItem | null>(null);
+
+  // 課程點擊詳細彈窗狀態
+  interface CourseModalState {
+    isOpen: boolean;
+    isLoading: boolean;
+    courseCode: string;
+    name: string;
+    credits: number;
+    category: string;
+    stage?: string;
+    tag?: string;
+    ruleNote?: string;
+    note?: string;
+    liveData?: {
+      teacher?: string;
+      department?: string;
+      course_name_zh?: string;
+      course_name_en?: string;
+      objectives?: string;
+      content?: string;
+      textbooks?: string;
+      schedules?: Array<{ time: string; location: string }>;
+      core_skills?: Array<{ ability: string; strength: string; assessment_method: string }>;
+      distribution_conditions?: Array<{ priority: number; condition: string }>;
+    } | null;
+  }
+  const [modalCourse, setModalCourse] = useState<CourseModalState | null>(null);
+
+  const handleOpenCourseModal = async (course: {
+    name: string;
+    credits: number;
+    category?: string;
+    type?: string;
+    tag?: string;
+    stage?: string;
+    note?: string;
+    description?: string;
+    ruleNote?: string;
+  }) => {
+    const rawName = course.name;
+    const codeMatch = rawName.match(/([A-Z]{2}\d{3,4}[A-Za-z0-9\-_*]*)/);
+    const code = codeMatch ? codeMatch[1].replace(/[-_*].*$/, "") : "";
+
+    setModalCourse({
+      isOpen: true,
+      isLoading: Boolean(code),
+      courseCode: code,
+      name: rawName,
+      credits: course.credits,
+      category: course.category || course.type || "選修",
+      stage: course.stage,
+      tag: course.tag,
+      ruleNote: course.ruleNote,
+      note: course.note || course.description,
+      liveData: null,
+    });
+
+    if (code) {
+      try {
+        const live = await courseApi.getByCode(code);
+        setModalCourse((prev) => (prev && prev.courseCode === code ? { ...prev, isLoading: false, liveData: live } : prev));
+      } catch (err) {
+        console.warn("Could not fetch course by code:", code, err);
+        setModalCourse((prev) => (prev && prev.courseCode === code ? { ...prev, isLoading: false } : prev));
+      }
+    }
+  };
 
   // 意圖預判：偵測使用者輸入是否已明確提及特定語言
   const detectedLanguage = useMemo(() => {
@@ -145,74 +222,28 @@ export function FutureMapExplorerView() {
     "想讀機械＋雙主修電機，跨足智慧製造與機器人",
   ];
 
-  // 具體系所課程候選名單庫
+  // 具體系所課程候選名單庫（完全依據中央大學官方修業規章與真實課號庫）
   const getDomainCandidates = (pDom: string, sDom: string) => {
-    const pTag = pDom.slice(0, 2);
-    const sTag = sDom.slice(0, 2);
-
-    if (sDom.includes("法文") || sDom.includes("法語")) {
-      return {
-        basic: [
-          { name: "初級法語發音與會話 (一)", credits: 2, type: "選修" as const, stage: "大一上", description: "零基礎入門，掌握標準法語發音規則與生活問候", tag: "跨域選修" },
-          { name: "初級法語發音與會話 (二)", credits: 2, type: "選修" as const, stage: "大一下", description: "日常生活基礎對話，能進行簡短情境溝通", tag: "跨域選修" },
-          { name: "法國日常文化與生活探索", credits: 2, type: "選修" as const, stage: "大二上", description: "認識法國風土人文、飲食藝術與歐盟社會生活", tag: "跨域選修" },
-          { name: "實用法語情境對話實習", credits: 2, type: "選修" as const, stage: "大二下", description: "結合旅遊與職場日常情境，無壓力培養第二外語興趣", tag: "跨域選修" }
-        ],
-        intermediate: [
-          { name: "法語語音學與正音", credits: 2, type: "必修" as const, stage: "大一上", description: "輔系核心必修，國際音標精準咬字與連音技巧訓練", tag: "輔系必修" },
-          { name: "初級法語文法與習作 (一)", credits: 3, type: "必修" as const, stage: "大一上", description: "輔系核心必修，建構標準法語時態與基本句型結構", tag: "輔系必修" },
-          { name: "初級法語文法與習作 (二)", credits: 3, type: "必修" as const, stage: "大一下", description: "複合過去時、未完成過去時之精確解析與段落書寫", tag: "輔系必修" },
-          { name: "中級法語語法與寫作 (一)", credits: 3, type: "必修" as const, stage: "大二上", description: "虛擬式、條件式高階文法分析與邏輯論述表達", tag: "輔系必修" },
-          { name: "中級法語語法與寫作 (二)", credits: 3, type: "必修" as const, stage: "大二下", description: "中階論說文習作與報章雜誌閱讀", tag: "輔系必修" },
-          { name: "法語商業溝通與書信實習", credits: 3, type: "選修" as const, stage: "大二下", description: "跨國商務實務，練習正式法語公文與電子郵件寫作", tag: "輔系選修" },
-          { name: "法國文化導論與歐洲當代社會", credits: 3, type: "選修" as const, stage: "大三上", description: "深度剖析當代歐盟體制與法國政經地位", tag: "輔系選修" },
-          { name: "法漢雙向日常轉譯技巧", credits: 4, type: "選修" as const, stage: "大三下", description: "掌握外語與母語精準轉譯，滿足輔系 24 學分門檻", tag: "輔系選修" }
-        ],
-        advanced: [
-          { name: "法語語音學與正音實務", credits: 2, type: "必修" as const, stage: "大一上", description: "雙主修基礎必修，建立精確法語語音與朗讀能力", tag: "雙主修必修" },
-          { name: "初級法語文法與習作 (一)(二)", credits: 6, type: "必修" as const, stage: "大一全學年", description: "雙主修高強度核心基礎，打底扎實文法架構", tag: "雙主修必修" },
-          { name: "初級法語會話與視聽練習", credits: 4, type: "必修" as const, stage: "大一全學年", description: "全法語環境聽力密集訓練，建立直覺口語反應", tag: "雙主修必修" },
-          { name: "中級法語語法與寫作 (一)(二)", credits: 6, type: "必修" as const, stage: "大二全學年", description: "嚴謹法語論述架構，深度掌握各類時態與語氣", tag: "雙主修必修" },
-          { name: "中級法語聽講會話實習", credits: 4, type: "必修" as const, stage: "大二全學年", description: "模擬法語辯論與學術發表，準備 DELF 檢定", tag: "雙主修必修" },
-          { name: "高級法語文選與批判評論", credits: 4, type: "必修" as const, stage: "大三上", description: "閱讀法國名家經典與前沿評論，培養高階閱讀力", tag: "雙主修必修" },
-          { name: "法漢科技與經貿雙向翻譯", credits: 4, type: "選修" as const, stage: "大三上", description: "針對科技專利、軟體工程與商業合約之專業翻譯", tag: "雙主修選修" },
-          { name: "歐洲聯盟與法國經貿法規專題", credits: 4, type: "選修" as const, stage: "大三下", description: "歐盟科技法規、GDPR 與跨國數位市場研究", tag: "雙主修選修" },
-          { name: "DELF B1/B2 法語檢定認證專案", credits: 2, type: "檢定" as const, stage: "大二暑期", description: "★ 關鍵考核：取得國際法語檢定證照，通過出國交換門檻", tag: "門檻認證" },
-          { name: "海外名校留學交換研習模組 (ENSEA)", credits: 12, type: "交換" as const, stage: "大四上", description: "遠赴法國國立高等應用電子學院，全英語修習前沿工程", tag: "海外交換" },
-          { name: "雙主修跨領域畢業專案發表", credits: 4, type: "必修" as const, stage: "大四下", description: "結合資工技術與法語專業之綜合專案結案評審", tag: "雙主修總整" }
-        ]
-      };
+    let cur = DEPARTMENT_CURRICULUMS[sDom];
+    if (!cur) {
+      for (const [key, val] of Object.entries(DEPARTMENT_CURRICULUMS)) {
+        if (sDom.includes(val.tag) || key.includes(sDom) || sDom.includes(key)) {
+          cur = val;
+          break;
+        }
+      }
+    }
+    if (!cur) {
+      cur = DEPARTMENT_CURRICULUMS["法國語文學系"];
     }
 
-    // 通用動態候選名單
     return {
-      basic: [
-        { name: `${sTag}領域基礎入門導論`, credits: 2, type: "選修" as const, stage: "大一上", description: `探索 ${sDom} 核心概念與跨領域應用`, tag: "跨域選修" },
-        { name: `${sTag}實務生活應用選修`, credits: 2, type: "選修" as const, stage: "大一下", description: `理解 ${sDom} 於日常與產業中的實踐價值`, tag: "跨域選修" },
-        { name: `${sTag}前沿專題講座選修`, credits: 2, type: "選修" as const, stage: "大二上", description: "專家學者產業前瞻議題分享", tag: "跨域選修" },
-        { name: `${sTag}跨域專案探索實作`, credits: 2, type: "選修" as const, stage: "大二下", description: "以無修業負擔方式完成輕量跨域成果", tag: "跨域選修" }
-      ],
-      intermediate: [
-        { name: `${sTag}核心專業理論 (一)`, credits: 3, type: "必修" as const, stage: "大一上", description: `滿足 ${sDom} 輔系 24 學分門檻必修科目`, tag: "輔系必修" },
-        { name: `${sTag}核心專業理論 (二)`, credits: 3, type: "必修" as const, stage: "大一下", description: `深化 ${sDom} 理論基礎與分析能力`, tag: "輔系必修" },
-        { name: `${sTag}專業中階實務研討`, credits: 3, type: "必修" as const, stage: "大二上", description: "個案分析與實務推演訓練", tag: "輔系必修" },
-        { name: `${sTag}專業進階分析工具`, credits: 3, type: "必修" as const, stage: "大二下", description: "掌握該領域主流研發與分析技術", tag: "輔系必修" },
-        { name: `${sTag}跨領域實務應用模組`, credits: 3, type: "選修" as const, stage: "大三上", description: `結合 ${pTag} 與 ${sTag} 之實務選修`, tag: "輔系選修" },
-        { name: `${sTag}輔系專題實作`, credits: 3, type: "選修" as const, stage: "大三下", description: "指導教授帶領之專案成果", tag: "輔系選修" },
-        { name: `${sTag}前瞻產業實務研討`, credits: 3, type: "選修" as const, stage: "大四上", description: "產業鏈接與未來趨勢研析", tag: "輔系選修" },
-        { name: `${sTag}輔系總整評審`, credits: 3, type: "選修" as const, stage: "大四下", description: "完成全部 24 學分輔系修業審查", tag: "輔系選修" }
-      ],
-      advanced: [
-        { name: `${sTag}專業必修核心基礎 (一)`, credits: 4, type: "必修" as const, stage: "大一上", description: `雙主修指定骨幹必修科目`, tag: "雙主修必修" },
-        { name: `${sTag}專業必修核心基礎 (二)`, credits: 4, type: "必修" as const, stage: "大一下", description: `完成第二領域完整先修鏈`, tag: "雙主修必修" },
-        { name: `${sTag}中堅專業架構實務 (一)`, credits: 4, type: "必修" as const, stage: "大二上", description: "第二領域核心理論與實驗分析", tag: "雙主修必修" },
-        { name: `${sTag}中堅專業架構實務 (二)`, credits: 4, type: "必修" as const, stage: "大二下", description: "高階實作與專案設計", tag: "雙主修必修" },
-        { name: `${sTag}高階專案研究與研習`, credits: 4, type: "必修" as const, stage: "大三上", description: "進階學術論文閱讀與研究方法", tag: "雙主修必修" },
-        { name: `${sTag}跨國科技與經貿實務`, credits: 4, type: "選修" as const, stage: "大三下", description: "國際化跨領域合作研習", tag: "雙主修選修" },
-        { name: "專業證照或語言檢定認證", credits: 2, type: "檢定" as const, stage: "大二暑期", description: "★ 關鍵考核：通過交換留學門檻標準", tag: "門檻認證" },
-        { name: "海外姐妹校名校交換研習模組", credits: 12, type: "交換" as const, stage: "大四上", description: "赴海外姐妹名校交換留學，學分回台全數抵免", tag: "海外交換" },
-        { name: "雙學士學位跨域總整專案", credits: 4, type: "必修" as const, stage: "大四下", description: `取得中大「${pDom} ╳ ${sDom}」雙學位總整發表`, tag: "雙主修總整" }
-      ]
+      ruleSummary: cur.ruleSummary,
+      minorCredits: cur.minorCredits,
+      doubleCredits: cur.doubleCredits,
+      basic: cur.basic,
+      intermediate: cur.intermediate,
+      advanced: cur.advanced,
     };
   };
 
@@ -234,17 +265,24 @@ export function FutureMapExplorerView() {
       "機械": "機械工程學系",
       "通訊": "通訊工程學系",
       "生醫": "生醫科學與工程學系",
+      "生科": "生命科學系",
+      "光電": "光電科學與工程學系",
       "化材": "化學工程與材料工程學系",
       "土木": "土木工程學系",
       "大氣": "大氣科學學系",
       "太空": "太空科學與工程學系",
+      "地科": "地球科學學系",
+      "地科學士": "地球科學學院院學士班",
+      "院學士": "地球科學學院院學士班",
+      "法律": "法律與政府學系",
+      "法政": "法律與政府學系",
       "經濟": "經濟學系",
       "財金": "財務金融學系",
       "數學": "數學系",
       "物理": "物理學系",
       "化學": "化學系",
+      "客家": "客家語文與社會",
       "英文": "英美語文學系",
-      "中文": "中國文學系",
     };
 
     const found: string[] = [];
@@ -263,8 +301,10 @@ export function FutureMapExplorerView() {
     } else {
       const parts = q.replace(/想讀|我想學|目標|想去/g, "").split(/[＋\+\&與和、]/);
       if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
-        pDom = parts[0].trim();
-        sDom = parts[1].trim();
+        const d1 = dict[parts[0].trim()] || parts[0].trim();
+        const d2 = dict[parts[1].trim()] || parts[1].trim();
+        pDom = d1;
+        sDom = d2;
       }
     }
 
@@ -274,8 +314,11 @@ export function FutureMapExplorerView() {
   // 根據使用者輸入之需求與交換加值設定，動態生成 3 條徹底解耦之學制路線
   const generateRoadmapPlans = (q: string, withExchange: boolean = isExchangeEnabled) => {
     const { pDom, sDom } = parseDomainsFromQuery(q);
-    const pTag = pDom.slice(0, 2);
-    const sTag = sDom.slice(0, 2);
+
+    const pCur = DEPARTMENT_CURRICULUMS[pDom] || DEPARTMENT_CURRICULUMS["資訊工程學系"];
+    const pTag = pCur.tag;
+    const sCur = DEPARTMENT_CURRICULUMS[sDom] || DEPARTMENT_CURRICULUMS["法國語文學系"];
+    const sTag = sCur.tag;
 
     const candidates = getDomainCandidates(pDom, sDom);
 
@@ -283,61 +326,69 @@ export function FutureMapExplorerView() {
       const sems: SemesterPlan[] = [];
       const labels = ["大一上學期", "大一下學期", "大二上學期", "大二下學期", "大三上學期", "大三下學期", "大四上學期", "大四下學期"];
       
-      const csMajorCourses = [
-        { name: "計算機概論與程式設計 (一)", cred: 3, note: "程式邏輯思維與 C++ 實作" },
-        { name: "物件導向程式設計 (二)", cred: 3, note: "進階軟體架構與抽象化" },
-        { name: "資料結構與演算法分析", cred: 3, note: "樹、圖與經典複雜度運算" },
-        { name: "計算機組織與底層架構", cred: 3, note: "指令集、管線化與處理器設計" },
-        { name: "作業系統與系統軟體", cred: 3, note: "行程排程、虛擬記憶體與檔案系統" },
-        { name: "計算機網路通訊協定", cred: 3, note: "TCP/IP 堆疊與網路安全架構" },
-        { name: "專案研究專題 (一)", cred: 1, note: "教授實驗室頂尖前沿專案實作" },
-        { name: "專案研究專題 (二)", cred: 2, note: "公開成果展示與結案評審" }
-      ];
+      const defaultSchedule = pCur.defaultMajorSchedule || DEPARTMENT_CURRICULUMS["資訊工程學系"].defaultMajorSchedule;
+      const primaryElectives = pCur.intermediate || DEPARTMENT_CURRICULUMS["資訊工程學系"].intermediate;
 
       for (let i = 0; i < 8; i++) {
         const grade = Math.floor(i / 2) + 1;
         const term = (i % 2) + 1;
-        const csItem = csMajorCourses[i];
+        const majorItem = defaultSchedule[i] || defaultSchedule[defaultSchedule.length - 1];
+
+        // 挑選主修第二門真實課程（來自該系之核心課程）
+        const secondMajorCourse = primaryElectives[(i + 1) % primaryElectives.length];
 
         const courses: CourseItem[] = [
-          { course_name: csItem.name, credits: csItem.cred, category: "必修", tag: `${pTag}核心`, note: csItem.note },
-          { course_name: i < 4 ? (i % 2 === 0 ? "微積分與數理基礎" : "離散數學與線性代數") : "進階專業選修模組", credits: 3, category: i < 4 ? "必修" : "選修", tag: `${pTag}專業`, note: "主修不可或缺之專業基石" }
+          { course_name: majorItem.name, credits: majorItem.cred, category: "必修", tag: `${pTag}核心`, note: majorItem.note },
+          {
+            course_name: secondMajorCourse.name,
+            credits: secondMajorCourse.credits,
+            category: i < 4 ? "必修" : "選修",
+            tag: `${pTag}專業`,
+            note: secondMajorCourse.description,
+            ruleNote: secondMajorCourse.ruleNote
+          }
         ];
 
         if (tier === "basic") {
           if (i < candidates.basic.length) {
+            const cand = candidates.basic[i];
             courses.push({
-              course_name: candidates.basic[i].name,
-              credits: candidates.basic[i].credits,
+              course_name: cand.name,
+              credits: cand.credits,
               category: "選修",
               tag: `${sTag}選修`,
-              note: candidates.basic[i].description
+              note: cand.description,
+              ruleNote: cand.ruleNote
             });
           }
         } else if (tier === "intermediate") {
           if (i < candidates.intermediate.length) {
+            const cand = candidates.intermediate[i];
             courses.push({
-              course_name: candidates.intermediate[i].name,
-              credits: candidates.intermediate[i].credits,
-              category: candidates.intermediate[i].type === "必修" ? "輔系必修" : "輔系選修",
+              course_name: cand.name,
+              credits: cand.credits,
+              category: cand.type === "必修" ? "輔系必修" : "輔系選修",
               tag: `${sTag}輔系`,
-              note: candidates.intermediate[i].description
+              note: cand.description,
+              ruleNote: cand.ruleNote || `★ 官方規章：滿足${sDom}輔系${candidates.minorCredits}學分要求`
             });
           }
         } else {
           // 純學制雙主修路線 (不與交換綁定)
           if (i < candidates.advanced.length) {
+            const cand = candidates.advanced[i];
             courses.push({
-              course_name: candidates.advanced[i].name,
-              credits: candidates.advanced[i].credits,
-              category: candidates.advanced[i].type === "必修" ? "雙主修必修" : "雙主修選修",
+              course_name: cand.name,
+              credits: cand.credits,
+              category: cand.type === "必修" ? "雙主修必修" : "雙主修選修",
               tag: `${sTag}雙主修`,
-              note: candidates.advanced[i].description
+              note: cand.description,
+              ruleNote: cand.ruleNote || `★ 官方規章：滿足${sDom}雙主修${candidates.doubleCredits}學分要求`
             });
           }
         }
 
-        // 第二階段加值：若開啟出國交換，在任何主線 (basic / intermediate / advanced) 的大四上 (i === 6) 動態疊加出國交換模組！
+        // 第二階段加值：若開啟出國交換，在任何主線的大四上 (i === 6) 動態疊加出國交換模組！
         if (withExchange && i === 6) {
           const schoolTitle = selectedExchangeSchool
             ? `海外交換：${selectedExchangeSchool.name_zh} (${selectedExchangeSchool.country}) 研習模組`
@@ -350,20 +401,21 @@ export function FutureMapExplorerView() {
             credits: 12,
             category: "交換",
             tag: "海外交換加值",
-            note: schoolNote
+            note: schoolNote,
+            ruleNote: "★ 國際處 OIA：出國交換期間所修學分返校依系所審查全額抵免。"
           });
         }
 
         let deadlines = ["確認本學期學分符應教務處畢業預審進度"];
         if (tier === "intermediate" && i === 1) {
-          deadlines = ["大一下學期 5 月線上送出輔系申請，並確認符合先修成績門檻"];
+          deadlines = [`大一下學期 5 月線上送出${sDom}輔系申請，確認符合規章門檻`];
         } else if (tier === "advanced" && i === 1) {
-          deadlines = ["大一下學期 5 月線上送出雙主修申請表，維持本學期成績於系排前 30%"];
+          deadlines = [`大一下學期 5 月線上送出${sDom}雙主修申請表，維持本學期系排前 30%`];
         }
 
         if (withExchange) {
           if (i === 3) {
-            deadlines = ["★ 關鍵考核：暑假前考取專業語言檢定（如托福 85+ / 雅思 6.5+ / DELF B2），符合中大國際處出國交換門檻"];
+            deadlines = ["★ 關鍵考核：暑假前考取語言檢定（托福 85+ / 雅思 6.5+ / 外語證照），符合中大國際處出國交換門檻"];
           } else if (i === 4) {
             deadlines = ["★ 10~11月向中大國際處 OIA 送交海外姐妹校出國交換甄選志願表與面試"];
           } else if (i === 6) {
@@ -377,7 +429,7 @@ export function FutureMapExplorerView() {
 
         const semHighlight = (withExchange && i === 6)
           ? "大四上遠赴海外名校留學交換！沉浸國際學術環境與建立跨國人脈網絡。"
-          : `精準推進 ${pTag} 與 ${sTag} 跨領域學習軌跡`;
+          : `精準推進 ${pTag} 與 ${sTag} 官方專業學習軌跡`;
 
         sems.push({
           semester_index: i + 1,
@@ -395,14 +447,14 @@ export function FutureMapExplorerView() {
 
     const candidatesWithExchange = (cList: CandidateCourse[]) => withExchange ? [
       ...cList,
-      { name: "海外姐妹校名校交換研習模組", credits: 12, type: "交換" as const, stage: "大四上", description: "赴歐美姐妹名校交換留學，學分回台全數抵免選修", tag: "海外交換加值" }
+      { name: "海外姐妹校名校交換研習模組", credits: 12, type: "交換" as const, stage: "大四上", description: "赴海外姐妹名校交換留學，學分回台全數抵免選修", tag: "海外交換加值", ruleNote: "★ 國際處規章：海外姊妹校全英語授課抵免。" }
     ] : cList;
 
     return {
       basic: {
         tier_id: "basic" as const,
-        tier_name: `基礎方案（主修${pTag} ＋ ${sTag}選修）`,
-        target_summary: `扎實修畢 ${pDom} 核心專業 128 學分，課餘無負擔修習 8 學分 ${sDom} 實用選修，維持頂尖 GPA。`,
+        tier_name: `基礎方案（主修${pTag} ＋ ${sTag}探索）`,
+        target_summary: `扎實修畢 ${pDom} 核心專業 128 學分，課餘無修業負擔修習 8~12 學分 ${sDom} 關鍵選修，維持頂尖 GPA。`,
         total_credits_estimate: withExchange ? 148 : 136,
         weekly_intensity: withExchange ? "平穩充實（含一學期海外交換）" : "平穩充實（每學期約 16~19 學分）",
         semesters: buildSemesters("basic"),
@@ -416,14 +468,14 @@ export function FutureMapExplorerView() {
       },
       intermediate: {
         tier_id: "intermediate" as const,
-        tier_name: `中階方案（主修${pTag} ＋ ${sTag}輔系 24 學分）`,
-        target_summary: `在 ${pDom} 專業基礎上，額外修畢 ${sDom}「輔系」門檻所需的 24 學分指定課程。`,
-        total_credits_estimate: withExchange ? 164 : 152,
+        tier_name: `中階方案（主修${pTag} ＋ ${sTag}輔系 ${candidates.minorCredits} 學分）`,
+        target_summary: `在 ${pDom} 專業基礎上，額外修畢 ${sDom} 官方「輔系」門檻所需的 ${candidates.minorCredits} 學分指定科目。${candidates.ruleSummary}`,
+        total_credits_estimate: withExchange ? 148 + candidates.minorCredits : 128 + candidates.minorCredits,
         weekly_intensity: withExchange ? "精實挑戰（含一學期海外交換）" : "精實挑戰（每學期約 19~22 學分）",
         semesters: buildSemesters("intermediate"),
         career_and_advantage: [
-          `畢業證書正式加註「${sDom}輔系」榮銜，全校跨域標竿`,
-          "具備雙向精準轉譯與跨領域溝通實戰能力，勝任跨國科技顧問",
+          `畢業證書正式加註「${sDom}輔系」官方榮銜，跨域專長認證`,
+          `深入掌握${sTag}核心必修與先修鏈，具備實戰研發能力`,
           "專業技術與跨領域素養兼備，國內外頂尖機構求才首選",
           ...(withExchange ? ["結合大四海外名校出國交換經歷，兼備國際移動力與全球視野"] : [])
         ],
@@ -431,10 +483,10 @@ export function FutureMapExplorerView() {
       },
       advanced: {
         tier_id: "advanced" as const,
-        tier_name: `進階方案（主修${pTag} ＋ 雙主修 40~60 學分）`,
-        target_summary: `高強度雙學士學位挑戰（本系 128 ＋ ${sDom} 40~60 學分），培養全方位的跨領域領導人才。`,
-        total_credits_estimate: withExchange ? 192 : 180,
-        weekly_intensity: withExchange ? "頂尖卓越（含一學期海外交換）" : "頂尖卓越（每學期約 21~25 學分，需強大自主規劃能力）",
+        tier_name: `高階方案（主修${pTag} ╳ ${sTag}雙主修 ${candidates.doubleCredits} 學分）`,
+        target_summary: `挑戰雙學士學位（跨修 ${sDom} ${candidates.doubleCredits} 學分核心與專案），取得中大「${pDom} ╳ ${sDom}」雙主修學位。`,
+        total_credits_estimate: withExchange ? 148 + candidates.doubleCredits : 128 + candidates.doubleCredits,
+        weekly_intensity: withExchange ? "頂尖卓越（含一學期海外交換）" : "頂尖卓越（每學期約 22~25 學分，需強大自主規劃能力）",
         semesters: buildSemesters("advanced"),
         career_and_advantage: [
           `獲得中央大學「${pDom} ╳ ${sDom}」雙學士學位，全台稀缺雙專長頂尖人才`,
@@ -1098,7 +1150,16 @@ export function FutureMapExplorerView() {
             {activePlan.candidate_courses.map((cand, cIdx) => (
               <div
                 key={cIdx}
-                className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 flex flex-col justify-between hover:bg-amber-50/80 transition-colors"
+                onClick={() => handleOpenCourseModal({
+                  name: cand.name,
+                  credits: cand.credits,
+                  type: cand.type,
+                  stage: cand.stage,
+                  tag: cand.tag,
+                  description: cand.description,
+                  ruleNote: cand.ruleNote
+                })}
+                className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 flex flex-col justify-between hover:bg-amber-100/70 hover:shadow-md cursor-pointer transition-all group"
               >
                 <div>
                   <div className="flex items-center justify-between gap-1 mb-1.5">
@@ -1117,15 +1178,17 @@ export function FutureMapExplorerView() {
                       {cand.type}
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-stone-900 leading-snug">
+                  <h4 className="text-sm font-bold text-stone-900 leading-snug group-hover:text-amber-950">
                     {cand.name}
                   </h4>
-                  <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  <p className="text-xs text-stone-600 mt-1 leading-relaxed line-clamp-2">
                     {cand.description}
                   </p>
                 </div>
                 <div className="mt-3 pt-2 border-t border-amber-200/50 flex items-center justify-between text-xs">
-                  <span className="text-stone-400 font-medium text-[11px]">{cand.tag}</span>
+                  <span className="text-stone-400 font-medium text-[11px] group-hover:text-amber-800 transition-colors flex items-center gap-1">
+                    {cand.tag} • 課綱與規章 ↗
+                  </span>
                   <span className="font-black text-amber-800">{cand.credits} 學分</span>
                 </div>
               </div>
@@ -1179,18 +1242,26 @@ export function FutureMapExplorerView() {
                     {sem.courses.map((c, cIdx) => (
                       <div
                         key={cIdx}
-                        className={`p-2.5 rounded-xl border flex flex-col gap-1 text-xs transition-all ${
+                        onClick={() => handleOpenCourseModal({
+                          name: c.course_name,
+                          credits: c.credits,
+                          category: c.category,
+                          tag: c.tag,
+                          note: c.note,
+                          ruleNote: c.ruleNote
+                        })}
+                        className={`p-2.5 rounded-xl border flex flex-col gap-1 text-xs transition-all cursor-pointer hover:shadow-xs hover:scale-[1.01] active:scale-[0.99] group ${
                           c.tag.includes("交換")
-                            ? "bg-purple-50/80 border-purple-300 text-purple-950"
+                            ? "bg-purple-50/80 border-purple-300 text-purple-950 hover:bg-purple-100/90"
                             : c.tag.includes("雙主修")
-                            ? "bg-amber-50/90 border-amber-300 text-amber-950 ring-1 ring-amber-300/50"
+                            ? "bg-amber-50/90 border-amber-300 text-amber-950 ring-1 ring-amber-300/50 hover:bg-amber-100"
                             : c.tag.includes("輔系")
-                            ? "bg-amber-50/70 border-amber-200 text-amber-900"
-                            : "bg-stone-50 border-stone-100 text-stone-900"
+                            ? "bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100/80"
+                            : "bg-stone-50 border-stone-100 text-stone-900 hover:bg-stone-100"
                         }`}
                       >
                         <div className="flex items-center justify-between font-semibold">
-                          <span className="truncate pr-1">{c.course_name}</span>
+                          <span className="truncate pr-1 group-hover:underline">{c.course_name}</span>
                           <span className="shrink-0 text-stone-600 font-bold">
                             {c.credits} 學分
                           </span>
@@ -1208,7 +1279,10 @@ export function FutureMapExplorerView() {
                             {c.tag}
                           </span>
                           <span className="text-[10px] text-stone-400">•</span>
-                          <span className="text-[11px] text-stone-500 truncate">{c.note}</span>
+                          <span className="text-[11px] text-stone-500 truncate flex-1">{c.note}</span>
+                          <span className="text-[10px] text-stone-400 font-bold group-hover:text-emerald-700 shrink-0">
+                            課綱 ↗
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -1237,6 +1311,164 @@ export function FutureMapExplorerView() {
           </div>
         </div>
       )}
+
+
+      {/* 課程詳細課綱與官方修業規章彈窗 Modal */}
+      {modalCourse?.isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setModalCourse(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[88vh] overflow-y-auto shadow-2xl border border-stone-200 p-6 relative flex flex-col gap-4 animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 關閉按鈕 */}
+            <button
+              onClick={() => setModalCourse(null)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* 標籤分類區 */}
+            <div className="flex items-center gap-2 flex-wrap pr-8">
+              {modalCourse.courseCode && (
+                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-md bg-stone-900 text-amber-400">
+                  課號：{modalCourse.courseCode}
+                </span>
+              )}
+              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 border border-amber-300">
+                {modalCourse.category} • {modalCourse.credits} 學分
+              </span>
+              {modalCourse.stage && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
+                  {modalCourse.stage}
+                </span>
+              )}
+              {modalCourse.tag && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  {modalCourse.tag}
+                </span>
+              )}
+            </div>
+
+            {/* 課名 */}
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+                {modalCourse.liveData?.course_name_zh || modalCourse.name}
+              </h2>
+              {modalCourse.liveData?.course_name_en && (
+                <p className="text-xs text-stone-500 font-medium mt-0.5">
+                  {modalCourse.liveData.course_name_en}
+                </p>
+              )}
+            </div>
+
+            {/* 官方規章醒目標語 Amber Banner */}
+            {modalCourse.ruleNote && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-start gap-3 text-xs text-amber-950 font-medium shadow-xs">
+                <BadgeCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span className="font-black text-amber-900 block mb-0.5">國立中央大學官方修業規章審定</span>
+                  <span className="leading-relaxed">{modalCourse.ruleNote}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 正在連線資料庫載入狀態 */}
+            {modalCourse.isLoading && (
+              <div className="py-8 flex flex-col items-center justify-center text-stone-400 gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                <span className="text-xs">連線中央大學課程資料庫檢索即時課綱、教室與授課師資中...</span>
+              </div>
+            )}
+
+            {/* 即時課程資料庫檢索成果 */}
+            {!modalCourse.isLoading && (
+              <div className="flex flex-col gap-4 text-xs text-stone-700">
+                {/* 師資與排課教室卡片 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-stone-500" />
+                    <span>授課教師：<strong className="text-stone-900 font-bold">{modalCourse.liveData?.teacher || "中央大學專任師資"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-stone-500" />
+                    <span>開課學系：<strong className="text-stone-900 font-bold">{modalCourse.liveData?.department || "中央大學"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2 sm:col-span-2">
+                    <MapPin className="w-4 h-4 text-stone-500 shrink-0" />
+                    <span>
+                      上課時間與教室：
+                      <strong className="text-stone-900 font-bold ml-1">
+                        {modalCourse.liveData?.schedules && modalCourse.liveData.schedules.length > 0
+                          ? modalCourse.liveData.schedules.map(s => `${s.time} (${s.location || '教室排定中'})`).join("、")
+                          : "依教務處最新選課時程公告"}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* 課程目標與綱要 */}
+                <div>
+                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                    課程目標與內容綱要
+                  </h4>
+                  <div className="p-3.5 rounded-2xl bg-white border border-stone-200 leading-relaxed text-stone-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {modalCourse.liveData?.objectives || modalCourse.note || "具體培養學生該學門之核心理論素養、演算法模型架構與實務專題解題能力。"}
+                  </div>
+                </div>
+
+                {/* 指定教材 */}
+                {modalCourse.liveData?.textbooks && (
+                  <div>
+                    <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      指定教材與經典參考書目
+                    </h4>
+                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 leading-relaxed text-stone-600">
+                      {modalCourse.liveData.textbooks}
+                    </div>
+                  </div>
+                )}
+
+                {/* 核心能力指標 */}
+                {modalCourse.liveData?.core_skills && modalCourse.liveData.core_skills.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      培育核心能力指標 (Core Competencies)
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {modalCourse.liveData.core_skills.slice(0, 4).map((sk, skIdx) => (
+                        <div key={skIdx} className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 flex items-center justify-between">
+                          <span className="font-medium text-stone-800 truncate pr-2">{sk.ability}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-200 text-amber-900 shrink-0">
+                            強度 {sk.strength}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 底部關閉按鈕 */}
+            <div className="mt-2 pt-3 border-t border-stone-100 flex items-center justify-end">
+              <button
+                onClick={() => setModalCourse(null)}
+                className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors"
+              >
+                關閉課程詳細
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
