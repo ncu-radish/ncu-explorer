@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Compass,
   Calendar,
@@ -23,7 +23,8 @@ import {
   Award,
   Layers2,
   BookmarkCheck,
-  MousePointerClick
+  MousePointerClick,
+  Plane
 } from "lucide-react";
 
 interface CourseItem {
@@ -73,8 +74,11 @@ export function FutureMapExplorerView() {
   // 三套方案之狀態 (初始為 null，代表尚未輸入生成)
   const [plans, setPlans] = useState<Record<"basic" | "intermediate" | "advanced", TierRoadmap> | null>(null);
 
-  // 選取的路線按鈕 (初始為 null，等使用者點擊特定按鈕後才展開該路線的課表與課程清單)
+  // 第一階段（主線決策）：三條核心學制路線（單選唯一基底：單主修、輔系、雙主修）
   const [selectedTier, setSelectedTier] = useState<"basic" | "intermediate" | "advanced" | null>(null);
+
+  // 第二階段（擴充加值）：是否考慮參與出國交換計畫（徹底解耦之 Toggle，可自由疊加於任一主線）
+  const [isExchangeEnabled, setIsExchangeEnabled] = useState<boolean>(false);
 
   const presetQueries = [
     "想讀資工＋學法文，未來想去歐洲交換",
@@ -209,8 +213,8 @@ export function FutureMapExplorerView() {
     return { pDom, sDom };
   };
 
-  // 根據使用者輸入之需求，生成 3 條路線
-  const generateRoadmapPlans = (q: string) => {
+  // 根據使用者輸入之需求與交換加值設定，動態生成 3 條徹底解耦之學制路線
+  const generateRoadmapPlans = (q: string, withExchange: boolean = isExchangeEnabled) => {
     const { pDom, sDom } = parseDomainsFromQuery(q);
     const pTag = pDom.slice(0, 2);
     const sTag = sDom.slice(0, 2);
@@ -263,16 +267,8 @@ export function FutureMapExplorerView() {
             });
           }
         } else {
-          // 進階雙主修
-          if (i === 6) {
-            courses.push({
-              course_name: "海外名校交換研習模組 (全英語授課抵免)",
-              credits: 12,
-              category: "海外交換",
-              tag: "海外名校交換",
-              note: "全英語修習前沿工程，修業學分全數回台抵免主系選修"
-            });
-          } else if (i < candidates.advanced.length) {
+          // 純學制雙主修路線 (不與交換綁定)
+          if (i < candidates.advanced.length) {
             courses.push({
               course_name: candidates.advanced[i].name,
               credits: candidates.advanced[i].credits,
@@ -283,6 +279,38 @@ export function FutureMapExplorerView() {
           }
         }
 
+        // 第二階段加值：若開啟出國交換，在任何主線 (basic / intermediate / advanced) 的大四上 (i === 6) 動態疊加出國交換模組！
+        if (withExchange && i === 6) {
+          courses.push({
+            course_name: "海外姐妹校留學交換研習模組 (全英語授課抵免)",
+            credits: 12,
+            category: "交換",
+            tag: "海外交換加值",
+            note: "赴歐美頂尖姊妹校交換研習一學期，修得學分可全數返校抵免相關選修學分"
+          });
+        }
+
+        let deadlines = ["確認本學期學分符應教務處畢業預審進度"];
+        if (tier === "intermediate" && i === 1) {
+          deadlines = ["大一下學期 5 月線上送出輔系申請，並確認符合先修成績門檻"];
+        } else if (tier === "advanced" && i === 1) {
+          deadlines = ["大一下學期 5 月線上送出雙主修申請表，維持本學期成績於系排前 30%"];
+        }
+
+        if (withExchange) {
+          if (i === 3) {
+            deadlines = ["★ 關鍵考核：暑假前考取專業語言檢定（如托福 85+ / 雅思 6.5+ / DELF B2），符合中大國際處出國交換門檻"];
+          } else if (i === 4) {
+            deadlines = ["★ 10~11月向中大國際處 OIA 送交海外姐妹校出國交換甄選志願表與面試"];
+          } else if (i === 6) {
+            deadlines = ["★ 啟程赴海外姐妹校交換留學！沉浸國際學術殿堂與跨國人脈網絡"];
+          }
+        }
+
+        const semHighlight = (withExchange && i === 6)
+          ? "大四上遠赴海外名校留學交換！沉浸國際學術環境與建立跨國人脈網絡。"
+          : `精準推進 ${pTag} 與 ${sTag} 跨領域學習軌跡`;
+
         sems.push({
           semester_index: i + 1,
           grade,
@@ -290,63 +318,73 @@ export function FutureMapExplorerView() {
           semester_label: labels[i],
           total_credits: courses.reduce((acc, c) => acc + c.credits, 0),
           courses,
-          key_deadlines: i === 3 
-            ? ["★ 關鍵考核：暑期前考取外語或專業檢定證照（如 DELF B1 / 托福 85+），符合雙主修與出國資格"] 
-            : (i === 4 ? ["★ 10~11月向中大國際處 OIA 送出姐妹校交換留學申請"] : ["確認本學期學分符應教務處畢業預審進度"]),
-          highlight: i === 6 
-            ? "大四上遠赴海外名校留學交換！沉浸國際學術與跨國團隊人脈。" 
-            : `精準推進 ${pTag} 與 ${sTag} 跨領域學習軌跡`
+          key_deadlines: deadlines,
+          highlight: semHighlight
         });
       }
       return sems;
     };
+
+    const candidatesWithExchange = (cList: CandidateCourse[]) => withExchange ? [
+      ...cList,
+      { name: "海外姐妹校名校交換研習模組", credits: 12, type: "交換" as const, stage: "大四上", description: "赴歐美姐妹名校交換留學，學分回台全數抵免選修", tag: "海外交換加值" }
+    ] : cList;
 
     return {
       basic: {
         tier_id: "basic" as const,
         tier_name: `基礎方案（主修${pTag} ＋ ${sTag}選修）`,
         target_summary: `扎實修畢 ${pDom} 核心專業 128 學分，課餘無負擔修習 8 學分 ${sDom} 實用選修，維持頂尖 GPA。`,
-        total_credits_estimate: 136,
-        weekly_intensity: "平穩充實（每學期約 16~19 學分）",
+        total_credits_estimate: withExchange ? 148 : 136,
+        weekly_intensity: withExchange ? "平穩充實（含一學期海外交換）" : "平穩充實（每學期約 16~19 學分）",
         semesters: buildSemesters("basic"),
         career_and_advantage: [
           `紮實掌握中央${pTag}核心專業工程與底層技術`,
           `具備${sTag}跨領域溝通與實務基礎，履歷格外亮眼`,
-          "課業負擔適中，有充分時間維持頂尖 GPA 銜接頂尖研究所推甄"
+          "課業負擔適中，有充分時間維持頂尖 GPA 銜接頂尖研究所推甄",
+          ...(withExchange ? ["結合大四海外名校出國交換經歷，兼備國際移動力與全球視野"] : [])
         ],
-        candidate_courses: candidates.basic
+        candidate_courses: candidatesWithExchange(candidates.basic)
       },
       intermediate: {
         tier_id: "intermediate" as const,
         tier_name: `中階方案（主修${pTag} ＋ ${sTag}輔系 24 學分）`,
         target_summary: `在 ${pDom} 專業基礎上，額外修畢 ${sDom}「輔系」門檻所需的 24 學分指定課程。`,
-        total_credits_estimate: 152,
-        weekly_intensity: "精實挑戰（每學期約 19~22 學分）",
+        total_credits_estimate: withExchange ? 164 : 152,
+        weekly_intensity: withExchange ? "精實挑戰（含一學期海外交換）" : "精實挑戰（每學期約 19~22 學分）",
         semesters: buildSemesters("intermediate"),
         career_and_advantage: [
           `畢業證書正式加註「${sDom}輔系」榮銜，全校跨域標竿`,
           "具備雙向精準轉譯與跨領域溝通實戰能力，勝任跨國科技顧問",
-          "專業技術與跨領域素養兼備，國內外頂尖機構求才首選"
+          "專業技術與跨領域素養兼備，國內外頂尖機構求才首選",
+          ...(withExchange ? ["結合大四海外名校出國交換經歷，兼備國際移動力與全球視野"] : [])
         ],
-        candidate_courses: candidates.intermediate
+        candidate_courses: candidatesWithExchange(candidates.intermediate)
       },
       advanced: {
         tier_id: "advanced" as const,
-        tier_name: `進階方案（主修${pTag} ＋ 雙主修 60 學分 ＋ 海外交換）`,
-        target_summary: `高強度雙主修挑戰（修滿雙學位共計約 188 學分），通過專業門檻並遠赴海外姐妹校交換留學！`,
-        total_credits_estimate: 188,
-        weekly_intensity: "頂尖卓越（每學期約 21~25 學分，需強大自我管理）",
+        tier_name: `進階方案（主修${pTag} ＋ 雙主修 40~60 學分）`,
+        target_summary: `高強度雙學士學位挑戰（本系 128 ＋ ${sDom} 40~60 學分），培養全方位的跨領域領導人才。`,
+        total_credits_estimate: withExchange ? 192 : 180,
+        weekly_intensity: withExchange ? "頂尖卓越（含一學期海外交換）" : "頂尖卓越（每學期約 21~25 學分，需強大自主規劃能力）",
         semesters: buildSemesters("advanced"),
         career_and_advantage: [
           `獲得中央大學「${pDom} ╳ ${sDom}」雙學士學位，全台稀缺雙專長頂尖人才`,
-          "大四赴海外名校修習尖端模組，建立國際科技人脈",
-          "無縫申請歐美頂尖名校碩博士，具備國際學術與跨國團隊競爭力",
-          "直通跨國企業駐台核心研發主管或國際開拓專案經理 (Global PM)"
+          `兼具${pTag}硬核專業與${sTag}領域精深素養，具備跨領域溝通與專案領導能力`,
+          "直通國內外頂尖名校跨領域研究所推甄或跨國企業核心研發團隊",
+          ...(withExchange ? ["結合大四海外名校出國交換經歷，履歷具備高度國際化競爭優勢"] : [])
         ],
-        candidate_courses: candidates.advanced
+        candidate_courses: candidatesWithExchange(candidates.advanced)
       }
     };
   };
+
+  // 監聽第二階段交換加值狀態切換：即時動態重算課表
+  useEffect(() => {
+    if (plans) {
+      setPlans(generateRoadmapPlans(userInput, isExchangeEnabled));
+    }
+  }, [isExchangeEnabled]);
 
   // 點擊「AI 動態生成」: 輸入完 prompt 才會生成三條路線
   const handleGenerate = async (queryText: string = userInput) => {
@@ -370,15 +408,15 @@ export function FutureMapExplorerView() {
       const data = await res.json();
       
       // 確保 candidate_courses 存在
-      const localFallback = generateRoadmapPlans(queryText);
-      data.basic.candidate_courses = localFallback.basic.candidate_courses;
-      data.intermediate.candidate_courses = localFallback.intermediate.candidate_courses;
-      data.advanced.candidate_courses = localFallback.advanced.candidate_courses;
+      const localFallback = generateRoadmapPlans(queryText, isExchangeEnabled);
+      data.basic = localFallback.basic;
+      data.intermediate = localFallback.intermediate;
+      data.advanced = localFallback.advanced;
 
       setPlans(data);
     } catch {
       // 本地智慧引擎毫秒級生成
-      const localPlans = generateRoadmapPlans(queryText);
+      const localPlans = generateRoadmapPlans(queryText, isExchangeEnabled);
       setPlans(localPlans);
     } finally {
       setIsLoading(false);
@@ -471,15 +509,21 @@ export function FutureMapExplorerView() {
             </div>
           )}
 
-          {/* 生成後的「三條路線方案切換按鈕」 */}
+          {/* 生成後的「第一階段：三條核心學制路線切換按鈕（唯一基底，互斥單選）」 */}
           {plans && (
-            <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-2">
-              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                已為你規劃出以下三條路線，請點選任一按鈕查看專屬四年課表與候選名單：
-              </span>
+            <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  第一階段（主線決策）：請在三條核心學制路線中，選擇唯一一條作為大學生涯的基底路線
+                </span>
+                <span className="text-[11px] text-emerald-200/70 font-medium">
+                  （本系單主修 / 輔系 / 雙主修 互斥單選）
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 按鈕 1：基礎方案 */}
+                {/* 按鈕 1：本系單主修 */}
                 <button
                   type="button"
                   onClick={() => setSelectedTier("basic")}
@@ -495,7 +539,7 @@ export function FutureMapExplorerView() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                         selectedTier === "basic" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
                       }`}>
-                        輕鬆探索
+                        本系單主修
                       </span>
                     </div>
                     <h4 className="text-sm sm:text-base font-bold">
@@ -506,11 +550,11 @@ export function FutureMapExplorerView() {
                     </p>
                   </div>
                   <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點擊查看課表 ➔</span>
+                    <span>點選定為基底路線 ➔</span>
                   </div>
                 </button>
 
-                {/* 按鈕 2：中階方案 */}
+                {/* 按鈕 2：輔系路線 */}
                 <button
                   type="button"
                   onClick={() => setSelectedTier("intermediate")}
@@ -526,7 +570,7 @@ export function FutureMapExplorerView() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                         selectedTier === "intermediate" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
                       }`}>
-                        輔系門檻 (24學分)
+                        輔系 / 跨域學程 (20~24學分)
                       </span>
                     </div>
                     <h4 className="text-sm sm:text-base font-bold">
@@ -537,11 +581,11 @@ export function FutureMapExplorerView() {
                     </p>
                   </div>
                   <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點擊查看課表 ➔</span>
+                    <span>點選定為基底路線 ➔</span>
                   </div>
                 </button>
 
-                {/* 按鈕 3：進階方案 */}
+                {/* 按鈕 3：雙主修路線 */}
                 <button
                   type="button"
                   onClick={() => setSelectedTier("advanced")}
@@ -557,7 +601,7 @@ export function FutureMapExplorerView() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                         selectedTier === "advanced" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
                       }`}>
-                        雙主修 (60學分) + 交換
+                        雙主修雙學位 (40~60學分)
                       </span>
                     </div>
                     <h4 className="text-sm sm:text-base font-bold">
@@ -568,7 +612,7 @@ export function FutureMapExplorerView() {
                     </p>
                   </div>
                   <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點擊查看課表 ➔</span>
+                    <span>點選定為基底路線 ➔</span>
                   </div>
                 </button>
               </div>
@@ -584,11 +628,80 @@ export function FutureMapExplorerView() {
             <MousePointerClick className="w-6 h-6 animate-bounce" />
           </div>
           <h3 className="text-lg font-bold text-stone-900">
-            請點選上方任一條「路線按鈕」
+            請先完成【第一階段】：點選上方任一條「核心學制主線」
           </h3>
-          <p className="text-xs sm:text-sm text-stone-500 max-w-md">
-            你可以點選 <strong>Option 1（基礎）</strong>、<strong>Option 2（中階輔系）</strong> 或 <strong>Option 3（進階雙主修＋交換）</strong>，系統將即刻為你展開該路線專屬的四年課表與應選課程候選名單！
+          <p className="text-xs sm:text-sm text-stone-500 max-w-lg leading-relaxed">
+            依據學程規範，請在 <strong>Option 1（本系單主修）</strong>、<strong>Option 2（輔系 / 跨域學程）</strong> 或 <strong>Option 3（雙主修）</strong> 中，選擇唯一一條作為大學四年基底主線。確認主線後，將自動開啟【第二階段：出國交換擴充加值方案】！
           </p>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* 第二階段（擴充加值）：是否考慮參與出國交換計畫？（徹底解耦之 Toggle） */}
+      {/* ================================================================ */}
+      {activePlan && (
+        <div
+          className={`rounded-3xl p-5 sm:p-6 border transition-all ${
+            isExchangeEnabled
+              ? "bg-gradient-to-r from-sky-950 via-indigo-950 to-slate-900 border-sky-400/50 shadow-md text-white animate-fadeIn"
+              : "bg-white border-stone-200 shadow-xs text-stone-900"
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                  isExchangeEnabled
+                    ? "bg-sky-500 text-stone-950 font-bold shadow-md shadow-sky-500/30"
+                    : "bg-stone-100 text-stone-600"
+                }`}
+              >
+                <Plane className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span
+                    className={`text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
+                      isExchangeEnabled
+                        ? "bg-sky-400/20 text-sky-300 border border-sky-400/40"
+                        : "bg-stone-100 text-stone-600 border border-stone-200"
+                    }`}
+                  >
+                    第二階段（擴充加值方案）
+                  </span>
+                  <span className="text-[11px] text-sky-500 font-semibold">
+                    ★ 徹底解耦：可自由疊加於「單主修」、「輔系」或「雙主修」任一主線
+                  </span>
+                </div>
+                <h4 className={`text-base sm:text-lg font-bold ${isExchangeEnabled ? "text-white" : "text-stone-900"}`}>
+                  是否考慮參與出國交換計畫？
+                </h4>
+                <p className={`text-xs mt-1 leading-relaxed max-w-2xl ${isExchangeEnabled ? "text-sky-100/80" : "text-stone-500"}`}>
+                  出國交換被定位為<strong>可自由疊加的加值方案</strong>，絕非與學制平行的互斥選項。開啟後將於四年課表中加入海外名校交換模組與學分抵免機制，並標示中大國際處 OIA 申請與外語檢定關鍵時程。
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+              <span className={`text-xs font-bold ${isExchangeEnabled ? "text-sky-300 font-black" : "text-stone-500"}`}>
+                {isExchangeEnabled ? "已加入交換加值" : "暫不考慮交換"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsExchangeEnabled(!isExchangeEnabled)}
+                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isExchangeEnabled ? "bg-sky-500" : "bg-stone-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isExchangeEnabled ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -597,9 +710,17 @@ export function FutureMapExplorerView() {
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-xs flex flex-col gap-4 animate-fadeIn">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md inline-block mb-1 border border-emerald-200">
-                目前選取之專屬路線
-              </span>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                  目前選定之核心學制主線
+                </span>
+                {isExchangeEnabled && (
+                  <span className="text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-200 flex items-center gap-1 animate-fadeIn">
+                    <Plane className="w-3.5 h-3.5 text-sky-600" />
+                    已疊加出國交換加值方案
+                  </span>
+                )}
+              </div>
               <h3 className="text-xl sm:text-2xl font-bold text-stone-900">
                 {activePlan.tier_name}
               </h3>

@@ -396,8 +396,8 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
         ),
         "advanced": TierRoadmap(
             tier_id="advanced",
-            tier_name=f"進階方案（主修{primary_domain[:2]} ＋ 雙主修 ＋ 海外交換）",
-            target_summary=f"高強度雙主修挑戰（修滿雙學位共計約 {128 + double_credits} 學分），通過專業門檻並遠赴海外姐妹校交換留學！",
+            tier_name=f"進階方案（主修{primary_domain[:2]} ＋ {secondary_domain[:2]}雙主修 {double_credits} 學分）",
+            target_summary=f"高強度雙學士學位挑戰（修滿雙學位共計約 {128 + double_credits} 學分），培養全方位的跨領域領導人才。",
             total_credits_estimate=128 + double_credits + 4,
             weekly_intensity="頂尖卓越（每學期約 21~25 學分，需強大自我管理）",
             semesters=advanced_semesters,
