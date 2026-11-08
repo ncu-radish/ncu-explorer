@@ -662,506 +662,347 @@ export function FutureMapExplorerView() {
   // 取得目前使用者點擊按鈕後選取的方案數據
   const activePlan = (plans && selectedTier) ? plans[selectedTier] : null;
 
+  const exchangeCardsOpen = isExchangeEnabled;
+
   return (
-    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto">
-      {/* Header Banner & 自然語言輸入框 */}
-      <div className="bg-gradient-to-r from-violet-950 via-violet-900 to-stone-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-violet-700/40">
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-400/20 text-violet-300 border border-violet-400/30">
-              <Compass className="w-3.5 h-3.5" />
-              Future Map 夢想導航
-            </span>
-            <span className="text-xs text-violet-200/70">輸入需求 ➔ 生成三條路線 ➔ 點擊按鈕查看課表與候選課程</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            我的夢想，在中央怎麼實現？
-          </h2>
-          <p className="text-stone-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            請在下方輸入你想探索的目標或跨域組合（例如：資工＋法文、資工＋半導體、資管＋雙主修資工、機械＋電機）。
-            點擊「AI 生成方案」後，系統將為你規劃出基礎、中階、進階三條路線；點擊特定路線按鈕，即可展開查看該路線專屬的課表與課程候選名單！
+    <div className="flex flex-col gap-6 w-full">
+      {/* ─── 1. 夢想輸入 ─── */}
+      <section className="surface p-5 sm:p-6 flex flex-col gap-4">
+        <div>
+          <p className="eyebrow">Step 0</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-stone-900">我的夢想，在中央怎麼實現？</h2>
+          <p className="mt-1.5 text-sm text-stone-600 leading-relaxed max-w-3xl">
+            輸入你想探索的目標或跨域組合（例如：資工＋法文、資管＋雙主修資工、機械＋電機），系統會規劃出基礎、中階、進階三條路線。
           </p>
-
-          {/* 自然語言 AI 輸入列 */}
-          <div className="mt-2 flex flex-col sm:flex-row gap-2 bg-white/10 p-2 rounded-2xl backdrop-blur-md border border-white/20">
-            <div className="flex items-center gap-2 flex-1 px-3 py-1.5 text-white">
-              <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
-              <input
-                type="text"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-                placeholder="輸入你的夢想（例：想讀資工＋學法文、資工＋半導體學程、機械＋電機...）"
-                className="w-full bg-transparent placeholder-stone-400 text-xs sm:text-sm focus:outline-none text-white"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => handleGenerate()}
-              disabled={isLoading}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-stone-950 font-bold text-xs sm:text-sm transition-all shadow-md shrink-0 cursor-pointer disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  AI 規劃中...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  AI 生成方案
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* 推薦靈感膠囊 */}
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            <span className="text-xs text-stone-400 font-medium">常見目標靈感：</span>
-            {presetQueries.map((preset, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setUserInput(preset);
-                  handleGenerate(preset);
-                }}
-                className="text-xs px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-stone-300 border border-white/10 transition-colors cursor-pointer"
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-
-          {/* 當尚未生成方案時的引導提示 */}
-          {!plans && (
-            <div className="mt-3 p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-violet-200/90 flex items-center gap-2">
-              <MousePointerClick className="w-4 h-4 text-violet-400 shrink-0" />
-              <span>
-                請在上方輸入你的跨域夢想或直接點擊任一推薦靈感，按下 <strong>「AI 生成方案」</strong> 開始規劃三條專屬路線！
-              </span>
-            </div>
-          )}
-
-          {/* 生成後的「第一階段：三條核心學制路線切換按鈕（唯一基底，互斥單選）」 */}
-          {plans && (
-            <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-violet-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  第一階段（主線決策）：請在三條核心學制路線中，選擇唯一一條作為大學生涯的基底路線
-                </span>
-                <span className="text-[11px] text-violet-200/70 font-medium">
-                  （本系單主修 / 輔系 / 雙主修 互斥單選）
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 按鈕 1：本系單主修 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTier("basic")}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedTier === "basic"
-                      ? "bg-violet-500 text-stone-950 border-violet-400 font-bold shadow-lg scale-[1.02] ring-2 ring-violet-300"
-                      : "bg-white/10 text-stone-200 border-white/15 hover:bg-white/20"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs uppercase tracking-wider opacity-80">Option 1</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        selectedTier === "basic" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
-                      }`}>
-                        本系單主修
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold">
-                      {plans.basic.tier_name.split("（")[0] || "基礎方案"}
-                    </h4>
-                    <p className="text-[11px] mt-1 opacity-90 leading-tight">
-                      {plans.basic.tier_name}
-                    </p>
-                  </div>
-                  <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點選定為基底路線 ➔</span>
-                  </div>
-                </button>
-
-                {/* 按鈕 2：輔系路線 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTier("intermediate")}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedTier === "intermediate"
-                      ? "bg-violet-500 text-stone-950 border-violet-400 font-bold shadow-lg scale-[1.02] ring-2 ring-violet-300"
-                      : "bg-white/10 text-stone-200 border-white/15 hover:bg-white/20"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs uppercase tracking-wider opacity-80">Option 2</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        selectedTier === "intermediate" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
-                      }`}>
-                        輔系 / 跨域學程 (20~24學分)
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold">
-                      {plans.intermediate.tier_name.split("（")[0] || "中階方案"}
-                    </h4>
-                    <p className="text-[11px] mt-1 opacity-90 leading-tight">
-                      {plans.intermediate.tier_name}
-                    </p>
-                  </div>
-                  <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點選定為基底路線 ➔</span>
-                  </div>
-                </button>
-
-                {/* 按鈕 3：雙主修路線 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTier("advanced")}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedTier === "advanced"
-                      ? "bg-violet-500 text-stone-950 border-violet-400 font-bold shadow-lg scale-[1.02] ring-2 ring-violet-300"
-                      : "bg-white/10 text-stone-200 border-white/15 hover:bg-white/20"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs uppercase tracking-wider opacity-80">Option 3</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        selectedTier === "advanced" ? "bg-stone-950/20 text-stone-950" : "bg-white/20 text-white"
-                      }`}>
-                        雙主修雙學位 (40~60學分)
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold">
-                      {plans.advanced.tier_name.split("（")[0] || "進階方案"}
-                    </h4>
-                    <p className="text-[11px] mt-1 opacity-90 leading-tight">
-                      {plans.advanced.tier_name}
-                    </p>
-                  </div>
-                  <div className="mt-3 text-[11px] flex items-center gap-1 opacity-90 font-medium">
-                    <span>點選定為基底路線 ➔</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* 狀態提示：已生成三條路線，但尚未點選任何按鈕 */}
-      {plans && !selectedTier && (
-        <div className="bg-white rounded-3xl p-8 border border-dashed border-violet-300 text-center flex flex-col items-center gap-3 shadow-xs">
-          <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
-            <MousePointerClick className="w-6 h-6 animate-bounce" />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <label className="flex flex-1 items-center gap-2.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-200">
+            <Sparkles className="w-4 h-4 text-violet-500 shrink-0" />
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+              placeholder="輸入你的夢想（例：想讀資工＋學法文、機械＋電機…）"
+              className="w-full bg-transparent text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => handleGenerate()}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60 cursor-pointer shrink-0"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                規劃中…
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                生成方案
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-stone-500">常見目標：</span>
+          {presetQueries.map((preset, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                setUserInput(preset);
+                handleGenerate(preset);
+              }}
+              className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 cursor-pointer"
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+
+        {!plans && (
+          <div className="flex items-center gap-2 rounded-xl bg-violet-50 px-4 py-3 text-xs text-violet-800">
+            <MousePointerClick className="w-4 h-4 shrink-0" />
+            輸入你的夢想或點選任一常見目標，按下「生成方案」開始規劃。
           </div>
-          <h3 className="text-lg font-bold text-stone-900">
-            請先完成【第一階段】：點選上方任一條「核心學制主線」
-          </h3>
-          <p className="text-xs sm:text-sm text-stone-500 max-w-lg leading-relaxed">
-            依據學程規範，請在 <strong>Option 1（本系單主修）</strong>、<strong>Option 2（輔系 / 跨域學程）</strong> 或 <strong>Option 3（雙主修）</strong> 中，選擇唯一一條作為大學四年基底主線。確認主線後，將自動開啟【第二階段：出國交換擴充加值方案】！
+        )}
+      </section>
+
+      {/* ─── 2. 第一階段：選擇主線 ─── */}
+      {plans && (
+        <section className="flex flex-col gap-3 animate-rise">
+          <div>
+            <p className="eyebrow">Step 1</p>
+            <h3 className="mt-1 text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-violet-600" />
+              選擇你的核心學制主線
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">本系單主修／輔系／雙主修，三選一作為大學四年的基底路線</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {TIER_OPTIONS.map((opt) => {
+              const active = selectedTier === opt.id;
+              const plan = plans[opt.id];
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSelectedTier(opt.id)}
+                  aria-pressed={active}
+                  className={`relative flex flex-col justify-between rounded-2xl border p-4 text-left transition cursor-pointer ${
+                    active
+                      ? "border-violet-500 bg-violet-50 shadow-md ring-2 ring-violet-200"
+                      : "border-stone-200 bg-white hover:border-violet-300 hover:shadow-sm"
+                  }`}
+                >
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+                        Option {opt.n}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          active ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        {opt.badge}
+                      </span>
+                    </div>
+                    <h4 className="text-base font-bold text-stone-900">
+                      {plan.tier_name.split("（")[0] || opt.fallback}
+                    </h4>
+                    <p className="mt-1 text-xs leading-snug text-stone-500">{plan.tier_name}</p>
+                  </div>
+                  <span
+                    className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${
+                      active ? "text-violet-700" : "text-stone-400"
+                    }`}
+                  >
+                    {active ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        已選為基底路線
+                      </>
+                    ) : (
+                      <>
+                        選為基底路線
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {plans && !selectedTier && (
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-8 text-center">
+          <MousePointerClick className="mx-auto w-6 h-6 text-violet-500" />
+          <h3 className="mt-2 text-base font-bold text-stone-900">請先選擇一條核心學制主線</h3>
+          <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed text-stone-500">
+            選定後會顯示方案概覽、課程候選名單與四年課表，並可進一步加入出國交換加值方案。
           </p>
         </div>
       )}
 
-      {/* ================================================================ */}
-      {/* 第二階段（擴充加值）：是否考慮參與出國交換計畫？（徹底解耦之 Toggle） */}
-      {/* ================================================================ */}
+      {/* ─── 3. 第二階段：出國交換 ─── */}
       {activePlan && (
-        <div
-          className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            isExchangeEnabled
-              ? "bg-gradient-to-r from-purple-950 via-violet-950 to-stone-900 border-purple-400/50 shadow-md text-white animate-fadeIn"
-              : "bg-white border-stone-200 shadow-xs text-stone-900"
-          }`}
-        >
+        <section className="surface p-5 sm:p-6 animate-rise">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  isExchangeEnabled
-                    ? "bg-purple-500 text-stone-950 font-bold shadow-md shadow-purple-500/30"
-                    : "bg-stone-100 text-stone-600"
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                  exchangeCardsOpen ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-500"
                 }`}
               >
                 <Plane className="w-5 h-5" />
-              </div>
+              </span>
               <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span
-                    className={`text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
-                      isExchangeEnabled
-                        ? "bg-purple-400/20 text-purple-300 border border-purple-400/40"
-                        : "bg-stone-100 text-stone-600 border border-stone-200"
-                    }`}
-                  >
-                    第二階段（擴充加值方案）
-                  </span>
-                  <span className="text-[11px] text-purple-500 font-semibold">
-                    ★ 徹底解耦：可自由疊加於「單主修」、「輔系」或「雙主修」任一主線
-                  </span>
-                </div>
-                <h4 className={`text-base sm:text-lg font-bold ${isExchangeEnabled ? "text-white" : "text-stone-900"}`}>
-                  是否考慮參與出國交換計畫？
-                </h4>
-                <p className={`text-xs mt-1 leading-relaxed max-w-2xl ${isExchangeEnabled ? "text-purple-100/80" : "text-stone-500"}`}>
-                  出國交換被定位為<strong>可自由疊加的加值方案</strong>，絕非與學制平行的互斥選項。開啟後將於四年課表中加入海外名校交換模組與學分抵免機制，並標示中大國際處 OIA 申請與外語檢定關鍵時程。
+                <p className="eyebrow">Step 2 · 擴充加值</p>
+                <h4 className="mt-1 text-base font-bold text-stone-900">是否考慮參與出國交換計畫？</h4>
+                <p className="mt-1 text-xs leading-relaxed text-stone-500 max-w-2xl">
+                  交換是可疊加在單主修、輔系或雙主修任一主線上的加值方案。開啟後會在四年課表加入海外交換模組與學分抵免，並標示國際處申請與外語檢定時程。
                 </p>
               </div>
             </div>
 
-            {/* Toggle Switch */}
             <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-              <span className={`text-xs font-bold ${isExchangeEnabled ? "text-purple-300 font-black" : "text-stone-500"}`}>
-                {isExchangeEnabled ? "已加入交換加值" : "暫不考慮交換"}
+              <span className={`text-xs font-semibold ${exchangeCardsOpen ? "text-violet-700" : "text-stone-500"}`}>
+                {exchangeCardsOpen ? "已加入交換加值" : "暫不考慮交換"}
               </span>
               <button
                 type="button"
+                role="switch"
+                aria-checked={exchangeCardsOpen}
+                aria-label="切換出國交換加值方案"
                 onClick={() => setIsExchangeEnabled(!isExchangeEnabled)}
-                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isExchangeEnabled ? "bg-purple-500" : "bg-stone-300"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  exchangeCardsOpen ? "bg-violet-600" : "bg-stone-300"
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    isExchangeEnabled ? "translate-x-6" : "translate-x-0"
+                  className={`pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow transition ${
+                    exchangeCardsOpen ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
             </div>
           </div>
 
-          {/* 當開啟出國交換加值時：展開基於使用者動機的智慧交換學校篩選器 (中大國際處甄選簡章) */}
-          {isExchangeEnabled && (
-            <div className="mt-5 pt-5 border-t border-purple-400/20 flex flex-col gap-4 animate-fadeIn">
-              {/* 第一步：意圖預判與動機詢問 */}
+          {exchangeCardsOpen && (
+            <div className="mt-5 flex flex-col gap-5 border-t border-stone-100 pt-5">
+              {/* 動機 */}
               {detectedLanguage && !customMotivationOverride ? (
-                <div className="bg-purple-500/20 border border-purple-400/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-300 shrink-0" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-violet-50 px-4 py-3 text-xs text-violet-900">
+                  <span className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>
-                      <strong>【情境 A：自動鎖定】</strong> 偵測到你的外語學習意圖（<strong>{detectedLanguage}</strong>），已主動為你跳過動機詢問，直接鎖定母語為 <strong>{detectedLanguage}</strong> 之國家姊妹校！
+                      偵測到你想學習 <strong>{detectedLanguage}</strong>，已自動鎖定該語言母語國家的姊妹校。
                     </span>
-                  </div>
+                  </span>
                   <button
                     type="button"
                     onClick={() => setCustomMotivationOverride(true)}
-                    className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-colors cursor-pointer shrink-0 text-[11px] font-medium"
+                    className="shrink-0 cursor-pointer rounded-full border border-violet-200 bg-white px-3 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-100"
                   >
-                    探索其他動機（專業/生活）➔
+                    改選其他動機
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs text-purple-200 font-bold flex items-center gap-1.5">
-                    <Filter className="w-3.5 h-3.5" />
-                    第一步：請選擇你的出國交換「核心動機」（情境 A / B / C）：
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-stone-700">
+                    <Filter className="w-3.5 h-3.5 text-violet-600" />
+                    第一步：你的出國交換核心動機
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setExchangeMotivation("language")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                        exchangeMotivation === "language"
-                          ? "bg-purple-500 text-stone-950 font-bold border-purple-300 shadow-md ring-2 ring-purple-300/40"
-                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 A</span>
-                      <span className="text-sm font-bold flex items-center gap-1.5">
-                        🗣️ 語言學習
-                      </span>
-                      <span className="text-[11px] opacity-85 leading-tight">
-                        精進外語（日語、法語、德語、西班牙語等母語國學校）
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExchangeMotivation("academic")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                        exchangeMotivation === "academic"
-                          ? "bg-purple-500 text-stone-950 font-bold border-purple-300 shadow-md ring-2 ring-purple-300/40"
-                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 B</span>
-                      <span className="text-sm font-bold flex items-center gap-1.5">
-                        🎓 專業精進 / 學術深造
-                      </span>
-                      <span className="text-[11px] opacity-85 leading-tight">
-                        鑽研特定學門（備註限定學院或特定 Program）
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExchangeMotivation("lifestyle")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                        exchangeMotivation === "lifestyle"
-                          ? "bg-purple-500 text-stone-950 font-bold border-purple-300 shadow-md ring-2 ring-purple-300/40"
-                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 C</span>
-                      <span className="text-sm font-bold flex items-center gap-1.5">
-                        🌍 生活體驗 / 文化探索
-                      </span>
-                      <span className="text-[11px] opacity-85 leading-tight">
-                        地區與生活風格探索（跳過嚴苛院系限制審查）
-                      </span>
-                    </button>
+                    {MOTIVATION_OPTIONS.map((m) => {
+                      const active = exchangeMotivation === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setExchangeMotivation(m.id)}
+                          aria-pressed={active}
+                          className={`flex flex-col gap-1 rounded-xl border p-3.5 text-left transition cursor-pointer ${
+                            active
+                              ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200"
+                              : "border-stone-200 bg-white hover:border-violet-300"
+                          }`}
+                        >
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                            {m.tag}
+                          </span>
+                          <span className="text-sm font-bold text-stone-900">{m.title}</span>
+                          <span className="text-[11px] leading-snug text-stone-500">{m.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* 第二步：子篩選條件（語言 / 專業學門 / 生活風格） */}
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 flex flex-col gap-2">
-                {exchangeMotivation === "language" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-purple-200 font-medium">第二步（目標語言）：</span>
-                    {[
-                      { label: "🇫🇷 法語 (法國/比利時)", val: "法語" },
-                      { label: "🇯🇵 日語 (日本)", val: "日語" },
-                      { label: "🇩🇪 德語 (德國/瑞士)", val: "德語" },
-                      { label: "🇪🇸 西班牙語 (西班牙)", val: "西班牙語" },
-                      { label: "🇺🇸 英語 (美/加/星/港)", val: "英語" },
-                      { label: "🇰🇷 韓語 (韓國)", val: "韓語" }
-                    ].map((item) => (
-                      <button
-                        key={item.val}
-                        type="button"
-                        onClick={() => setSelectedLanguage(item.val)}
-                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
-                          selectedLanguage === item.val
-                            ? "bg-purple-400 text-stone-950 font-bold border-purple-300 shadow-sm"
-                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {exchangeMotivation === "academic" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-purple-200 font-medium">第二步（專業學門）：</span>
-                    {["資電資訊", "商管學院", "工程機械", "生醫理工", "理學自然", "人文社會", "土木工程", "太空科技"].map((disc) => (
-                      <button
-                        key={disc}
-                        type="button"
-                        onClick={() => setSelectedDiscipline(disc)}
-                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
-                          selectedDiscipline === disc
-                            ? "bg-purple-400 text-stone-950 font-bold border-purple-300 shadow-sm"
-                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                        }`}
-                      >
-                        {disc}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {exchangeMotivation === "lifestyle" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-purple-200 font-medium">第二步（風格偏好）：</span>
-                    {[
-                      { label: "🏛️ 歐洲藝文與古典城市", val: "歐洲藝文" },
-                      { label: "🗽 美洲自由與都會風情", val: "美洲風情" },
-                      { label: "⛩️ 亞洲生活與繁盛都會", val: "亞洲文化" },
-                      { label: "❄️ 北歐自然與寧靜生活", val: "北歐自然" }
-                    ].map((style) => (
-                      <button
-                        key={style.val}
-                        type="button"
-                        onClick={() => setSelectedLifestyle(style.val)}
-                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
-                          selectedLifestyle === style.val
-                            ? "bg-purple-400 text-stone-950 font-bold border-purple-300 shadow-sm"
-                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
-                        }`}
-                      >
-                        {style.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              {/* 子篩選 */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-stone-500">
+                  {exchangeMotivation === "language" && "第二步（目標語言）："}
+                  {exchangeMotivation === "academic" && "第二步（專業學門）："}
+                  {exchangeMotivation === "lifestyle" && "第二步（風格偏好）："}
+                </span>
+                {exchangeMotivation === "language" &&
+                  LANGUAGE_OPTIONS.map((item) => (
+                    <FilterChip
+                      key={item.val}
+                      active={selectedLanguage === item.val}
+                      onClick={() => setSelectedLanguage(item.val)}
+                    >
+                      {item.label}
+                    </FilterChip>
+                  ))}
+                {exchangeMotivation === "academic" &&
+                  DISCIPLINE_OPTIONS.map((disc) => (
+                    <FilterChip
+                      key={disc}
+                      active={selectedDiscipline === disc}
+                      onClick={() => setSelectedDiscipline(disc)}
+                    >
+                      {disc}
+                    </FilterChip>
+                  ))}
+                {exchangeMotivation === "lifestyle" &&
+                  LIFESTYLE_OPTIONS.map((style) => (
+                    <FilterChip
+                      key={style.val}
+                      active={selectedLifestyle === style.val}
+                      onClick={() => setSelectedLifestyle(style.val)}
+                    >
+                      {style.label}
+                    </FilterChip>
+                  ))}
               </div>
 
-              {/* 第三步：結果呈現（附帶明確推薦理由與中大國際處官方規範） */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    第三步：依據中大國際處出國交換甄選簡章，共精選推薦 {filteredSchools.length} 所目標姊妹校：
+              {/* 學校結果 */}
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-stone-700">
+                    <GraduationCap className="w-3.5 h-3.5 text-violet-600" />
+                    依國際處甄選簡章，精選 {filteredSchools.length} 所目標姊妹校
                   </span>
                   {selectedExchangeSchool && (
-                    <span className="text-[11px] text-violet-300 font-bold bg-violet-500/20 px-2 py-0.5 rounded-full border border-violet-400/30">
+                    <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-semibold text-violet-800">
                       已選定：{selectedExchangeSchool.name_zh}
                     </span>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
                   {filteredSchools.map((school) => {
                     const isSelected = selectedExchangeSchool?.id === school.id;
-                    let recommendationReason = "";
+                    let reason = "";
                     if (exchangeMotivation === "language") {
-                      recommendationReason = `🎯 語言意圖推薦：位於「${school.country}」${selectedLanguage}母語生活圈，全天候沉浸式外語聽說與跨文化實踐。`;
+                      reason = `位於「${school.country}」${selectedLanguage}母語生活圈，可全天候沉浸式練習外語。`;
                     } else if (exchangeMotivation === "academic") {
-                      recommendationReason = `🎓 專業精進推薦：國際處官方簡章特別限定「${selectedDiscipline}」相關學院或專案，學分抵免高度契合。`;
+                      reason = `國際處簡章限定「${selectedDiscipline}」相關學院或專案，學分抵免高度契合。`;
                     } else {
-                      recommendationReason = `🌍 生活體驗推薦：符合「${selectedLifestyle}」風格偏好，無嚴苛院系限制，深度探索在地人文與校園生活。`;
+                      reason = `符合「${selectedLifestyle}」風格偏好，無嚴苛院系限制，適合深度體驗在地文化。`;
                     }
 
                     return (
                       <div
                         key={school.id}
-                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-2.5 ${
+                        className={`flex flex-col justify-between gap-3 rounded-xl border p-4 transition ${
                           isSelected
-                            ? "bg-violet-950/80 border-violet-400 text-white shadow-lg ring-1 ring-violet-300"
-                            : "bg-white/10 border-white/15 text-white hover:bg-white/15"
+                            ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200"
+                            : "border-stone-200 bg-white hover:border-violet-300"
                         }`}
                       >
                         <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-bold text-purple-300 flex items-center gap-1">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
                               <span>{school.flag}</span>
                               <span>{school.country}</span>
-                              <span className="text-stone-400 text-[10px]">({school.region})</span>
+                              <span className="text-[10px] font-normal text-stone-400">({school.region})</span>
                             </span>
                             {school.is_restricted_program && (
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-medium">
-                                限定學院/專案
+                              <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                                限定學院／專案
                               </span>
                             )}
                           </div>
-
-                          <h5 className="font-bold text-sm sm:text-base leading-snug">
-                            {school.name_zh}
-                          </h5>
+                          <h5 className="text-sm font-bold leading-snug text-stone-900">{school.name_zh}</h5>
                           {school.name_en && (
-                            <p className="text-[11px] text-stone-300 opacity-80 leading-tight">
-                              {school.name_en}
-                            </p>
+                            <p className="text-[11px] leading-tight text-stone-500">{school.name_en}</p>
                           )}
-
-                          {/* 推薦理由 Badge */}
-                          <div className="mt-2 p-2 rounded-xl bg-violet-500/15 border border-violet-400/30 text-[11px] text-violet-200 leading-relaxed">
-                            {recommendationReason}
-                          </div>
-
-                          {/* 國際處官方備註與申請門檻 */}
-                          <div className="mt-1.5 text-[11px] text-stone-300 opacity-90 leading-relaxed bg-black/20 p-2 rounded-xl">
-                            <span className="font-bold text-amber-300 block mb-0.5">📌 國際處官方甄選與申請規定：</span>
+                          <p className="mt-2 text-[11px] leading-relaxed text-stone-600">{reason}</p>
+                          <div className="mt-2 rounded-lg bg-stone-50 p-2.5 text-[11px] leading-relaxed text-stone-600">
+                            <span className="mb-0.5 block font-semibold text-stone-800">國際處甄選與申請規定</span>
                             {school.official_note}
                           </div>
                         </div>
@@ -1169,21 +1010,21 @@ export function FutureMapExplorerView() {
                         <button
                           type="button"
                           onClick={() => setSelectedExchangeSchool(isSelected ? null : school)}
-                          className={`w-full py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                          className={`flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
                             isSelected
-                              ? "bg-violet-500 text-stone-950 shadow-md"
-                              : "bg-purple-500/80 hover:bg-purple-400 text-stone-950"
+                              ? "bg-violet-600 text-white hover:bg-violet-700"
+                              : "border border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
                           }`}
                         >
                           {isSelected ? (
                             <>
                               <Check className="w-3.5 h-3.5" />
-                              已選定此校（已同步融入大四課表）
+                              已選定（已融入大四課表）
                             </>
                           ) : (
                             <>
                               <ExternalLink className="w-3.5 h-3.5" />
-                              選定為我的出國交換目標校 ➔
+                              選為我的交換目標校
                             </>
                           )}
                         </button>
@@ -1194,435 +1035,423 @@ export function FutureMapExplorerView() {
               </div>
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {/* 點擊特定按鈕後：展開該路線專屬之「方案概覽」 */}
+      {/* ─── 4. 方案概覽 ─── */}
       {activePlan && (
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-xs flex flex-col gap-4 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+        <section className="surface p-5 sm:p-6 flex flex-col gap-4 animate-rise">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md border border-violet-200">
-                  目前選定之核心學制主線
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                  目前選定的核心學制主線
                 </span>
                 {isExchangeEnabled && (
-                  <span className="text-xs font-bold text-purple-800 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-200 flex items-center gap-1 animate-fadeIn">
-                    <Plane className="w-3.5 h-3.5 text-purple-600" />
-                    已疊加出國交換加值方案
+                  <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
+                    <Plane className="w-3.5 h-3.5 text-violet-600" />
+                    已疊加出國交換
                   </span>
                 )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-stone-900">
-                {activePlan.tier_name}
-              </h3>
+              <h3 className="text-xl font-bold text-stone-900">{activePlan.tier_name}</h3>
             </div>
-            <div className="text-left sm:text-right">
-              <span className="text-xs text-stone-500 block">四年修業學分預估 / 強度</span>
-              <span className="text-base sm:text-lg font-black text-violet-700">
+            <div className="sm:text-right">
+              <span className="block text-xs text-stone-500">四年修業學分預估／強度</span>
+              <span className="text-base font-bold text-violet-700">
                 約 {activePlan.total_credits_estimate} 學分（{activePlan.weekly_intensity}）
               </span>
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-stone-700 leading-relaxed bg-stone-50 p-4 rounded-2xl border border-stone-100">
-            {activePlan.target_summary}
-          </p>
+          <p className="rounded-xl bg-stone-50 p-4 text-sm leading-relaxed text-stone-700">{activePlan.target_summary}</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {activePlan.career_and_advantage.map((adv, idx) => (
-              <div key={idx} className="p-3.5 rounded-2xl bg-violet-50/60 border border-violet-100 text-xs text-stone-800 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+              <div
+                key={idx}
+                className="flex items-start gap-2 rounded-xl border border-stone-200 bg-white p-3.5 text-xs text-stone-700"
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-violet-600 mt-0.5" />
                 <span>{adv}</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* 點擊特定按鈕後：展開該路線該選的「課程候選名單 (Candidate Courses)」 */}
+      {/* ─── 5. 候選課程 ─── */}
       {activePlan && activePlan.candidate_courses && (
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-amber-200 shadow-xs flex flex-col gap-4 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100">
+        <section className="surface p-5 sm:p-6 flex flex-col gap-4 animate-rise">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
             <div>
-              <h3 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
-                <BookmarkCheck className="w-5 h-5 text-amber-600" />
-                該路線應選之「雙軌課程候選名單」（主修本系 ＋ 第二專長）
+              <h3 className="flex items-center gap-2 text-lg font-bold text-stone-900">
+                <BookmarkCheck className="w-5 h-5 text-violet-600" />
+                課程候選名單
               </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                完整列出【主修學系核心必修】與【第二專長/輔系指定科目】，兩者並行不排擠，清楚檢視修業全貌
+              <p className="mt-0.5 text-xs text-stone-500">
+                列出主修學系核心必修與第二專長／輔系指定科目，兩者並行不排擠
               </p>
             </div>
-            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl text-xs font-bold self-start sm:self-auto">
-              <button
-                onClick={() => setCandidateFilter("all")}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  candidateFilter === "all" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                全部科目 ({activePlan.candidate_courses.length})
-              </button>
-              <button
-                onClick={() => setCandidateFilter("primary")}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  candidateFilter === "primary" ? "bg-violet-600 text-white shadow-xs" : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                主修核心
-              </button>
-              <button
-                onClick={() => setCandidateFilter("secondary")}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  candidateFilter === "secondary" ? "bg-amber-600 text-white shadow-xs" : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                第二專長規章
-              </button>
+            <div className="flex items-center gap-1 self-start rounded-full bg-stone-100 p-1 text-xs font-semibold sm:self-auto">
+              {(
+                [
+                  ["all", `全部 (${activePlan.candidate_courses.length})`],
+                  ["primary", "主修核心"],
+                  ["secondary", "第二專長"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCandidateFilter(id)}
+                  className={`cursor-pointer rounded-full px-3.5 py-1.5 transition ${
+                    candidateFilter === id
+                      ? "bg-white text-violet-700 shadow-sm"
+                      : "text-stone-500 hover:text-stone-800"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {activePlan.candidate_courses
-              .filter(cand => {
-                if (candidateFilter === "primary") return cand.track === "primary" || cand.tag.includes("主修") || cand.tag.includes("核心");
-                if (candidateFilter === "secondary") return cand.track === "secondary" || cand.tag.includes("輔系") || cand.tag.includes("雙主修");
+              .filter((cand) => {
+                if (candidateFilter === "primary")
+                  return cand.track === "primary" || cand.tag.includes("主修") || cand.tag.includes("核心");
+                if (candidateFilter === "secondary")
+                  return cand.track === "secondary" || cand.tag.includes("輔系") || cand.tag.includes("雙主修");
                 return true;
               })
               .map((cand, cIdx) => (
-              <div
-                key={cIdx}
-                onClick={() => handleOpenCourseModal({
-                  name: cand.name,
-                  credits: cand.credits,
-                  type: cand.type,
-                  stage: cand.stage,
-                  tag: cand.tag,
-                  description: cand.description,
-                  ruleNote: cand.ruleNote
-                })}
-                className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 flex flex-col justify-between hover:bg-amber-100/70 hover:shadow-md cursor-pointer transition-all group"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-200/90 text-amber-950">
-                      {cand.stage}
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
-                      cand.type === "交換"
-                        ? "bg-purple-100 text-purple-900"
-                        : cand.type === "檢定"
-                        ? "bg-rose-100 text-rose-900"
-                        : cand.type === "必修"
-                        ? "bg-amber-300 text-amber-950"
-                        : "bg-white text-stone-700 border border-stone-200"
-                    }`}>
-                      {cand.type}
-                    </span>
+                <button
+                  type="button"
+                  key={cIdx}
+                  onClick={() =>
+                    handleOpenCourseModal({
+                      name: cand.name,
+                      credits: cand.credits,
+                      type: cand.type,
+                      stage: cand.stage,
+                      tag: cand.tag,
+                      description: cand.description,
+                      ruleNote: cand.ruleNote,
+                    })
+                  }
+                  className="group flex cursor-pointer flex-col justify-between rounded-xl border border-stone-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md"
+                >
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-1">
+                      <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
+                        {cand.stage}
+                      </span>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                          cand.type === "交換"
+                            ? "bg-purple-50 text-purple-700"
+                            : cand.type === "檢定"
+                            ? "bg-rose-50 text-rose-700"
+                            : cand.type === "必修"
+                            ? "bg-violet-100 text-violet-800"
+                            : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        {cand.type}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold leading-snug text-stone-900 group-hover:text-violet-700">
+                      {cand.name}
+                    </h4>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-stone-500">{cand.description}</p>
                   </div>
-                  <h4 className="text-sm font-bold text-stone-900 leading-snug group-hover:text-amber-950">
-                    {cand.name}
-                  </h4>
-                  <p className="text-xs text-stone-600 mt-1 leading-relaxed line-clamp-2">
-                    {cand.description}
-                  </p>
-                </div>
-                <div className="mt-3 pt-2 border-t border-amber-200/50 flex items-center justify-between text-xs">
-                  <span className="text-stone-400 font-medium text-[11px] group-hover:text-amber-800 transition-colors flex items-center gap-1">
-                    {cand.tag} • 課綱與規章 ↗
-                  </span>
-                  <span className="font-black text-amber-800">{cand.credits} 學分</span>
-                </div>
-              </div>
-            ))}
+                  <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2 text-xs">
+                    <span className="text-[11px] text-stone-400 group-hover:text-violet-600">{cand.tag} · 課綱與規章 ↗</span>
+                    <span className="font-bold text-violet-700">{cand.credits} 學分</span>
+                  </div>
+                </button>
+              ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* 點擊特定按鈕後：展開該路線專屬的「四年動態時序課表 (8 個學期卡片)」 */}
+      {/* ─── 6. 四年課表 ─── */}
       {activePlan && (
-        <div className="flex flex-col gap-4 animate-fadeIn">
+        <section className="flex flex-col gap-4 animate-rise">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-stone-900">
               <Calendar className="w-5 h-5 text-violet-600" />
-              專屬四年動態時序課表（大一至大四 8 學期）
+              四年動態時序課表
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
-              依【{activePlan.tier_name.split("（")[0]}】排入之每學期具體修課組合、學分數與重要時程節點
+            <p className="mt-0.5 text-xs text-stone-500">
+              依【{activePlan.tier_name.split("（")[0]}】排入每學期的修課組合、學分與重要時程
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {activePlan.semesters.map((sem) => (
-              <div
-                key={sem.semester_index}
-                className="bg-white rounded-2xl border border-stone-200 p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-violet-500" />
-
+              <article key={sem.semester_index} className="surface flex flex-col justify-between p-4">
                 <div>
-                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-stone-100">
+                  <div className="mb-3 flex items-center justify-between border-b border-stone-100 pb-3">
                     <div>
-                      <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block">
+                      <span className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400">
                         Semester {sem.semester_index}
                       </span>
-                      <h4 className="text-base font-bold text-stone-900">
-                        {sem.semester_label}
-                      </h4>
+                      <h4 className="text-base font-bold text-stone-900">{sem.semester_label}</h4>
                     </div>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200">
+                    <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
                       {sem.total_credits} 學分
                     </span>
                   </div>
 
-                  <div className="text-xs font-medium text-violet-950 bg-violet-50/60 p-2 rounded-xl mb-3 border border-violet-100">
-                    ✨ {sem.highlight}
-                  </div>
+                  <p className="mb-3 rounded-lg bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-600">
+                    {sem.highlight}
+                  </p>
 
-                  <div className="flex flex-col gap-2 mb-4">
-                    <span className="text-[11px] font-bold text-stone-400">當學期排入科目</span>
-                    {sem.courses.map((c, cIdx) => (
-                      <div
-                        key={cIdx}
-                        onClick={() => handleOpenCourseModal({
-                          name: c.course_name,
-                          credits: c.credits,
-                          category: c.category,
-                          tag: c.tag,
-                          note: c.note,
-                          ruleNote: c.ruleNote
-                        })}
-                        className={`p-2.5 rounded-xl border flex flex-col gap-1 text-xs transition-all cursor-pointer hover:shadow-xs hover:scale-[1.01] active:scale-[0.99] group ${
-                          c.tag.includes("交換")
-                            ? "bg-purple-50/80 border-purple-300 text-purple-950 hover:bg-purple-100/90"
-                            : c.tag.includes("雙主修")
-                            ? "bg-amber-50/90 border-amber-300 text-amber-950 ring-1 ring-amber-300/50 hover:bg-amber-100"
-                            : c.tag.includes("輔系")
-                            ? "bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100/80"
-                            : "bg-stone-50 border-stone-100 text-stone-900 hover:bg-stone-100"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between font-semibold">
-                          <span className="truncate pr-1 group-hover:underline">{c.course_name}</span>
-                          <span className="shrink-0 text-stone-600 font-bold">
-                            {c.credits} 學分
+                  <div className="mb-4 flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold text-stone-400">當學期排入科目</span>
+                    {sem.courses.map((c, cIdx) => {
+                      const isExchange = c.tag.includes("交換");
+                      const isDouble = c.tag.includes("雙主修");
+                      const isMinor = c.tag.includes("輔系");
+                      return (
+                        <button
+                          type="button"
+                          key={cIdx}
+                          onClick={() =>
+                            handleOpenCourseModal({
+                              name: c.course_name,
+                              credits: c.credits,
+                              category: c.category,
+                              tag: c.tag,
+                              note: c.note,
+                              ruleNote: c.ruleNote,
+                            })
+                          }
+                          className={`group flex w-full cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left text-xs transition hover:border-violet-300 hover:shadow-sm ${
+                            isExchange
+                              ? "border-purple-200 bg-purple-50/60"
+                              : isDouble || isMinor
+                              ? "border-violet-200 bg-violet-50/50"
+                              : "border-stone-200 bg-white"
+                          }`}
+                        >
+                          <span className="flex items-center justify-between gap-2 font-semibold text-stone-900">
+                            <span className="truncate group-hover:text-violet-700">{c.course_name}</span>
+                            <span className="shrink-0 text-stone-500">{c.credits} 學分</span>
                           </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-sm font-bold ${
-                            c.tag.includes("交換")
-                              ? "bg-purple-200 text-purple-900"
-                              : c.tag.includes("雙主修")
-                              ? "bg-amber-300/80 text-amber-950"
-                              : c.tag.includes("輔系")
-                              ? "bg-amber-200/80 text-amber-900"
-                              : "bg-stone-200 text-stone-700"
-                          }`}>
-                            {c.tag}
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                isExchange
+                                  ? "bg-purple-100 text-purple-800"
+                                  : isDouble || isMinor
+                                  ? "bg-violet-100 text-violet-800"
+                                  : "bg-stone-100 text-stone-600"
+                              }`}
+                            >
+                              {c.tag}
+                            </span>
+                            <span className="flex-1 truncate text-[11px] text-stone-500">{c.note}</span>
+                            <span className="shrink-0 text-[10px] text-stone-400 group-hover:text-violet-700">課綱 ↗</span>
                           </span>
-                          <span className="text-[10px] text-stone-400">•</span>
-                          <span className="text-[11px] text-stone-500 truncate flex-1">{c.note}</span>
-                          <span className="text-[10px] text-stone-400 font-bold group-hover:text-violet-700 shrink-0">
-                            課綱 ↗
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-stone-100">
-                  <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1 mb-1">
-                    <Clock className="w-3 h-3" />
-                    本學期重要時程 (To-Do)
+                <div className="border-t border-stone-100 pt-3">
+                  <span className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-stone-700">
+                    <Clock className="w-3 h-3 text-violet-600" />
+                    本學期重要時程
                   </span>
                   <ul className="flex flex-col gap-1">
                     {sem.key_deadlines.map((d, dIdx) => (
-                      <li
-                        key={dIdx}
-                        className="text-[11px] text-stone-600 flex items-start gap-1 leading-tight"
-                      >
-                        <span className="text-rose-500 mt-0.5">•</span>
+                      <li key={dIdx} className="flex items-start gap-1.5 text-[11px] leading-tight text-stone-600">
+                        <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
                         <span>{d}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-
-      {/* 課程詳細課綱與官方修業規章彈窗 Modal */}
+      {/* ─── 課程詳細彈窗 ─── */}
       {modalCourse?.isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 p-4 backdrop-blur-xs"
           onClick={() => setModalCourse(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-2xl w-full max-h-[88vh] overflow-y-auto shadow-2xl border border-stone-200 p-6 relative flex flex-col gap-4 animate-scaleUp"
+            role="dialog"
+            aria-modal="true"
+            aria-label={modalCourse.name}
+            className="surface-raised relative flex max-h-[88vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 關閉按鈕 */}
             <button
+              type="button"
+              aria-label="關閉"
               onClick={() => setModalCourse(null)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+              className="absolute right-4 top-4 cursor-pointer rounded-full p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {/* 標籤分類區 */}
-            <div className="flex items-center gap-2 flex-wrap pr-8">
+            <div className="flex flex-wrap items-center gap-2 pr-10">
               {modalCourse.courseCode && (
-                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-md bg-stone-900 text-amber-400">
+                <span className="rounded-md bg-stone-900 px-2.5 py-1 font-mono text-xs font-semibold text-white">
                   課號：{modalCourse.courseCode}
                 </span>
               )}
-              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 border border-amber-300">
-                {modalCourse.category} • {modalCourse.credits} 學分
+              <span className="rounded-md bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                {modalCourse.category} · {modalCourse.credits} 學分
               </span>
               {modalCourse.stage && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
+                <span className="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
                   {modalCourse.stage}
                 </span>
               )}
               {modalCourse.tag && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-violet-50 text-violet-800 border border-violet-200">
+                <span className="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
                   {modalCourse.tag}
                 </span>
               )}
             </div>
 
-            {/* 課名 */}
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              <h2 className="text-xl font-extrabold tracking-tight text-stone-900">
                 {modalCourse.liveData?.course_name_zh || modalCourse.name}
               </h2>
               {modalCourse.liveData?.course_name_en && (
-                <p className="text-xs text-stone-500 font-medium mt-0.5">
-                  {modalCourse.liveData.course_name_en}
-                </p>
+                <p className="mt-0.5 text-xs text-stone-500">{modalCourse.liveData.course_name_en}</p>
               )}
             </div>
 
-            {/* 官方規章醒目標語 Amber Banner */}
             {modalCourse.ruleNote && (
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-start gap-3 text-xs text-amber-950 font-medium shadow-xs">
-                <BadgeCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+                <BadgeCheck className="w-5 h-5 shrink-0 text-amber-600" />
                 <div className="flex-1">
-                  <span className="font-black text-amber-900 block mb-0.5">國立中央大學官方修業規章審定</span>
+                  <span className="mb-0.5 block font-bold">國立中央大學官方修業規章審定</span>
                   <span className="leading-relaxed">{modalCourse.ruleNote}</span>
                 </div>
               </div>
             )}
 
-            {/* 正在連線資料庫載入狀態 */}
             {modalCourse.isLoading && (
-              <div className="py-8 flex flex-col items-center justify-center text-stone-400 gap-2">
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-stone-400">
                 <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
-                <span className="text-xs">連線中央大學課程資料庫檢索即時課綱、教室與授課師資中...</span>
+                <span className="text-xs">連線中央大學課程資料庫，檢索即時課綱、教室與授課師資…</span>
               </div>
             )}
 
-            {/* 即時課程資料庫檢索成果 */}
             {!modalCourse.isLoading && (
               <div className="flex flex-col gap-4 text-xs text-stone-700">
-                {/* 師資與排課教室卡片 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+                <div className="grid grid-cols-1 gap-2.5 rounded-xl bg-stone-50 p-3.5 sm:grid-cols-2">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-stone-500" />
-                    <span>授課教師：<strong className="text-stone-900 font-bold">{modalCourse.liveData?.teacher || "中央大學專任師資"}</strong></span>
+                    <User className="w-4 h-4 text-stone-400" />
+                    <span>
+                      授課教師：<strong className="text-stone-900">{modalCourse.liveData?.teacher || "中央大學專任師資"}</strong>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-stone-500" />
-                    <span>開課學系：<strong className="text-stone-900 font-bold">{modalCourse.liveData?.department || "中央大學"}</strong></span>
+                    <Building2 className="w-4 h-4 text-stone-400" />
+                    <span>
+                      開課學系：<strong className="text-stone-900">{modalCourse.liveData?.department || "中央大學"}</strong>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 sm:col-span-2">
-                    <MapPin className="w-4 h-4 text-stone-500 shrink-0" />
+                    <MapPin className="w-4 h-4 shrink-0 text-stone-400" />
                     <span>
                       上課時間與教室：
-                      <strong className="text-stone-900 font-bold ml-1">
+                      <strong className="ml-1 text-stone-900">
                         {modalCourse.liveData?.schedules && modalCourse.liveData.schedules.length > 0
-                          ? modalCourse.liveData.schedules.map(s => `${s.time} (${s.location || '教室排定中'})`).join("、")
+                          ? modalCourse.liveData.schedules
+                              .map((s) => `${s.time} (${s.location || "教室排定中"})`)
+                              .join("、")
                           : "依教務處最新選課時程公告"}
                       </strong>
                     </span>
                   </div>
                 </div>
 
-                {/* 課程目標與綱要 */}
                 <div>
-                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                  <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-stone-900">
                     <BookOpen className="w-4 h-4 text-violet-600" />
                     課程目標與內容綱要
                   </h4>
-                  <div className="p-3.5 rounded-2xl bg-white border border-stone-200 leading-relaxed text-stone-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {modalCourse.liveData?.objectives || modalCourse.note || "具體培養學生該學門之核心理論素養、演算法模型架構與實務專題解題能力。"}
+                  <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl border border-stone-200 bg-white p-3.5 leading-relaxed">
+                    {modalCourse.liveData?.objectives ||
+                      modalCourse.note ||
+                      "具體培養學生該學門之核心理論素養、演算法模型架構與實務專題解題能力。"}
                   </div>
                 </div>
 
-                {/* 選項一：選課資格限制與先修科目鏈 */}
                 <div>
-                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
-                    <ListFilter className="w-4 h-4 text-purple-600" />
+                  <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                    <ListFilter className="w-4 h-4 text-violet-600" />
                     選課資格限制與先修科目鏈
                   </h4>
-                  <div className="p-3.5 rounded-2xl bg-purple-50/50 border border-purple-200/80 flex flex-col gap-2">
-                    {modalCourse.liveData?.distribution_conditions && modalCourse.liveData.distribution_conditions.length > 0 ? (
-                      <div className="flex flex-col gap-1.5">
-                        {modalCourse.liveData.distribution_conditions.map((dist, dIdx) => (
-                          <div key={dIdx} className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-purple-100 text-xs">
-                            <span className="px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 text-[10px] shrink-0 mt-0.5">
-                              順位 {dist.priority}
-                            </span>
-                            <span className="text-stone-700 font-medium leading-relaxed">{dist.condition}</span>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="flex flex-col gap-1.5 rounded-xl bg-stone-50 p-3">
+                    {modalCourse.liveData?.distribution_conditions &&
+                    modalCourse.liveData.distribution_conditions.length > 0 ? (
+                      modalCourse.liveData.distribution_conditions.map((dist, dIdx) => (
+                        <div key={dIdx} className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                            順位 {dist.priority}
+                          </span>
+                          <span className="leading-relaxed">{dist.condition}</span>
+                        </div>
+                      ))
                     ) : (
-                      <div className="flex flex-col gap-2 text-xs text-stone-600">
-                        <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-purple-100">
-                          <span className="px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 text-[10px] shrink-0 mt-0.5">
+                      <>
+                        <div className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
                             分發保障
                           </span>
-                          <span className="text-stone-700 leading-relaxed">
+                          <span className="leading-relaxed">
                             本系生享有第 1 順位優先選課保障；獲教務處核定之雙主修／輔系生享有第 2 順位保障名額。
                           </span>
                         </div>
-                        <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-xl border border-purple-100">
-                          <span className="px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-800 text-[10px] shrink-0 mt-0.5">
+                        <div className="flex items-start gap-2 rounded-lg border border-stone-200 bg-white p-2.5">
+                          <span className="mt-0.5 shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
                             先修建議
                           </span>
-                          <span className="text-stone-700 leading-relaxed">
+                          <span className="leading-relaxed">
                             修習本課程前，建議依序修畢各學期對應之基礎科目鏈，以利銜接中高階專業論述與專題實作。
                           </span>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {/* 選項二：跨域學分採計與畢業抵免規則 */}
                 <div>
-                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5 mb-1.5 text-sm">
+                  <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-stone-900">
                     <GraduationCap className="w-4 h-4 text-violet-600" />
                     跨域學分採計與畢業抵免規則
                   </h4>
-                  <div className="p-3.5 rounded-2xl bg-violet-50/50 border border-violet-200/80 flex flex-col gap-2.5 text-xs text-stone-700">
-                    <div className="flex items-start gap-2.5 bg-white/90 p-2.5 rounded-xl border border-violet-100">
-                      <BadgeCheck className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-2 rounded-xl bg-stone-50 p-3">
+                    <div className="flex items-start gap-2.5 rounded-lg border border-stone-200 bg-white p-2.5">
+                      <BadgeCheck className="w-4 h-4 shrink-0 text-violet-600 mt-0.5" />
                       <div>
-                        <span className="font-bold text-stone-900 block mb-0.5">
+                        <span className="mb-0.5 block font-bold text-stone-900">
                           {modalCourse.tag?.includes("輔系")
-                            ? "【輔系指定學分認列】"
+                            ? "輔系指定學分認列"
                             : modalCourse.tag?.includes("雙主修")
-                            ? "【雙主修學位學分認列】"
+                            ? "雙主修學位學分認列"
                             : modalCourse.tag?.includes("交換")
-                            ? "【海外交換全額抵免】"
-                            : "【主修學系核心學分認列】"}
+                            ? "海外交換全額抵免"
+                            : "主修學系核心學分認列"}
                         </span>
-                        <span className="text-stone-600 leading-relaxed">
+                        <span className="leading-relaxed text-stone-600">
                           {modalCourse.tag?.includes("輔系")
                             ? "本課程修習成績達 60 分（等級制 C- 以上），全額計入該學系輔系規章之最低學分要求。"
                             : modalCourse.tag?.includes("雙主修")
@@ -1633,12 +1462,11 @@ export function FutureMapExplorerView() {
                         </span>
                       </div>
                     </div>
-
-                    <div className="flex items-start gap-2.5 bg-white/90 p-2.5 rounded-xl border border-violet-100">
-                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 rounded-lg border border-stone-200 bg-white p-2.5">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
                       <div>
-                        <span className="font-bold text-stone-900 block mb-0.5">重疊科目免修與補修防呆原則</span>
-                        <span className="text-stone-600 leading-relaxed">
+                        <span className="mb-0.5 block font-bold text-stone-900">重疊科目免修與補修原則</span>
+                        <span className="leading-relaxed text-stone-600">
                           依中大教務處雙主修／輔系辦法：若主修與輔系有相同必修科目，不得重複採計。學生得以本系科目抵免，但須另補修該系指定之專業選修，以補足輔系／雙主修規章規定之總學分數。
                         </span>
                       </div>
@@ -1648,19 +1476,75 @@ export function FutureMapExplorerView() {
               </div>
             )}
 
-            {/* 底部關閉按鈕 */}
-            <div className="mt-2 pt-3 border-t border-stone-100 flex items-center justify-end">
+            <div className="flex items-center justify-end border-t border-stone-100 pt-3">
               <button
+                type="button"
                 onClick={() => setModalCourse(null)}
-                className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors"
+                className="cursor-pointer rounded-full bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-violet-700"
               >
-                關閉課程詳細
+                關閉
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
+  );
+}
+
+// ───────────────────────── 版面用常數與小元件 ─────────────────────────
+
+const TIER_OPTIONS = [
+  { id: "basic", n: 1, badge: "本系單主修", fallback: "基礎方案" },
+  { id: "intermediate", n: 2, badge: "輔系／跨域學程 (20~24 學分)", fallback: "中階方案" },
+  { id: "advanced", n: 3, badge: "雙主修雙學位 (40~60 學分)", fallback: "進階方案" },
+] as const;
+
+const MOTIVATION_OPTIONS = [
+  { id: "language", tag: "情境 A", title: "🗣️ 語言學習", desc: "精進外語（日、法、德、西班牙語等母語國學校）" },
+  { id: "academic", tag: "情境 B", title: "🎓 專業精進", desc: "鑽研特定學門（限定學院或特定 Program）" },
+  { id: "lifestyle", tag: "情境 C", title: "🌍 生活體驗", desc: "地區與生活風格探索（不受嚴苛院系限制）" },
+] as const;
+
+const LANGUAGE_OPTIONS = [
+  { label: "🇫🇷 法語 (法國/比利時)", val: "法語" },
+  { label: "🇯🇵 日語 (日本)", val: "日語" },
+  { label: "🇩🇪 德語 (德國/瑞士)", val: "德語" },
+  { label: "🇪🇸 西班牙語 (西班牙)", val: "西班牙語" },
+  { label: "🇺🇸 英語 (美/加/星/港)", val: "英語" },
+  { label: "🇰🇷 韓語 (韓國)", val: "韓語" },
+];
+
+const DISCIPLINE_OPTIONS = ["資電資訊", "商管學院", "工程機械", "生醫理工", "理學自然", "人文社會", "土木工程", "太空科技"];
+
+const LIFESTYLE_OPTIONS = [
+  { label: "🏛️ 歐洲藝文與古典城市", val: "歐洲藝文" },
+  { label: "🗽 美洲自由與都會風情", val: "美洲風情" },
+  { label: "⛩️ 亞洲生活與繁盛都會", val: "亞洲文化" },
+  { label: "❄️ 北歐自然與寧靜生活", val: "北歐自然" },
+];
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`cursor-pointer rounded-full border px-3 py-1 text-xs transition ${
+        active
+          ? "border-violet-600 bg-violet-600 font-semibold text-white"
+          : "border-stone-200 bg-white text-stone-600 hover:border-violet-300 hover:text-violet-700"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
