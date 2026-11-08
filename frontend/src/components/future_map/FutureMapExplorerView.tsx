@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Compass,
   Calendar,
@@ -24,8 +24,17 @@ import {
   Layers2,
   BookmarkCheck,
   MousePointerClick,
-  Plane
+  Plane,
+  Filter,
+  Check,
+  ExternalLink,
+  School,
+  Building2
 } from "lucide-react";
+import {
+  ExchangeSchoolItem,
+  NCU_AY116_EXCHANGE_DATABASE
+} from "@/data/ncuExchangeAY116";
 
 interface CourseItem {
   course_name: string;
@@ -79,6 +88,55 @@ export function FutureMapExplorerView() {
 
   // 第二階段（擴充加值）：是否考慮參與出國交換計畫（徹底解耦之 Toggle，可自由疊加於任一主線）
   const [isExchangeEnabled, setIsExchangeEnabled] = useState<boolean>(false);
+
+  // 智慧交換篩選器：使用者核心動機（情境 A / B / C）
+  type ExchangeMotivation = "language" | "academic" | "lifestyle";
+  const [exchangeMotivation, setExchangeMotivation] = useState<ExchangeMotivation>("language");
+  const [customMotivationOverride, setCustomMotivationOverride] = useState<boolean>(false);
+
+  // 子篩選條件
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("法語");
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>("資電資訊");
+  const [selectedLifestyle, setSelectedLifestyle] = useState<string>("歐洲藝文");
+
+  // 使用者選定之特定交換姐妹校
+  const [selectedExchangeSchool, setSelectedExchangeSchool] = useState<ExchangeSchoolItem | null>(null);
+
+  // 意圖預判：偵測使用者輸入是否已明確提及特定語言
+  const detectedLanguage = useMemo(() => {
+    const q = userInput;
+    if (q.includes("法文") || q.includes("法語")) return "法語";
+    if (q.includes("日文") || q.includes("日語")) return "日語";
+    if (q.includes("德文") || q.includes("德語")) return "德語";
+    if (q.includes("西文") || q.includes("西班牙")) return "西班牙語";
+    if (q.includes("韓文") || q.includes("韓語")) return "韓語";
+    if (q.includes("英文") || q.includes("英語")) return "英語";
+    return null;
+  }, [userInput]);
+
+  // 當偵測到語言時，自動鎖定情境 A 與該語言（除非使用者點擊切換其他動機）
+  useEffect(() => {
+    if (detectedLanguage && !customMotivationOverride) {
+      setExchangeMotivation("language");
+      setSelectedLanguage(detectedLanguage);
+    }
+  }, [detectedLanguage, customMotivationOverride]);
+
+  // 智慧過濾推薦姊妹校清單 (情境 A / B / C)
+  const filteredSchools = useMemo(() => {
+    if (exchangeMotivation === "language") {
+      return NCU_AY116_EXCHANGE_DATABASE.filter(s => s.official_languages.includes(selectedLanguage));
+    } else if (exchangeMotivation === "academic") {
+      const keyword = selectedDiscipline.slice(0, 2);
+      return NCU_AY116_EXCHANGE_DATABASE.filter(s =>
+        s.is_restricted_program && s.field_restrictions.some(f => f.includes(keyword))
+      );
+    } else {
+      return NCU_AY116_EXCHANGE_DATABASE.filter(s =>
+        s.lifestyle_tags.includes(selectedLifestyle) && !s.is_restricted_program
+      );
+    }
+  }, [exchangeMotivation, selectedLanguage, selectedDiscipline, selectedLifestyle]);
 
   const presetQueries = [
     "想讀資工＋學法文，未來想去歐洲交換",
@@ -281,12 +339,18 @@ export function FutureMapExplorerView() {
 
         // 第二階段加值：若開啟出國交換，在任何主線 (basic / intermediate / advanced) 的大四上 (i === 6) 動態疊加出國交換模組！
         if (withExchange && i === 6) {
+          const schoolTitle = selectedExchangeSchool
+            ? `海外交換：${selectedExchangeSchool.name_zh} (${selectedExchangeSchool.country}) 研習模組`
+            : "海外姐妹校留學交換研習模組 (全英語授課抵免)";
+          const schoolNote = selectedExchangeSchool
+            ? `赴 ${selectedExchangeSchool.name_zh} 交換研習一學期。${selectedExchangeSchool.official_note}`
+            : "赴歐美頂尖姊妹校交換研習一學期，修得學分可全數返校抵免相關選修學分";
           courses.push({
-            course_name: "海外姐妹校留學交換研習模組 (全英語授課抵免)",
+            course_name: schoolTitle,
             credits: 12,
             category: "交換",
             tag: "海外交換加值",
-            note: "赴歐美頂尖姊妹校交換研習一學期，修得學分可全數返校抵免相關選修學分"
+            note: schoolNote
           });
         }
 
@@ -303,7 +367,11 @@ export function FutureMapExplorerView() {
           } else if (i === 4) {
             deadlines = ["★ 10~11月向中大國際處 OIA 送交海外姐妹校出國交換甄選志願表與面試"];
           } else if (i === 6) {
-            deadlines = ["★ 啟程赴海外姐妹校交換留學！沉浸國際學術殿堂與跨國人脈網絡"];
+            deadlines = [
+              selectedExchangeSchool
+                ? `★ 啟程前往 ${selectedExchangeSchool.name_zh} (${selectedExchangeSchool.country})！${selectedExchangeSchool.official_note}`
+                : "★ 啟程赴海外姐妹校交換留學！沉浸國際學術殿堂與跨國人脈網絡"
+            ];
           }
         }
 
@@ -379,12 +447,12 @@ export function FutureMapExplorerView() {
     };
   };
 
-  // 監聽第二階段交換加值狀態切換：即時動態重算課表
+  // 監聽第二階段交換加值狀態與選定學校：即時動態重算課表
   useEffect(() => {
     if (plans) {
       setPlans(generateRoadmapPlans(userInput, isExchangeEnabled));
     }
-  }, [isExchangeEnabled]);
+  }, [isExchangeEnabled, selectedExchangeSchool]);
 
   // 點擊「AI 動態生成」: 輸入完 prompt 才會生成三條路線
   const handleGenerate = async (queryText: string = userInput) => {
@@ -702,6 +770,262 @@ export function FutureMapExplorerView() {
               </button>
             </div>
           </div>
+
+          {/* 當開啟出國交換加值時：展開基於使用者動機的智慧交換學校篩選器 (116.md) */}
+          {isExchangeEnabled && (
+            <div className="mt-5 pt-5 border-t border-sky-400/20 flex flex-col gap-4 animate-fadeIn">
+              {/* 第一步：意圖預判與動機詢問 */}
+              {detectedLanguage && !customMotivationOverride ? (
+                <div className="bg-sky-500/20 border border-sky-400/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-sky-300 shrink-0" />
+                    <span>
+                      <strong>【情境 A：自動鎖定】</strong> 偵測到你的外語學習意圖（<strong>{detectedLanguage}</strong>），已主動為你跳過動機詢問，直接鎖定母語為 <strong>{detectedLanguage}</strong> 之國家姊妹校！
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCustomMotivationOverride(true)}
+                    className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white transition-colors cursor-pointer shrink-0 text-[11px] font-medium"
+                  >
+                    探索其他動機（專業/生活）➔
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs text-sky-200 font-bold flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5" />
+                    第一步：請選擇你的出國交換「核心動機」（情境 A / B / C）：
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setExchangeMotivation("language")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                        exchangeMotivation === "language"
+                          ? "bg-sky-500 text-stone-950 font-bold border-sky-300 shadow-md ring-2 ring-sky-300/40"
+                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 A</span>
+                      <span className="text-sm font-bold flex items-center gap-1.5">
+                        🗣️ 語言學習
+                      </span>
+                      <span className="text-[11px] opacity-85 leading-tight">
+                        精進外語（日語、法語、德語、西班牙語等母語國學校）
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExchangeMotivation("academic")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                        exchangeMotivation === "academic"
+                          ? "bg-sky-500 text-stone-950 font-bold border-sky-300 shadow-md ring-2 ring-sky-300/40"
+                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 B</span>
+                      <span className="text-sm font-bold flex items-center gap-1.5">
+                        🎓 專業精進 / 學術深造
+                      </span>
+                      <span className="text-[11px] opacity-85 leading-tight">
+                        鑽研特定學門（備註限定學院或特定 Program）
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExchangeMotivation("lifestyle")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                        exchangeMotivation === "lifestyle"
+                          ? "bg-sky-500 text-stone-950 font-bold border-sky-300 shadow-md ring-2 ring-sky-300/40"
+                          : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase tracking-wider opacity-80">情境 C</span>
+                      <span className="text-sm font-bold flex items-center gap-1.5">
+                        🌍 生活體驗 / 文化探索
+                      </span>
+                      <span className="text-[11px] opacity-85 leading-tight">
+                        地區與生活風格探索（跳過嚴苛院系限制審查）
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 第二步：子篩選條件（語言 / 專業學門 / 生活風格） */}
+              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 flex flex-col gap-2">
+                {exchangeMotivation === "language" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-sky-200 font-medium">第二步（目標語言）：</span>
+                    {[
+                      { label: "🇫🇷 法語 (法國/比利時)", val: "法語" },
+                      { label: "🇯🇵 日語 (日本)", val: "日語" },
+                      { label: "🇩🇪 德語 (德國/瑞士)", val: "德語" },
+                      { label: "🇪🇸 西班牙語 (西班牙)", val: "西班牙語" },
+                      { label: "🇺🇸 英語 (美/加/星/港)", val: "英語" },
+                      { label: "🇰🇷 韓語 (韓國)", val: "韓語" }
+                    ].map((item) => (
+                      <button
+                        key={item.val}
+                        type="button"
+                        onClick={() => setSelectedLanguage(item.val)}
+                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
+                          selectedLanguage === item.val
+                            ? "bg-sky-400 text-stone-950 font-bold border-sky-300 shadow-sm"
+                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {exchangeMotivation === "academic" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-sky-200 font-medium">第二步（專業學門）：</span>
+                    {["資電資訊", "商管學院", "工程機械", "生醫理工", "理學自然", "人文社會", "土木工程", "太空科技"].map((disc) => (
+                      <button
+                        key={disc}
+                        type="button"
+                        onClick={() => setSelectedDiscipline(disc)}
+                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
+                          selectedDiscipline === disc
+                            ? "bg-sky-400 text-stone-950 font-bold border-sky-300 shadow-sm"
+                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                        }`}
+                      >
+                        {disc}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {exchangeMotivation === "lifestyle" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-sky-200 font-medium">第二步（風格偏好）：</span>
+                    {[
+                      { label: "🏛️ 歐洲藝文與古典城市", val: "歐洲藝文" },
+                      { label: "🗽 美洲自由與都會風情", val: "美洲風情" },
+                      { label: "⛩️ 亞洲生活與繁盛都會", val: "亞洲文化" },
+                      { label: "❄️ 北歐自然與寧靜生活", val: "北歐自然" }
+                    ].map((style) => (
+                      <button
+                        key={style.val}
+                        type="button"
+                        onClick={() => setSelectedLifestyle(style.val)}
+                        className={`text-xs px-3 py-1 rounded-xl border transition-all cursor-pointer ${
+                          selectedLifestyle === style.val
+                            ? "bg-sky-400 text-stone-950 font-bold border-sky-300 shadow-sm"
+                            : "bg-white/10 text-stone-300 border-white/15 hover:bg-white/20"
+                        }`}
+                      >
+                        {style.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 第三步：結果呈現（附帶明確推薦理由與 116.md 官方規範） */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-sky-200 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    第三步：依據《116.md》甄選名冊，共精選推薦 {filteredSchools.length} 所目標姊妹校：
+                  </span>
+                  {selectedExchangeSchool && (
+                    <span className="text-[11px] text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                      已選定：{selectedExchangeSchool.name_zh}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                  {filteredSchools.map((school) => {
+                    const isSelected = selectedExchangeSchool?.id === school.id;
+                    let recommendationReason = "";
+                    if (exchangeMotivation === "language") {
+                      recommendationReason = `🎯 語言意圖推薦：位於「${school.country}」${selectedLanguage}母語生活圈，全天候沉浸式外語聽說與跨文化實踐。`;
+                    } else if (exchangeMotivation === "academic") {
+                      recommendationReason = `🎓 專業精進推薦：中央 116.md 官方備註特別限定「${selectedDiscipline}」相關學院或專案，學分抵免高度契合。`;
+                    } else {
+                      recommendationReason = `🌍 生活體驗推薦：符合「${selectedLifestyle}」風格偏好，無嚴苛院系限制，深度探索在地人文與校園生活。`;
+                    }
+
+                    return (
+                      <div
+                        key={school.id}
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-2.5 ${
+                          isSelected
+                            ? "bg-emerald-950/80 border-emerald-400 text-white shadow-lg ring-1 ring-emerald-300"
+                            : "bg-white/10 border-white/15 text-white hover:bg-white/15"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-xs font-bold text-sky-300 flex items-center gap-1">
+                              <span>{school.flag}</span>
+                              <span>{school.country}</span>
+                              <span className="text-stone-400 text-[10px]">({school.region})</span>
+                            </span>
+                            {school.is_restricted_program && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-medium">
+                                限定學院/專案
+                              </span>
+                            )}
+                          </div>
+
+                          <h5 className="font-bold text-sm sm:text-base leading-snug">
+                            {school.name_zh}
+                          </h5>
+                          {school.name_en && (
+                            <p className="text-[11px] text-stone-300 opacity-80 leading-tight">
+                              {school.name_en}
+                            </p>
+                          )}
+
+                          {/* 推薦理由 Badge */}
+                          <div className="mt-2 p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-[11px] text-emerald-200 leading-relaxed">
+                            {recommendationReason}
+                          </div>
+
+                          {/* 116.md 官方備註與申請門檻 */}
+                          <div className="mt-1.5 text-[11px] text-stone-300 opacity-90 leading-relaxed bg-black/20 p-2 rounded-xl">
+                            <span className="font-bold text-amber-300 block mb-0.5">📌 116.md 官方申請規定：</span>
+                            {school.official_note}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedExchangeSchool(isSelected ? null : school)}
+                          className={`w-full py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                            isSelected
+                              ? "bg-emerald-500 text-stone-950 shadow-md"
+                              : "bg-sky-500/80 hover:bg-sky-400 text-stone-950"
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              已選定此校（已同步融入大四課表）
+                            </>
+                          ) : (
+                            <>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              選定為我的出國交換目標校 ➔
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
