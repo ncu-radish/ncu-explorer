@@ -1,6 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
 
 router = APIRouter(prefix="/roadmap", tags=["Future Map (夢想導航)"])
 
@@ -17,8 +16,8 @@ class SemesterPlan(BaseModel):
     term: int  # 1: 上學期, 2: 下學期
     semester_label: str  # e.g., "大一上學期"
     total_credits: int
-    courses: List[CourseItem]
-    key_deadlines: List[str]
+    courses: list[CourseItem]
+    key_deadlines: list[str]
     highlight: str
 
 class TierRoadmap(BaseModel):
@@ -27,8 +26,8 @@ class TierRoadmap(BaseModel):
     target_summary: str
     total_credits_estimate: int
     weekly_intensity: str  # 輕鬆探索, 扎實跨域, 高強度挑戰
-    semesters: List[SemesterPlan]
-    career_and_advantage: List[str]
+    semesters: list[SemesterPlan]
+    career_and_advantage: list[str]
 
 class QueryGenerateRequest(BaseModel):
     query: str = Field(..., description="用戶輸入之自由自然語言夢想目標")
@@ -37,9 +36,9 @@ class QueryGenerateRequest(BaseModel):
 # 方案課表模版與動態生成器
 # ==========================================
 
-def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
+def build_roadmap_for_query(query: str) -> dict[str, TierRoadmap]:
     q = query.lower()
-    
+
     # 中央大學系所關鍵字映射表
     dept_map = [
         (["資工", "資訊工程", "cs", "軟體", "演算法", "程式"], "資訊工程學系", 28, 60, "法國國立高等應用電子學院 (ENSEA)"),
@@ -108,8 +107,8 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
                 CourseItem(course_name="離散數學/基礎專業架構", credits=3, category="必修", tag=f"{primary_domain[:2]}專業", note="邏輯思維與架構基礎"),
                 CourseItem(course_name=f"{secondary_domain[:2]}基礎探索/跨域選修（二）", credits=2, category="選修", tag="跨域選修", note=f"深化{secondary_domain}實用知識")
             ],
-            key_deadlines=[f"修畢大一重要基礎先修科目，通過大二重要擋修門檻"],
-            highlight=f"完成主修先修鏈，具備跨域基礎溝通能力。"
+            key_deadlines=["修畢大一重要基礎先修科目，通過大二重要擋修門檻"],
+            highlight="完成主修先修鏈，具備跨域基礎溝通能力。"
         ),
         SemesterPlan(
             semester_index=3, grade=2, term=1, semester_label="大二上學期", total_credits=12,
@@ -121,7 +120,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
                 CourseItem(course_name=f"{secondary_domain[:2]}實務專題選修（一）", credits=2, category="選修", tag="跨域選修", note="中階跨域主題探討")
             ],
             key_deadlines=["掌握核心基礎，開始接觸實務專案開發"],
-            highlight=f"進入主修中堅架構，跨域領域持續維持語感與廣度。"
+            highlight="進入主修中堅架構，跨域領域持續維持語感與廣度。"
         ),
         SemesterPlan(
             semester_index=4, grade=2, term=2, semester_label="大二下學期", total_credits=11,
@@ -284,7 +283,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
                 CourseItem(course_name=f"{secondary_domain}理論架構/寫作（二）", credits=4, category="必修", tag=f"{secondary_domain[:2]}雙主修", note="進階寫作完成")
             ],
             key_deadlines=["維持前一學年成績，暑期 8 月線上送交雙主修申請表"],
-            highlight=f"完成大一雙核心，大二正式獲取雙主修資格。"
+            highlight="完成大一雙核心，大二正式獲取雙主修資格。"
         ),
         SemesterPlan(
             semester_index=3, grade=2, term=1, semester_label="大二上學期", total_credits=17,
@@ -342,17 +341,17 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
             highlight="完成專案成果發表，啟動海外名校留學交換行前準備。"
         ),
         SemesterPlan(
-            semester_index=7, grade=4, term=1, semester_label=f"大四上學期（海外交換研習）", total_credits=12,
+            semester_index=7, grade=4, term=1, semester_label="大四上學期（海外交換研習）", total_credits=12,
             courses=[
-                CourseItem(course_name=f"海外名校研習：前沿專業工程模組", credits=4, category="交換", tag="海外交換", note="全英語修習尖端工程，學分回台抵免主系選修"),
-                CourseItem(course_name=f"海外名校研習：國際跨域研究專案", credits=4, category="交換", tag="海外交換", note="跨國頂尖實驗室合作實作"),
-                CourseItem(course_name=f"海外在地生活文化與語言實踐", credits=4, category="交換", tag="海外交換", note="沉浸式在地語言文化實踐")
+                CourseItem(course_name="海外名校研習：前沿專業工程模組", credits=4, category="交換", tag="海外交換", note="全英語修習尖端工程，學分回台抵免主系選修"),
+                CourseItem(course_name="海外名校研習：國際跨域研究專案", credits=4, category="交換", tag="海外交換", note="跨國頂尖實驗室合作實作"),
+                CourseItem(course_name="海外在地生活文化與語言實踐", credits=4, category="交換", tag="海外交換", note="沉浸式在地語言文化實踐")
             ],
             key_deadlines=[
-                f"人在海外名校校園研習，建立跨國科技與商業人脈",
+                "人在海外名校校園研習，建立跨國科技與商業人脈",
                 "學期末取得海外大學學分成績單，送回中大辦理抵免"
             ],
-            highlight=f"大四上遠赴海外交換！達成國際化工程視野與外語實踐。"
+            highlight="大四上遠赴海外交換！達成國際化工程視野與外語實踐。"
         ),
         SemesterPlan(
             semester_index=8, grade=4, term=2, semester_label="大四下學期", total_credits=3,
@@ -410,7 +409,7 @@ def build_roadmap_for_query(query: str) -> Dict[str, TierRoadmap]:
         )
     }
 
-@router.post("/generate-plans", response_model=Dict[str, TierRoadmap], summary="輸入自由自然語言夢想，動態產生三種方案課表")
+@router.post("/generate-plans", response_model=dict[str, TierRoadmap], summary="輸入自由自然語言夢想，動態產生三種方案課表")
 def generate_plans_by_query(req: QueryGenerateRequest):
     """
     根據使用者輸入的任何自由需求（如「想讀資工＋學法文」、「資工＋半導體」、「資管＋資工」），
@@ -423,6 +422,6 @@ def get_tier_plan(tier_id: str):
     plans = build_roadmap_for_query("資工 法文")
     return plans.get(tier_id, plans["basic"])
 
-@router.get("/plans", response_model=Dict[str, TierRoadmap], summary="一次取得預設三種方案完整課表")
+@router.get("/plans", response_model=dict[str, TierRoadmap], summary="一次取得預設三種方案完整課表")
 def get_all_tier_plans():
     return build_roadmap_for_query("資工 法文")
