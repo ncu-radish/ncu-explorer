@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, Bus, Coffee, Map, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Bus, Coffee, Compass, Map, Users, type LucideIcon } from "lucide-react";
 
 type InfoCard = {
   href: string;
@@ -10,6 +10,9 @@ type InfoCard = {
   highlights: string[];
 };
 
+// 排列順序（寬螢幕一排三個）：
+// 第一排：課程、地圖、Future Map（右上角）
+// 第二排：交通、飲食、社團
 const CARDS: InfoCard[] = [
   {
     href: "/courses",
@@ -26,6 +29,14 @@ const CARDS: InfoCard[] = [
     badge: "3D 空間導覽",
     description: "瀏覽各大教學大樓、行政處室、學生宿舍與運動場館分佈，提供 3D 立體導覽與館舍定位。",
     highlights: ["立體空間 3D 地圖", "館舍系所檢索", "教室位置定位"],
+  },
+  {
+    href: "/explore/future-map",
+    title: "Future Map 夢想導航",
+    icon: Compass,
+    badge: "四年方案課表",
+    description: "我的夢想，在中央怎麼實現？切換基礎、中階、進階方案，即刻查看專屬的四年動態課表與重要申請時程。",
+    highlights: ["按鈕式課表切換", "資工／法文／交換", "校曆重要待辦"],
   },
   {
     href: "/explore/transport",
@@ -53,14 +64,7 @@ const CARDS: InfoCard[] = [
   },
 ];
 
-// 保留的空位（未來另作他用）：排在第一排最右側，即右上角
-const PLACEHOLDER_INDEX = 2;
-
 export default function ExplorePage() {
-  // 依序排列，PLACEHOLDER_INDEX 位置插入 null 代表空位
-  const slots: (InfoCard | null)[] = [...CARDS];
-  slots.splice(PLACEHOLDER_INDEX, 0, null);
-
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 md:py-10">
       <div className="flex items-end justify-between gap-4">
@@ -78,51 +82,39 @@ export default function ExplorePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {slots.map((card, i) => {
-          if (card === null) {
-            return (
-              <div
-                key={`placeholder-${i}`}
-                aria-hidden
-                className="surface hidden min-h-48 lg:block"
-              />
-            );
-          }
-          const { href, title, icon: Icon, badge, description, highlights } = card;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className="surface group flex flex-col justify-between p-6 transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg"
-            >
-              <div>
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
-                    {badge}
-                  </span>
-                </div>
-                <h2 className="mb-2 text-lg font-bold text-stone-900 transition-colors group-hover:text-violet-700">
-                  {title}
-                </h2>
-                <p className="mb-4 text-sm leading-relaxed text-stone-600">{description}</p>
-                <div className="mb-4 flex flex-wrap gap-1.5">
-                  {highlights.map((h) => (
-                    <span key={h} className="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs text-stone-600">
-                      {h}
-                    </span>
-                  ))}
-                </div>
+        {CARDS.map(({ href, title, icon: Icon, badge, description, highlights }) => (
+          <Link
+            key={href}
+            href={href}
+            className="surface group flex flex-col justify-between p-6 transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg"
+          >
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                  {badge}
+                </span>
               </div>
-              <div className="flex items-center justify-between border-t border-stone-100 pt-4 text-xs font-semibold text-violet-600">
-                <span>查看詳細內容</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              <h2 className="mb-2 text-lg font-bold text-stone-900 transition-colors group-hover:text-violet-700">
+                {title}
+              </h2>
+              <p className="mb-4 text-sm leading-relaxed text-stone-600">{description}</p>
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                {highlights.map((h) => (
+                  <span key={h} className="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs text-stone-600">
+                    {h}
+                  </span>
+                ))}
               </div>
-            </Link>
-          );
-        })}
+            </div>
+            <div className="flex items-center justify-between border-t border-stone-100 pt-4 text-xs font-semibold text-violet-600">
+              <span>查看詳細內容</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

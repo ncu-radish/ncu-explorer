@@ -84,6 +84,21 @@ def get_course_detail_endpoint(semester: str, serial_no: str):
     return course
 
 
+@router.get("/by-code/{course_code}")
+def get_course_by_code_endpoint(course_code: str):
+    """依據課號 (例如 IM4048, EE1003) 取得最新課程之課綱、教授、教室與詳細內容"""
+    course = course_db_service.get_course_by_code(course_code=course_code)
+    if not course:
+        raise HTTPException(status_code=404, detail="找不到指定課號之課程資料")
+    return course
+
+
+@router.post("/by-codes")
+def get_courses_by_codes_endpoint(codes: list[str]):
+    """批次依據多組課號取得最新課程之課綱映射"""
+    return course_db_service.get_courses_by_codes(course_codes=codes)
+
+
 @router.post("/semantic-search", response_model=SemanticSearchResponse)
 def semantic_search_courses(req: SemanticSearchRequest):
     """
