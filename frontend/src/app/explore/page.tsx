@@ -7,6 +7,7 @@ import {
   Map,
   Bus,
   Coffee,
+  Compass,
   Home,
   Users,
   Gamepad2,
@@ -21,8 +22,11 @@ import {
 import { exploreApi } from "@/lib/api";
 import { CourseExplorerView } from "@/components/courses/CourseExplorerView";
 import { ClubExplorerView } from "@/components/clubs/ClubExplorerView";
+// [新增: 引入 Future Map 夢想導航組件]
+import { FutureMapExplorerView } from "@/components/future_map/FutureMapExplorerView";
 
-type CategoryId = "courses" | "transport" | "food" | "dorm" | "clubs";
+// [修改: 移除 dorm，替換為 future_map]
+type CategoryId = "courses" | "transport" | "food" | "future_map" | "clubs";
 
 type FoodItem = {
   id: number;
@@ -67,7 +71,11 @@ export default function ExplorePage() {
         window.location.replace("/map");
         return;
       }
-      if (cat && ["courses", "transport", "food", "dorm", "clubs"].includes(cat)) {
+      if (cat === "dorm") {
+        setSelectedCategory("future_map");
+        return;
+      }
+      if (cat && ["courses", "transport", "food", "future_map", "clubs"].includes(cat)) {
         setSelectedCategory(cat as CategoryId);
       }
     }
@@ -128,15 +136,15 @@ export default function ExplorePage() {
       highlights: ["後門早午餐商圈", "宵夜街人氣必吃", "校內平價學生餐廳"],
     },
     {
-      id: "dorm" as CategoryId,
-      title: "宿舍生活與入住",
-      icon: Home,
-      iconColor: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200",
-      badge: "新生住宿",
-      description: "男九舍、女十四舍生活開箱須知，包含獨立冷氣電表儲值、洗衣烘衣設施與修繕申報流程。",
-      highlights: ["寢室配備與設施", "冷氣卡儲值辦法", "修繕與門禁規範"],
+      id: "future_map" as CategoryId,
+      title: "Future Map 夢想導航",
+      icon: Compass,
+      iconColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+      borderColor: "border-emerald-300",
+      badge: "★ 四年方案課表",
+      description: "我的夢想，在中央怎麼實現？點擊基礎、中階、進階方案按鈕，即刻切換專屬的四年動態課表與重要申請時程！",
+      highlights: ["按鈕式課表切換", "資工/法文/交換", "校曆重要待辦"],
     },
     {
       id: "clubs" as CategoryId,
@@ -594,43 +602,9 @@ export default function ExplorePage() {
             </div>
           )}
 
-          {/* DETAIL 5: 宿舍生活 (Dormitories) */}
-          {selectedCategory === "dorm" && (
-            <div className="flex flex-col gap-5">
-              <div>
-                <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-                  <Home className="w-6 h-6 text-purple-600" />
-                  宿舍生活與入住須知
-                </h2>
-                <p className="text-xs text-stone-600 mt-0.5">
-                  寢室環境、冷氣卡水電儲值、洗衣烘衣設施與報修流程指南
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {dormItems.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between"
-                  >
-                    <div>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-800 font-medium border border-purple-200 mb-3 inline-block">
-                        {item.tag}
-                      </span>
-                      <h3 className="text-base font-bold text-stone-900 mb-2">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                        {item.desc}
-                      </p>
-                    </div>
-                    <div className="pt-3 border-t border-stone-100 text-xs text-stone-500">
-                      入住前請先備齊學生證與身分證件
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* [新增 DETAIL 5: Future Map 夢想導航 (按鈕式課表切換)，替換原宿舍區塊] */}
+          {selectedCategory === "future_map" && (
+            <FutureMapExplorerView />
           )}
 
           {/* DETAIL 6: 社團活動 (Clubs) */}

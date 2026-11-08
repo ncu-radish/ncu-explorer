@@ -180,6 +180,34 @@ export const courseApi = {
       distribution_conditions: Array<{ priority: number; condition: string }>;
     }>(`/courses/detail/${encodeURIComponent(semester)}/${encodeURIComponent(serialNo)}`),
 
+  getByCode: (courseCode: string) =>
+    fetchApi<{
+      id: string;
+      semester: string;
+      serial_no: string;
+      course_code: string;
+      department: string;
+      teacher: string;
+      course_name_zh: string;
+      course_name_en: string;
+      degree: string;
+      credits: number;
+      required_or_elective?: string;
+      objectives?: string;
+      content?: string;
+      textbooks?: string;
+      fields?: string;
+      schedules: Array<{ time: string; location: string }>;
+      core_skills: Array<{ ability: string; strength: string; assessment_method: string }>;
+      distribution_conditions: Array<{ priority: number; condition: string }>;
+    }>(`/courses/by-code/${encodeURIComponent(courseCode)}`),
+
+  getByCodes: (codes: string[]) =>
+    fetchApi<Record<string, any>>('/courses/by-codes', {
+      method: 'POST',
+      body: JSON.stringify(codes),
+    }),
+
   semanticSearch: (data: {
     query: string;
     semester?: string;

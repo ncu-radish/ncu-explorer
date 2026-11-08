@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.admin import router as admin_router
 from app.api.courses import router as courses_router
 from app.api.explore import router as explore_router
+from app.api.roadmap import router as roadmap_router  # [新增: Future Map 夢想導航路由]
 from app.api.sim import router as sim_router
 from app.core.config import settings
 
@@ -27,6 +28,7 @@ app.include_router(sim_router, prefix=settings.API_V1_STR)
 app.include_router(courses_router, prefix=settings.API_V1_STR)
 app.include_router(explore_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
+app.include_router(roadmap_router, prefix=settings.API_V1_STR)  # [新增: Future Map 夢想導航路由]
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():
