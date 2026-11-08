@@ -205,6 +205,16 @@ function MapContent() {
     }
   };
 
+  // The route lives in a global store, so clear it when leaving the map page;
+  // otherwise it keeps replaying on any other screen that shows the 3D map.
+  useEffect(() => {
+    return () => {
+      const { setRoute: resetRoute, setRouteOrigin: resetOrigin } = useMapStore.getState();
+      resetRoute(null);
+      resetOrigin(null);
+    };
+  }, []);
+
   const clearRoute = () => {
     setRoute(null);
     setRouteOrigin(null);
