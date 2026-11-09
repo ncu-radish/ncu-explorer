@@ -1,6 +1,7 @@
 import difflib
 import json
 import logging
+import math
 import random
 import re
 from pathlib import Path
@@ -239,6 +240,22 @@ def map_campus_location(
 DEFAULT_HOME_DORM_ID = "bldg_dorm_b9a"
 SPORT_ACTIVITY_ID = "act_campus_sport"
 MEAL_CATEGORIES = ("lunch", "dinner")
+WALK_SPEED_M_PER_MIN = 80.0  # 約 4.8 km/h 的步行速度
+
+
+WALK_METERS_PER_STAMINA = 200.0  # 每走這麼遠扣 1 點體力
+
+
+def walking_stamina_cost(distance_m: float) -> int:
+    """走 distance_m 公尺消耗的體力點數（每 200 公尺 1 點，不足不計）。"""
+    return int(distance_m // WALK_METERS_PER_STAMINA)
+
+
+def walking_minutes(distance_m: float) -> int:
+    """步行 distance_m 公尺需要的分鐘數（無條件進位；距離極短視為 0）。"""
+    if distance_m < 1:
+        return 0
+    return max(1, math.ceil(distance_m / WALK_SPEED_M_PER_MIN))
 
 
 def pick_meal_options(

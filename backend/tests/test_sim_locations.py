@@ -81,3 +81,34 @@ def test_meal_location_must_be_one_of_the_options(session_id):
     options = client.get("/api/sim/meal-options", params={"session_id": session_id, "category": "lunch"}).json()
     ok = client.post("/api/sim/trigger-activity", json={**base, "location_id": options[0]["id"]})
     assert ok.status_code == 200
+
+
+def test_walking_minutes_rounds_up():
+    from app.services.sim_engine import WALK_SPEED_M_PER_MIN, walking_minutes
+
+    assert walking_minutes(0) == 0
+    assert walking_minutes(0.5) == 0
+    assert walking_minutes(1) == 1
+    assert walking_minutes(WALK_SPEED_M_PER_MIN) == 1
+    assert walking_minutes(WALK_SPEED_M_PER_MIN + 1) == 2
+
+
+@needs_assets
+def test_trigger_activity_includes_walking_time(session_id):
+    from app.api.sim import travel_minutes_between
+
+    walk = travel_minutes_between("bldg_mgmt_2", "bldg_badminton")
+    assert walk > 0
+    base = {"session_id": session_id, "activity_id": "act_campus_sport", "option_key": "A", "duration_hours": 1}
+    r = client.post("/api/sim/trigger-activity", json={**base, "location_id": "bldg_badminton"})
+    assert r.status_code == 200
+    slot = r.json()["marked_slot"]
+    assert slot["travel_minutes"] == walk
+    sh, sm = map(int, slot["start_time"].split(":"))
+    eh, em = map(int, slot["end_time"].split(":"))
+    assert (eh * 60 + em) - (sh * 60 + sm) == 60  # 步行算在時段內，結束時間不延後
+    from app.api.sim import travel_distance_between
+    from app.services.sim_engine import walking_stamina_cost
+
+    cost = walking_stamina_cost(travel_distance_between("bldg_mgmt_2", "bldg_badminton"))
+    assert r.json()["delta_stats"]["stamina"] == round(15 * max(0.25, (60 - walk) / 60)) - cost

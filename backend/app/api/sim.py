@@ -30,6 +30,8 @@ from app.services.sim_engine import (
     pick_meal_options,
     resolve_home_dorm,
     sim_engine,
+    walking_minutes,
+    walking_stamina_cost,
 )
 
 router = APIRouter(prefix="/sim", tags=["Simulation"])
@@ -84,6 +86,22 @@ def previous_location_id(session: GameSession, home_id: str) -> str:
     return home_id
 
 
+def travel_distance_between(origin_id: str | None, dest_id: str | None) -> float:
+    """沿校園道路從 origin 走到 dest 的距離（公尺）；起訖相同或路網無法使用時為 0。"""
+    if not origin_id or not dest_id or origin_id == dest_id:
+        return 0.0
+    try:
+        distance, _ = get_network().route(origin_id, dest_id)
+    except (RoadNetworkError, RouteNotFoundError, KeyError):
+        return 0.0
+    return float(distance)
+
+
+def travel_minutes_between(origin_id: str | None, dest_id: str | None) -> int:
+    """沿校園道路從 origin 步行到 dest 所需分鐘數。"""
+    return walking_minutes(travel_distance_between(origin_id, dest_id))
+
+
 def compute_meal_options(db: Session, session: GameSession, category: str) -> list[dict[str, Any]]:
     """午／晚餐可選的三個地點（餐廳與街口），同一回合重複查詢結果一致。"""
     buildings = {
@@ -116,6 +134,7 @@ def compute_meal_options(db: Session, session: GameSession, category: str) -> li
             "name_zh": buildings[bid].name_zh,
             "category": buildings[bid].category,
             "distance": round(distances[bid], 1) if bid in distances else None,
+            "walk_minutes": walking_minutes(distances[bid]) if bid in distances else None,
         }
         for bid in picked
     ]
@@ -586,6 +605,21 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     default_start = "12:00" if cat == "lunch" else ("07:30" if cat == "breakfast" else ("18:00" if cat == "dinner" else "15:00"))
     start_time = curr_slot.get("start_time") or default_start
 
+    # 活動地點，以及從目前所在位置步行過去所需的時間
+    home_dorm_id, home_dorm_name = session_home_dorm(db, session)
+    if chosen_building is not None:
+        loc_id, loc_name = chosen_building.id, chosen_building.name_zh
+    elif cat == "dorm_leisure":
+        # 宿舍休閒一律在玩家自己的宿舍
+        loc_id, loc_name = home_dorm_id, home_dorm_name
+    else:
+        loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else home_dorm_id)
+        loc_name = activity.location_name or "校園活動地點"
+    # 走過去的時間算在活動時段「內」：活動結束時間不變，只是實際待在現場的時間變短
+    travel_dist = travel_distance_between(previous_location_id(session, home_dorm_id), loc_id)
+    travel_mins = walking_minutes(travel_dist)
+    travel_stamina = walking_stamina_cost(travel_dist)
+
     # 解析使用者自訂時長 (支援分鐘、自訂結束時間、或浮點數小時)
     if req.custom_end_time:
         try:
@@ -609,10 +643,13 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     duration = max(0.25, min(8.0, duration))
     duration_minutes = max(15, min(480, duration_minutes))
 
-    # Apply effects scaled by duration
+    # 效果依「實際待在現場的時間」計算（總時段扣掉步行），並另外扣步行消耗的體力
+    on_site_hours = max(0.25, (duration_minutes - travel_mins) / 60.0)
     scaled_effects = {}
     for k, v in effects.items():
-        scaled_effects[k] = int(round(v * duration))
+        scaled_effects[k] = int(round(v * on_site_hours))
+    if travel_stamina:
+        scaled_effects["stamina"] = scaled_effects.get("stamina", 0) - travel_stamina
 
     applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: scaled_effects}, req.option_key)
 
@@ -633,28 +670,30 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
             and (s.get("start_time") or "00:00") > start_time
             and s.get("type") in ("course", "club", "day_end")
         ]
-        next_limit_time = min((s.get("start_time") for s in following_slots), default="21:00")
+        # 下一個固定行程要提早出發：扣掉從活動地點走過去的時間
+        next_limit_time = min(
+            (
+                add_time_minutes(
+                    s.get("start_time") or "21:00",
+                    -travel_minutes_between(loc_id, s.get("location_id")),
+                )
+                for s in following_slots
+            ),
+            default="21:00",
+        )
         tentative_end = add_time_minutes(start_time, duration_minutes)
         end_time = min(tentative_end, next_limit_time) if next_limit_time > start_time else tentative_end
 
     slot_type = "lunch" if cat == "lunch" else ("dorm" if cat == "dorm_leisure" else ("breakfast" if cat == "breakfast" else ("dinner" if cat == "dinner" else "campus_leisure")))
-    home_dorm_id, home_dorm_name = session_home_dorm(db, session)
-    if chosen_building is not None:
-        loc_id, loc_name = chosen_building.id, chosen_building.name_zh
-    elif cat == "dorm_leisure":
-        # 宿舍休閒一律在玩家自己的宿舍
-        loc_id, loc_name = home_dorm_id, home_dorm_name
-    else:
-        loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else home_dorm_id)
-        loc_name = activity.location_name or "校園活動地點"
-
     intent_text = req.custom_title or (chosen_opt.get("intent_hint", activity.title) if chosen_opt else activity.title)
     dur_label = f"{int(duration)}小時" if duration == int(duration) else (f"{duration}小時" if duration >= 1 else f"{duration_minutes}分鐘")
 
     new_slot = {
         "day": day,
         "slot": f"dynamic_{cat}_{session.current_turn}",
-        "title": f"【{activity.title}】{intent_text[:18]} ({dur_label})",
+        "title": f"【{activity.title}】{intent_text[:18]} ({dur_label}"
+        + (f"，含步行 {travel_mins} 分鐘)" if travel_mins else ")"),
+        "travel_minutes": travel_mins,
         "type": slot_type,
         "location_id": loc_id,
         "location_name": loc_name,

@@ -309,6 +309,7 @@ export interface MealOption {
   name_zh: string;
   category?: string | null;
   distance?: number | null;
+  walk_minutes?: number | null;
 }
 
 export interface RouteResult {

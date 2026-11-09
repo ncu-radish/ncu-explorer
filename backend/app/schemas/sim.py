@@ -32,6 +32,7 @@ class ScheduleSlot(BaseModel):
     display_time: str | None = None  # e.g. "10:00 ~ 12:50"
     is_skipped: bool | None = False
     skip_reason: str | None = None
+    travel_minutes: int | None = None  # 從上一個地點步行過來所花的分鐘數（含在 start~end 內）
 
 class SimStartResponse(BaseModel):
     session_id: str
@@ -79,6 +80,7 @@ class MealOptionResponse(BaseModel):
     name_zh: str
     category: str | None = None
     distance: float | None = None  # 從目前位置沿路網走過去的距離
+    walk_minutes: int | None = None  # 步行所需分鐘數
 
 
 class SimTriggerActivityResponse(BaseModel):

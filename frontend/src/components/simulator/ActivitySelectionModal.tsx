@@ -533,7 +533,10 @@ export function ActivitySelectionModal({
                       {opt.distance != null && (
                         <span className="flex items-center gap-1 text-xs text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200 shrink-0">
                           <MapPin className="w-3.5 h-3.5 text-stone-500" />
-                          <span>約 {Math.round(opt.distance)} 公尺</span>
+                          <span>
+                            約 {Math.round(opt.distance)} 公尺
+                            {opt.walk_minutes ? `・步行 ${opt.walk_minutes} 分` : ""}
+                          </span>
                         </span>
                       )}
                     </button>

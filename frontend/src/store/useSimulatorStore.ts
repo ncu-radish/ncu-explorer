@@ -22,6 +22,7 @@ export interface ScheduleSlot {
   display_time?: string;
   is_skipped?: boolean;
   skip_reason?: string;
+  travel_minutes?: number;
 }
 
 export interface OptionItem {
