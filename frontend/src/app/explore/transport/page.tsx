@@ -40,10 +40,6 @@ const BUS_ROUTES: BusRoute[] = [
         label: "132 即時公車動態",
         url: "https://ebus.tycg.gov.tw/ebus/driving-map/3220",
       },
-      {
-        label: "官方詳細時刻表",
-        url: "http://www.tybus.com.tw/default.aspx?page=BusTime",
-      },
     ],
   },
   {
@@ -61,10 +57,6 @@ const BUS_ROUTES: BusRoute[] = [
       {
         label: "133 即時公車動態",
         url: "https://ebus.tycg.gov.tw/ebus/driving-map/133",
-      },
-      {
-        label: "中壢客運官方班表",
-        url: "http://www.chunglibus.com.tw/",
       },
     ],
   },
@@ -84,10 +76,6 @@ const BUS_ROUTES: BusRoute[] = [
         label: "172 即時公車動態",
         url: "https://ebus.tycg.gov.tw/ebus/driving-map/172",
       },
-      {
-        label: "中壢客運官方班表",
-        url: "http://www.chunglibus.com.tw/",
-      },
     ],
   },
   {
@@ -106,10 +94,6 @@ const BUS_ROUTES: BusRoute[] = [
         label: "173 即時公車動態",
         url: "https://ebus.tycg.gov.tw/ebus/driving-map/173",
       },
-      {
-        label: "桃園公車時刻表",
-        url: "https://ebus.tycg.gov.tw/",
-      },
     ],
   },
   {
@@ -127,10 +111,6 @@ const BUS_ROUTES: BusRoute[] = [
       {
         label: "9025 公運即時動態",
         url: "https://www.taiwanbus.tw/eBusPage.aspx?RouteNo=9025",
-      },
-      {
-        label: "台北客運 9025 班表",
-        url: "http://www.tpebus.com.tw/",
       },
     ],
   },
