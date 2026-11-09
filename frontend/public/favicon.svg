@@ -1,0 +1,19 @@
+<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="hand" d="M -35,140 L -35,95 L -40,35 L -27,80 L -15,10 L -3,75 L 5,0 L 13,75 L 25,15 L 35,95 L 55,60 L 35,110 L 35,140 Z"/>
+  </defs>
+
+  <!-- 米白色圓形背景 -->
+  <circle cx="250" cy="250" r="230" fill="#ccb9ed"/>
+
+  <!-- 外框圆形 -->
+  <circle cx="250" cy="250" r="230" fill="none" stroke="#56008d" stroke-width="10"/>
+
+  <!-- 四只手，两两一组，几何线条交叠于中心，象征亲情的温暖 -->
+  <g fill="none" stroke="#56008d" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <use href="#hand" transform="translate(250,280)"/>
+    <use href="#hand" transform="rotate(90,250,250) translate(250,280)"/>
+    <use href="#hand" transform="rotate(180,250,250) translate(250,280)"/>
+    <use href="#hand" transform="rotate(270,250,250) translate(250,280)"/>
+  </g>
+</svg>

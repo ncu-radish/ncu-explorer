@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NCU Explorer | 國立中央大學校園生活與學習資源平台",
   description: "探索中央大學校園生活、課程資訊、3D 地圖與生活指南。",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
