@@ -349,18 +349,6 @@ export default function TransportPage() {
                 <span className="font-medium text-emerald-700">進場前 30 分鐘免費</span>
               </div>
             </div>
-
-            <div className="mb-4 flex flex-wrap gap-2">
-              <a
-                href="https://oga.ncu.edu.tw/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
-              >
-                <span>總務處停車管理規章</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
           </div>
 
           <p className="rounded-xl bg-stone-50 p-3 text-xs text-stone-500">
@@ -400,27 +388,6 @@ export default function TransportPage() {
                 <span className="font-bold text-stone-700">安全速限</span>
                 <span className="font-medium text-amber-700">校園內全區限速 15 公里</span>
               </div>
-            </div>
-
-            <div className="mb-4 flex flex-wrap gap-2">
-              <a
-                href="https://www.oloo.work/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
-              >
-                <span>oloo 官方網站</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-              <a
-                href="https://www.oloo.work/how-to-use"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200"
-              >
-                <span>借還教學與規範</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
             </div>
           </div>
 
