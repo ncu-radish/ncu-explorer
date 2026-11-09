@@ -45,6 +45,26 @@ export interface Stats {
   money: number;
 }
 
+const SESSION_STORAGE_KEY = "ncu_sim_session_id";
+
+// localStorage 可能被停用或在私密視窗中丟例外，一律包 try/catch，失敗就當作沒有存檔
+function saveSessionId(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(SESSION_STORAGE_KEY, id);
+    else window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadSessionId(): string | null {
+  try {
+    return window.localStorage.getItem(SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 interface SimulatorState {
   sessionId: string | null;
   playerProfile: any | null;
@@ -61,7 +81,12 @@ interface SimulatorState {
   isLoading: boolean;
   historyLogs: string[];
   error: string | null;
+  ending: string | null;
+  eventOutcome: string | null;
+  isRestoring: boolean;
 
+  restoreSession: () => Promise<void>;
+  clearError: () => void;
   startSimulation: (
     userInput: string,
     department?: string,
@@ -104,11 +129,20 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   isLoading: false,
   historyLogs: [],
   error: null,
+  ending: null,
+  eventOutcome: null,
+  isRestoring: true,
 
-  startSimulation: async (userInput: string, department?: string, grade?: number, dormId?: string) => {
-    set({ isLoading: true, error: null });
+  clearError: () => set({ error: null }),
+
+  restoreSession: async () => {
+    const savedId = loadSessionId();
+    if (!savedId || get().sessionId) {
+      set({ isRestoring: false });
+      return;
+    }
     try {
-      const data = await simApi.start(userInput, department, grade, dormId);
+      const data = await simApi.getSession(savedId);
       set({
         sessionId: data.session_id,
         playerProfile: data.player_profile,
@@ -117,6 +151,36 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         currentTime: data.current_time || "08:00",
         currentDay: data.current_day || 1,
         stats: data.stats,
+        story: data.story,
+        currentLocationId: data.current_location_id,
+        currentLocationName: data.current_location_name,
+        isGameOver: !!data.is_game_over,
+        ending: data.ending || null,
+        isRestoring: false,
+      });
+      if (data.is_game_over) await get().fetchSummary();
+    } catch {
+      // 存檔已失效（例如後端重置）：回到開局畫面
+      saveSessionId(null);
+      set({ isRestoring: false });
+    }
+  },
+
+  startSimulation: async (userInput: string, department?: string, grade?: number, dormId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await simApi.start(userInput, department, grade, dormId);
+      saveSessionId(data.session_id);
+      set({
+        sessionId: data.session_id,
+        playerProfile: data.player_profile,
+        weeklySchedule: data.weekly_schedule,
+        currentTurn: data.current_turn,
+        currentTime: data.current_time || "08:00",
+        currentDay: data.current_day || 1,
+        stats: data.stats,
+        ending: null,
+        eventOutcome: null,
         story: data.current_story,
         currentLocationId: data.current_location_id,
         currentLocationName: data.current_location_name,
@@ -139,6 +203,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       if (data.is_game_over) {
         set({
           isGameOver: true,
+          ending: data.ending || null,
           currentTime: data.current_time || "22:00",
           currentDay: data.current_day || 5,
           stats: data.stats,
@@ -152,6 +217,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
           currentTime: data.current_time || get().currentTime,
           currentDay: data.current_day || get().currentDay,
           stats: data.stats,
+          eventOutcome: data.event_outcome || null,
           story: data.story,
           currentLocationId: data.current_location_id,
           currentLocationName: data.current_location_name,
@@ -192,6 +258,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
       if ((res as any).is_game_over) {
         set({
           isGameOver: true,
+          ending: (res as any).ending || null,
           weeklySchedule: res.weekly_schedule,
           stats: res.stats,
           isLoading: false,
@@ -261,7 +328,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   },
 
   resetSimulation: () => {
+    saveSessionId(null);
     set({
+      ending: null,
+      eventOutcome: null,
       sessionId: null,
       playerProfile: null,
       weeklySchedule: [],

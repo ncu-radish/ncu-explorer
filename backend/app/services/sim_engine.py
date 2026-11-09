@@ -47,12 +47,11 @@ COMMON_CLUB_ALIASES: dict[str, str] = {
     "吉他": "吉他社",
     "火舞": "火舞藝術研究社", "火舞社": "火舞藝術研究社",
     "鋼琴": "鋼琴社",
-    "系學會": "資訊管理學系系學會",
-    "資管系學會": "資訊管理學系系學會", "資管系會": "資訊管理學系系學會",
-    "資工系學會": "資訊工程學系系學會", "資工系會": "資訊工程學系系學會",
-    "電機系學會": "電機工程學系系學會",
-    "企管系學會": "企業管理學系系學會",
-    "財金系學會": "財務金融學系系學會",
+    "資管系會": "資管系學會",
+    "資工系會": "資工系學會",
+    "電機系會": "電機系學會",
+    "企管系會": "企管系學會",
+    "財金系會": "財金系學會",
     "新竹友會": "新竹校友會", "竹友會": "新竹校友會",
     "雄友": "雄友會", "雄友會": "雄友會",
     "彰友": "彰化校友會", "彰友會": "彰化校友會",
@@ -62,6 +61,102 @@ COMMON_CLUB_ALIASES: dict[str, str] = {
     "合唱": "合唱團", "合唱團": "合唱團",
     "攝影": "攝影社", "攝影社": "攝影社",
 }
+
+MAX_EVENT_OCCURRENCES = 2  # 同一事件每局最多出現次數
+EVENT_MIN_GAP_TURNS = 3  # 兩次突發事件之間至少間隔的回合數
+DAY_START_MINUTES = 8 * 60
+DAY_END_MINUTES = 21 * 60
+LUNCH_WINDOW = (11 * 60, 14 * 60)
+DINNER_WINDOW = (17 * 60, 19 * 60 + 30)
+MIN_MEAL_GAP_MINUTES = 30
+MEAL_PROMPT_MINUTES = 60
+LEISURE_MIN_GAP_MINUTES = 90
+
+
+def free_gaps(busy: list[tuple[int, int]], lo: int, hi: int) -> list[tuple[int, int]]:
+    """在 [lo, hi) 內扣掉 busy 區間後剩下的空檔。busy 需已依起點排序。"""
+    gaps: list[tuple[int, int]] = []
+    cursor = lo
+    for b_start, b_end in busy:
+        if b_end <= cursor:
+            continue
+        if b_start >= hi:
+            break
+        if b_start > cursor:
+            gaps.append((cursor, b_start))
+        cursor = max(cursor, b_end)
+    if cursor < hi:
+        gaps.append((cursor, hi))
+    return gaps
+
+
+def pick_meal_window(
+    gaps: list[tuple[int, int]], window: tuple[int, int], preferred: int
+) -> tuple[int, int] | None:
+    """在空檔與用餐時段的交集中挑一段（至少 30 分鐘），盡量靠近偏好的開始時間，長度最多 60 分鐘。"""
+    best: tuple[int, int] | None = None
+    for g_start, g_end in gaps:
+        lo, hi = max(g_start, window[0]), min(g_end, window[1])
+        if hi - lo < MIN_MEAL_GAP_MINUTES:
+            continue
+        start = min(max(preferred, lo), hi - MIN_MEAL_GAP_MINUTES)
+        cand = (start, min(start + MEAL_PROMPT_MINUTES, hi))
+        if best is None or abs(cand[0] - preferred) < abs(best[0] - preferred):
+            best = cand
+    return best
+
+
+FALLBACK_SCENES: dict[str, list[str]] = {
+    "course": [
+        "你走進{loc}，找了個位子坐下。投影機的風扇嗡嗡作響，教授翻開講義，「{title}」開始了。",
+        "{loc}的教室裡人聲漸漸安靜下來，你翻開筆記本，「{title}」的內容在黑板上一行行展開。",
+        "你在上課鈴響前一分鐘抵達{loc}，喘口氣的同時，「{title}」的點名單已經傳了下來。",
+    ],
+    "club": [
+        "社團教室在{loc}，大家陸續到齊，「{title}」的活動在熱鬧的寒暄聲中展開。",
+        "傍晚的{loc}燈火通明，你推開門，夥伴們已經開始準備今天的「{title}」。",
+    ],
+    "dorm": ["你回到{loc}，房間裡的檯燈柔和地亮著，準備迎接「{title}」。"],
+    "default": [
+        "你來到了{loc}。四周是中大學生來來往往的交談聲，空氣中帶著松林泥土的清香，現在是「{title}」。",
+        "{loc}附近的百花川微風徐徐，你放慢腳步，迎接「{title}」。",
+    ],
+}
+
+COURSE_OPTION_VARIANTS: list[tuple[str, str, str]] = [
+    ("全神貫注認真參與，主動與教授或身旁同學交流提問",
+     "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
+     "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦"),
+    ("坐到第一排認真抄筆記，把不懂的地方都記下來下課問",
+     "靠著椅背放鬆聽課，把精神留給晚點的行程",
+     "趁課間跟隔壁同學交換筆記，順便約下課一起行動"),
+    ("跟著教授的節奏專心推導，下課前把重點整理完",
+     "半聽半休息，偶爾低頭看看手機緩一緩",
+     "下課後邀同學去合作社買點心，邊吃邊聊修課心得"),
+]
+
+
+def fallback_scene(slot_info: dict[str, Any], loc_name: str, turn: int) -> str:
+    """沒有 LLM 時依行程類型輪替的敘事模板。"""
+    kind = str(slot_info.get("type") or "default")
+    pool = FALLBACK_SCENES.get(kind) or FALLBACK_SCENES["default"]
+    return pool[turn % len(pool)].format(loc=loc_name, title=slot_info.get("title", "活動"))
+
+
+# 學系全名 → 系學會名稱（資料庫中的社團名稱用簡稱）
+DEPT_CLUB_NAMES: dict[str, str] = {
+    "資訊管理學系": "資管系學會", "資訊工程學系": "資工系學會",
+    "電機工程學系": "電機系學會", "通訊工程學系": "通訊系學會",
+    "企業管理學系": "企管系學會", "財務金融學系": "財金系學會",
+    "經濟學系": "經濟系學會", "機械工程學系": "機械系學會",
+    "土木工程學系": "土木系學會", "化學工程與材料工程學系": "化材系學會",
+    "數學系": "數學系學會", "物理學系": "物理系學會", "化學學系": "化學系學會",
+    "生命科學系": "生科系學會", "中國文學系": "中文系學會",
+    "英美語文學系": "英文系學會", "法國語文學系": "法文系學會",
+    "大氣科學學系": "大氣系學會", "地球科學學系": "地科聯合系學會",
+    "光電科學與工程學系": "光電系學會", "客家語文暨社會科學學系": "客家系學會",
+}
+CLUB_FUZZY_THRESHOLD = 0.6  # 模糊比對的最低相似度，低於此視為找不到
 
 NCU_PERIOD_TIME: dict[str, tuple[str, str]] = {
     "1": ("08:00", "08:50"),
@@ -205,17 +300,19 @@ def map_campus_location(
     c_name = (course_name or "").strip()
     d_name = (dept or "").strip()
 
-    # 1. 優先由地點代碼/名稱匹配
+    # 1. 優先由地點代碼/名稱匹配；地點含多間教室（「I1-105 / 綜教館-210」）時只取第一間能辨識的
     if loc_raw and loc_raw not in ("未定", "安排中"):
-        for pattern, bldg_id, canon_name in BUILDING_MATCH_RULES:
-            if re.search(pattern, loc_raw, re.IGNORECASE):
-                if loc_raw == canon_name:
-                    display_name = canon_name
-                elif canon_name in loc_raw:
-                    display_name = loc_raw
-                else:
-                    display_name = f"{canon_name} ({loc_raw})"
-                return bldg_id, display_name
+        segments = [seg for seg in re.split(r"\s*[/／、,，;；]\s*", loc_raw) if seg] or [loc_raw]
+        for segment in segments:
+            for pattern, bldg_id, canon_name in BUILDING_MATCH_RULES:
+                if re.search(pattern, segment, re.IGNORECASE):
+                    if segment == canon_name:
+                        display_name = canon_name
+                    elif canon_name in segment:
+                        display_name = segment
+                    else:
+                        display_name = f"{canon_name} ({segment})"
+                    return bldg_id, display_name
 
     # 2. 次依課程名稱特徵判斷
     if any(k in c_name for k in ["體育", "羽球", "網球", "保齡球", "桌球", "籃球", "排球", "游泳", "體能"]):
@@ -256,6 +353,186 @@ def walking_minutes(distance_m: float) -> int:
     if distance_m < 1:
         return 0
     return max(1, math.ceil(distance_m / WALK_SPEED_M_PER_MIN))
+
+
+def sleep_stamina_gain(hours: float) -> int:
+    """睡眠回復的體力：隨睡眠時數連續變化。
+
+    < 6 小時按比例遞減（睡越少恢復越少）、6~9 小時每小時 +5（9 小時 +45 為最佳）、
+    超過 9 小時每多睡 1 小時少 4 點，最低維持 30。
+    """
+    if hours <= 0:
+        return 0
+    if hours < 6.0:
+        return int(round(5 * hours * (hours / 6.0)))
+    if hours <= 9.0:
+        return int(round(5 * hours))
+    return int(round(max(30.0, 45.0 - 4.0 * (hours - 9.0))))
+
+
+def apply_sleep(session: GameSession, hours: float) -> int:
+    """睡眠回復體力（上限 100），回傳實際回復量。"""
+    before = int((session.stats or {}).get("stamina", 80))
+    stats = dict(session.stats or {})
+    stats["stamina"] = min(100, before + sleep_stamina_gain(hours))
+    session.stats = stats
+    return stats["stamina"] - before
+
+
+def time_to_minutes(time_str: str, night: bool = False) -> int:
+    """'HH:MM' 轉為分鐘數。night=True 時 05:00 以前視為隔天（加 24 小時）。"""
+    parts = time_str.split(":")
+    h = int(parts[0])
+    m = int(parts[1]) if len(parts) > 1 else 0
+    if night and h < 5:
+        h += 24
+    return h * 60 + m
+
+
+def minutes_to_time(total_minutes: int) -> str:
+    total_minutes %= 24 * 60
+    return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
+
+NIGHT_CUTOFF_MINUTES = 29 * 60  # 清晨 05:00 換日線
+MAX_MEAL_MINUTES = 120
+
+
+def scale_activity_effects(
+    effects: dict[str, int], on_site_minutes: int, travel_stamina: int = 0
+) -> dict[str, int]:
+    """活動每小時的效果，依「實際待在現場」的分鐘數縮放，並另外扣除步行消耗的體力。"""
+    hours = max(0.25, on_site_minutes / 60.0)
+    scaled = {k: int(round(v * hours)) for k, v in effects.items()}
+    if travel_stamina:
+        scaled["stamina"] = scaled.get("stamina", 0) - travel_stamina
+    return scaled
+
+
+ABSENCE_STUDY_PENALTY_PER_HOUR = 8  # 缺課每一小時扣的學業
+ENDING_FAINT = "faint"
+
+
+def skip_slots(
+    session: GameSession, schedule: list[dict[str, Any]], indices: Any, reason: str
+) -> dict[str, int]:
+    """把行程標記為跳過；其中尚未跳過的「課程」算缺課，依時數扣學業。回傳學業實際變化量。"""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    absent_courses = 0
+    absent_hours = 0.0
+    for i in indices:
+        if not 0 <= i < len(schedule):
+            continue
+        slot = schedule[i]
+        if slot.get("is_skipped"):
+            continue
+        slot["is_skipped"] = True
+        slot["skip_reason"] = reason
+        if slot.get("type") == "course":
+            absent_courses += 1
+            start = time_to_minutes(slot.get("start_time") or "00:00")
+            end = time_to_minutes(slot.get("end_time") or slot.get("start_time") or "00:00")
+            absent_hours += max(0, end - start) / 60.0
+    if not absent_courses:
+        return {}
+
+    profile = dict(session.player_profile or {})
+    profile["absences"] = int(profile.get("absences", 0)) + absent_courses
+    profile["absence_hours"] = round(float(profile.get("absence_hours", 0.0)) + absent_hours, 2)
+    session.player_profile = profile
+    flag_modified(session, "player_profile")
+
+    stats = dict(session.stats or {})
+    before = int(stats.get("study", 50))
+    stats["study"] = max(0, before - int(round(ABSENCE_STUDY_PENALTY_PER_HOUR * absent_hours)))
+    session.stats = stats
+    session.history_logs = (session.history_logs or []) + [
+        f"缺課 {absent_courses} 堂（{absent_hours:g} 小時），學業 {stats['study'] - before}"
+    ]
+    return {"study": stats["study"] - before}
+
+
+COMMUTE_FIXED_TYPES = ("course", "club")
+
+
+def commute_penalty(
+    session: GameSession,
+    from_slot: dict[str, Any],
+    to_slot: dict[str, Any],
+    distance_m: float,
+) -> dict[str, int]:
+    """固定行程（課程、社團）之間換館舍的步行：扣體力；走不完下課空檔則寫入日誌。回傳實際數值變化。"""
+    if from_slot.get("type") not in COMMUTE_FIXED_TYPES or to_slot.get("type") not in COMMUTE_FIXED_TYPES:
+        return {}
+    if from_slot.get("day") != to_slot.get("day") or distance_m <= 0:
+        return {}
+    minutes = walking_minutes(distance_m)
+    cost = walking_stamina_cost(distance_m)
+    gap = time_to_minutes(to_slot.get("start_time") or "00:00") - time_to_minutes(from_slot.get("end_time") or "00:00")
+    if minutes > gap:
+        session.history_logs = (session.history_logs or []) + [
+            f"從「{from_slot.get('location_name')}」走到「{to_slot.get('location_name')}」要 {minutes} 分鐘，"
+            f"下課只有 {gap} 分鐘，趕得很匆忙"
+        ]
+    if not cost:
+        return {}
+    before = int((session.stats or {}).get("stamina", 80))
+    stats = dict(session.stats or {})
+    stats["stamina"] = max(0, before - cost)
+    session.stats = stats
+    return {"stamina": stats["stamina"] - before}
+
+
+def pick_title(session: GameSession) -> str:
+    """依結算數值、缺課與行程判定稱號（由嚴格到寬鬆）。"""
+    stats = session.stats or {}
+    profile = session.player_profile or {}
+    study = stats.get("study", 50)
+    social = stats.get("social", 50)
+    stamina = stats.get("stamina", 50)
+    money = stats.get("money", 1500)
+    absences = int(profile.get("absences", 0))
+
+    if profile.get("ending") == ENDING_FAINT:
+        return "體力透支的保健室常客"
+    if study >= 80 and absences == 0 and stamina > 20:
+        return "中大書卷獎領跑者"
+    if social >= 80 and study >= 40:
+        return "全方位百花川系核"
+    if absences >= 3:
+        return "與教室緣分很淺的自由靈魂"
+    if stamina <= 20:
+        return "被早八榨乾的極限生存狂"
+    if money <= 100:
+        return "月底吃土的窮忙大學生"
+    if "loc_night_street" in (session.visited_locs or []):
+        return "中大宵夜街守護神"
+    return "從容漫步的大一新鮮人"
+
+
+def merge_deltas(*deltas: dict[str, int] | None) -> dict[str, int]:
+    merged: dict[str, int] = {}
+    for d in deltas:
+        for k, v in (d or {}).items():
+            merged[k] = merged.get(k, 0) + v
+    return merged
+
+
+def check_faint(session: GameSession) -> bool:
+    """體力歸零 → 昏倒結局，遊戲立刻結束。"""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    if int((session.stats or {}).get("stamina", 80)) > 0:
+        return False
+    profile = dict(session.player_profile or {})
+    profile["ending"] = ENDING_FAINT
+    profile.pop("active_random_event", None)
+    session.player_profile = profile
+    flag_modified(session, "player_profile")
+    session.current_turn = len(session.weekly_schedule or [])
+    session.history_logs = (session.history_logs or []) + ["體力耗盡，當場昏倒被送往保健室……"]
+    return True
 
 
 def pick_meal_options(
@@ -347,50 +624,43 @@ class SimEngine:
         query: str,
         all_clubs: list[dict[str, Any]],
         dept_hint: str | None = None
-    ) -> dict[str, Any]:
-        """從全校社團清單中找出最接近目標的社團 (支援精確匹配、別名對照、子字串與 SequenceMatcher 相似度)"""
+    ) -> dict[str, Any] | None:
+        """從全校社團清單找出對應社團（精確、別名、系學會對照、子字串、高門檻相似度）。找不到回傳 None。"""
         q = (query or "").strip()
         if not q or not all_clubs:
-            for c in all_clubs:
-                if c["name"] == "熱門舞蹈社":
-                    return c
-            return all_clubs[0] if all_clubs else {"id": "club_default", "name": "熱門舞蹈社", "category": "康樂性"}
+            return None
+        by_name = {c["name"]: c for c in all_clubs}
 
-        if q in ("系學會", "系會") and dept_hint:
-            for c in all_clubs:
-                if dept_hint in c["name"] and "系學會" in c["name"]:
-                    return c
+        if q in ("系學會", "系會"):
+            club_name = DEPT_CLUB_NAMES.get(dept_hint or "")
+            return by_name.get(club_name) if club_name else None
 
         if q in COMMON_CLUB_ALIASES:
-            target_name = COMMON_CLUB_ALIASES[q]
-            for c in all_clubs:
-                if c["name"] == target_name:
-                    return c
+            hit = by_name.get(COMMON_CLUB_ALIASES[q])
+            if hit:
+                return hit
 
+        if q in by_name:
+            return by_name[q]
         for c in all_clubs:
-            if c["name"] == q:
-                return c
             if c.get("english_name") and c["english_name"].lower() == q.lower():
                 return c
 
-        substring_matches = [
-            c for c in all_clubs
-            if (q in c["name"] or c["name"] in q) or (c.get("english_name") and q.lower() in c["english_name"].lower())
-        ]
-        if substring_matches:
-            return max(substring_matches, key=lambda c: len(set(q) & set(c["name"])))
+        if len(q) >= 2:
+            substring_matches = [
+                c for c in all_clubs
+                if q in c["name"] or c["name"] in q
+                or (c.get("english_name") and q.lower() in c["english_name"].lower())
+            ]
+            if substring_matches:
+                return max(substring_matches, key=lambda c: difflib.SequenceMatcher(None, q, c["name"]).ratio())
 
-        best_club = all_clubs[0]
-        best_score = -1.0
+        best_club, best_ratio = None, 0.0
         for c in all_clubs:
-            c_name = c["name"]
-            sim_ratio = difflib.SequenceMatcher(None, q, c_name).ratio()
-            char_overlap = len(set(q) & set(c_name))
-            score = sim_ratio * 2.0 + char_overlap
-            if score > best_score:
-                best_score = score
-                best_club = c
-        return best_club
+            ratio = difflib.SequenceMatcher(None, q, c["name"]).ratio()
+            if ratio > best_ratio:
+                best_club, best_ratio = c, ratio
+        return best_club if best_ratio >= CLUB_FUZZY_THRESHOLD else None
 
     def classify_club_activity(self, club: dict[str, Any]) -> dict[str, Any]:
         """
@@ -465,14 +735,18 @@ class SimEngine:
     def resolve_club_weekly_schedule(
         self,
         db: Session | None,
-        profile: OnboardingParseSchema | None
+        profile: OnboardingParseSchema | None,
+        busy: dict[int, list[tuple[int, int]]] | None = None,
+        notes: list[str] | None = None,
     ) -> dict[int, list[ScheduleSlot]]:
         """
-        為使用者輸入的目標社團解析真實社團並排定週一至週五晚間時段 (18:00~22:00)
-        - 找不到時以最佳近似社團匹配
+        為使用者輸入的目標社團解析真實社團並排定週一至週五晚間時段
+        - 找不到對應社團時略過並寫入 notes（不隨機配對）
         - 表演性 3 天、體育/服務/興趣 2 天、教學/學術/系學會/友會 1 天
-        - 多個社團時智慧分配平日不同晚上，杜絕時段衝突
+        - busy：各日已被課程佔用的 (起, 迄) 分鐘；與社團重疊的日子不排，排不滿就少排並記錄
         """
+        busy = busy or {}
+        notes = notes if notes is not None else []
         all_clubs = self.load_all_clubs(db)
         dept_hint = profile.department if profile else None
 
@@ -488,54 +762,45 @@ class SimEngine:
                 raw_candidates.append(single_c)
 
         if not raw_candidates:
-            raw_candidates = ["熱門舞蹈社", "資訊管理學系系學會"]
+            raw_candidates = ["熱門舞蹈社", "系學會"]
 
         resolved_clubs: list[dict[str, Any]] = []
+        seen_ids: set[Any] = set()
         for raw_q in raw_candidates:
             matched = self.match_nearest_club(raw_q, all_clubs, dept_hint=dept_hint)
-            profile_info = self.classify_club_activity(matched)
-            resolved_clubs.append({
-                "club": matched,
-                "profile": profile_info
-            })
+            if matched is None:
+                notes.append(f"找不到社團「{raw_q}」，已略過")
+                continue
+            if matched.get("id") in seen_ids:
+                continue
+            seen_ids.add(matched.get("id"))
+            resolved_clubs.append({"club": matched, "profile": self.classify_club_activity(matched)})
 
         resolved_clubs.sort(key=lambda x: x["profile"]["days_count"], reverse=True)
 
         slots_by_day: dict[int, list[ScheduleSlot]] = {d: [] for d in range(1, 6)}
-        occupied_days: set[int] = set()
+        club_busy: dict[int, list[tuple[int, int]]] = {d: list(busy.get(d, [])) for d in range(1, 6)}
+
+        def is_free(day: int, start: int, end: int) -> bool:
+            return all(end <= bs or start >= be for bs, be in club_busy[day])
 
         for item in resolved_clubs:
             club = item["club"]
             info = item["profile"]
             needed_days = info["days_count"]
+            start_m = time_to_minutes(info["start_time"])
+            end_m = time_to_minutes(info["end_time"])
 
-            if needed_days == 3:
-                candidates_list = [1, 3, 5]
-            elif needed_days == 2:
-                candidates_list = [2, 4]
-            else:
-                candidates_list = [2, 3, 4]
-
-            assigned_days: list[int] = []
-            for d in candidates_list:
-                if d not in occupied_days and len(assigned_days) < needed_days:
-                    assigned_days.append(d)
-
+            preferred = {3: [1, 3, 5], 2: [2, 4]}.get(needed_days, [2, 3, 4])
+            order = preferred + [d for d in range(1, 6) if d not in preferred]
+            assigned_days = [d for d in order if is_free(d, start_m, end_m)][:needed_days]
             if len(assigned_days) < needed_days:
-                for d in [1, 2, 3, 4, 5]:
-                    if d not in occupied_days and d not in assigned_days and len(assigned_days) < needed_days:
-                        assigned_days.append(d)
-
-            if len(assigned_days) < needed_days:
-                remaining_needed = needed_days - len(assigned_days)
-                sorted_by_load = sorted(range(1, 6), key=lambda d: len(slots_by_day[d]))
-                for d in sorted_by_load:
-                    if d not in assigned_days and remaining_needed > 0:
-                        assigned_days.append(d)
-                        remaining_needed -= 1
+                notes.append(
+                    f"社團「{club['name']}」每週需 {needed_days} 天，與課程衝突後只排得下 {len(assigned_days)} 天"
+                )
 
             for day_idx in assigned_days:
-                occupied_days.add(day_idx)
+                club_busy[day_idx].append((start_m, end_m))
                 day_name = DAY_NAMES[day_idx - 1]
                 s_time = info["start_time"]
                 e_time = info["end_time"]
@@ -681,6 +946,8 @@ class SimEngine:
                 for alias_k, target_n in COMMON_CLUB_ALIASES.items():
                     if len(alias_k) >= 2 and alias_k in user_input and target_n not in extracted_clubs:
                         extracted_clubs.append(target_n)
+                if "系學會" in user_input or "系會" in user_input:
+                    extracted_clubs.append("系學會")
                 if extracted_clubs:
                     parsed.clubs = extracted_clubs
 
@@ -694,6 +961,7 @@ class SimEngine:
         db: Session | None = None,
         profile: OnboardingParseSchema | None = None,
         home_dorm: tuple[str, str] | None = None,
+        notes: list[str] | None = None,
     ) -> list[ScheduleSlot]:
         """
         為週一至週五排定完整一日時間軸 (僅保留真實課程與社團行程)
@@ -998,11 +1266,22 @@ class SimEngine:
             if total_credits == prev_credits:
                 break
 
+        if notes is not None:
+            if total_credits > max_credits:
+                notes.append(f"本學期必修共 {total_credits:g} 學分，超過建議上限 {max_credits:g} 學分（必修不刪減）")
+            elif total_credits < min_credits:
+                notes.append(f"本學期只排得到 {total_credits:g} 學分，低於建議下限 {min_credits:g} 學分")
+
         # 3. 鋪設週一到週五真實課堂與社團行程 (僅保留課程與社團活動)
         schedule: list[ScheduleSlot] = []
 
         # 智慧解析並排定社團真實活動時程 (依社團類型排定 1~3 天晚間 18:00~22:00，智慧杜絕衝突)
-        club_slots_by_day = self.resolve_club_weekly_schedule(db, profile)
+        course_busy: dict[int, list[tuple[int, int]]] = {}
+        for c in enrolled_courses:
+            for cd, pers in c["parsed_periods"]:
+                c_start, c_end, _ = get_periods_time_range(pers)
+                course_busy.setdefault(cd, []).append((time_to_minutes(c_start), time_to_minutes(c_end)))
+        club_slots_by_day = self.resolve_club_weekly_schedule(db, profile, busy=course_busy, notes=notes)
 
         for day in range(1, 6):
             day_name = DAY_NAMES[day - 1]
@@ -1045,68 +1324,64 @@ class SimEngine:
             # 當天行程按開始時間排序
             day_events.sort(key=lambda s: s.start_time or "00:00")
 
-            # (3) 中午午餐時間檢測：若 12:00~13:00 沒有課程或任何活動，加入午餐提問檢查點
-            has_lunch_conflict = any(
-                (s.start_time or "00:00") < "13:00" and (s.end_time or "00:00") > "12:00"
+            # (3)(4) 由固定行程（課程、社團）算出空檔，在空檔內放置午餐、晚餐與課餘空閒提示
+            fixed = sorted(
+                (time_to_minutes(s.start_time or "00:00"), time_to_minutes(s.end_time or "00:00"))
                 for s in day_events
             )
-            if not has_lunch_conflict:
-                day_events.append(ScheduleSlot(
-                    day=day,
-                    slot="12:00",
-                    title="12:00 中午時光",
-                    type="lunch_prompt",
-                    location_id="loc_pine_restaurant",
-                    location_name="松果餐廳",
-                    start_time="12:00",
-                    end_time="13:00",
-                    display_time="12:00 ~ 13:00",
-                    time_label=f"{day_name} 12:00"
+            gaps = free_gaps(fixed, DAY_START_MINUTES, DAY_END_MINUTES)
+            meal_slots: list[ScheduleSlot] = []
+
+            lunch_win = pick_meal_window(gaps, LUNCH_WINDOW, 12 * 60)
+            if lunch_win:
+                ls, le = lunch_win
+                meal_slots.append(ScheduleSlot(
+                    day=day, slot=minutes_to_time(ls), title=f"{minutes_to_time(ls)} 中午時光",
+                    type="lunch_prompt", location_id="loc_pine_restaurant", location_name="松果餐廳",
+                    start_time=minutes_to_time(ls), end_time=minutes_to_time(le),
+                    display_time=f"{minutes_to_time(ls)} ~ {minutes_to_time(le)}",
+                    time_label=f"{day_name} {minutes_to_time(ls)}",
                 ))
+            dinner_win = pick_meal_window(gaps, DINNER_WINDOW, 18 * 60)
+            if dinner_win:
+                ds, de = dinner_win
+                meal_slots.append(ScheduleSlot(
+                    day=day, slot=minutes_to_time(ds), title=f"{minutes_to_time(ds)} 晚餐時間",
+                    type="dinner_prompt", location_id=dorm_id, location_name=dorm_name,
+                    start_time=minutes_to_time(ds), end_time=minutes_to_time(de),
+                    display_time=f"{minutes_to_time(ds)} ~ {minutes_to_time(de)}",
+                    time_label=f"{day_name} {minutes_to_time(ds)}",
+                ))
+            day_events.extend(meal_slots)
 
-            # (4) 課餘空閒時間檢測：在課程結束後或課間空檔若有 >= 1.5 小時無活動，加入休閒提問檢查點
-            day_events.sort(key=lambda s: s.start_time or "00:00")
-            gap_checkpoints: list[ScheduleSlot] = []
-
-            # 檢測下午課後空檔 (例如 15:00~18:00 或 17:00~18:30)
-            class_ends = [s.end_time for s in day_events if s.type == "course" and s.end_time]
-            if class_ends:
-                max_class_end = max(class_ends)
-                # 尋找課後下一個活動
-                later_acts = [s for s in day_events if (s.start_time or "00:00") >= max_class_end and s.type != "lunch_prompt"]
-                next_act_start = (later_acts[0].start_time if later_acts and later_acts[0].start_time else None) or "21:00"
-
-                # 若空檔大於等於 90 分鐘，且不與已有檢查點衝突
-                if max_class_end and max_class_end < "19:00" and next_act_start > max_class_end:
-                    gap_checkpoints.append(ScheduleSlot(
-                        day=day,
-                        slot=max_class_end,
-                        title=f"{max_class_end} 課餘空閒時間",
-                        type="leisure_prompt",
-                        location_id=dorm_id,
-                        location_name=dorm_name,
-                        start_time=max_class_end,
-                        end_time=next_act_start,
-                        display_time=f"{max_class_end} ~ {next_act_start}",
-                        time_label=f"{day_name} {max_class_end}"
+            # 扣掉餐點提示後，剩下 >= 90 分鐘的空檔各產生一個課餘空閒提示
+            taken = sorted((time_to_minutes(m.start_time or "0:00"), time_to_minutes(m.end_time or "0:00")) for m in meal_slots)
+            for g_start, g_end in gaps:
+                for p_start, p_end in free_gaps(taken, g_start, g_end):
+                    if p_end - p_start < LEISURE_MIN_GAP_MINUTES:
+                        continue
+                    t0, t1 = minutes_to_time(p_start), minutes_to_time(p_end)
+                    day_events.append(ScheduleSlot(
+                        day=day, slot=t0, title=f"{t0} 課餘空閒時間", type="leisure_prompt",
+                        location_id=dorm_id, location_name=dorm_name,
+                        start_time=t0, end_time=t1, display_time=f"{t0} ~ {t1}",
+                        time_label=f"{day_name} {t0}",
                     ))
 
-            day_events.extend(gap_checkpoints)
-
-            # (5) 每日結束檢查點 (用於觸發明日活動預排)
-            if day < 5:
-                day_events.append(ScheduleSlot(
-                    day=day,
-                    slot="21:00",
-                    title=f"{day_name} 夜幕結算 · 明日活動預排",
-                    type="day_end",
-                    location_id=dorm_id,
-                    location_name=dorm_name,
-                    start_time="21:00",
-                    end_time="22:00",
-                    display_time="21:00",
-                    time_label=f"{day_name} 21:00"
-                ))
+            # (5) 每日結束檢查點（週一至週四用於預排明日；週五用於結束這一週）
+            end_title = f"{day_name} 夜幕結算 · 結束這一週" if day == 5 else f"{day_name} 夜幕結算 · 明日活動預排"
+            day_events.append(ScheduleSlot(
+                day=day,
+                slot="21:00",
+                title=end_title,
+                type="day_end",
+                location_id=dorm_id,
+                location_name=dorm_name,
+                start_time="21:00",
+                end_time="22:00",
+                display_time="21:00",
+                time_label=f"{day_name} 21:00"
+            ))
 
             # 嚴格按開始時間排序當日所有行程
             day_events.sort(key=lambda s: s.start_time or "00:00")
@@ -1185,8 +1460,32 @@ class SimEngine:
         # triggered_evts is kept for cond_prev_event_id chain checks,
         # but no longer permanently excludes events (they can re-trigger each day).
 
+        profile = dict(session.player_profile or {})
+        event_history: list[dict[str, Any]] = list(profile.get("event_history") or [])
+        if event_history and turn - int(event_history[-1].get("turn", -99)) < EVENT_MIN_GAP_TURNS:
+            return None  # 剛發生過突發事件，先喘口氣
+        first_start_of_day = min(
+            (
+                str(p.get("start_time") or "99:99")
+                for p in (session.weekly_schedule or [])
+                if isinstance(p, dict) and p.get("day") == day_num
+                and p.get("type") not in ("day_end", "dorm") and not p.get("is_skipped")
+            ),
+            default=start_t,
+        )
+
         triggered_candidates: list[RandomEvent] = []
         for ev in candidate_events:
+            # 0. 冷卻：同一局最多出現次數、同一天只出現一次
+            if (session.triggered_evts or []).count(ev.id) >= MAX_EVENT_OCCURRENCES:
+                continue
+            if any(h.get("id") == ev.id and h.get("day") == day_num for h in event_history):
+                continue
+            # 0.1 情境與敘述一致（以事件 id 對應的額外限制）
+            if ev.id == "evt_late_wakeup" and not (start_t <= "08:30" and start_t <= first_start_of_day):
+                continue
+            if ev.id == "evt_squirrel_attack" and start_t >= "11:00":
+                continue
             # 1. 星期幾條件
             if ev.cond_days and day_num not in ev.cond_days:
                 continue
@@ -1242,6 +1541,8 @@ class SimEngine:
             weights = [max(1, e.weight) for e in triggered_candidates]
             chosen = random.choices(triggered_candidates, weights=weights, k=1)[0]
             session.triggered_evts = (session.triggered_evts or []) + [chosen.id]
+            profile["event_history"] = event_history + [{"id": chosen.id, "turn": turn, "day": day_num}]
+            session.player_profile = profile
             return chosen
 
         return None
@@ -1266,6 +1567,7 @@ class SimEngine:
         day_num = slot_info.get("day", 1)
         day_str = DAY_NAMES[(day_num - 1) % len(DAY_NAMES)]
         slot_str = slot_info.get("time_label") or slot_info.get("display_time") or "校園時段"
+        when_str = slot_str if slot_str.startswith(day_str) else f"{day_str} {slot_str}"
 
         loc_id = slot_info.get("location_id") or "bldg_general_edu"
         bldg = db.query(Building).filter(Building.id == loc_id).first()
@@ -1321,6 +1623,22 @@ class SimEngine:
                     "action_type": "skip"
                 }
             ]
+        elif slot_info.get("type") == "dinner_prompt":
+            event_instruction = f"晚餐時間到了（{start_t}），肚子餓了嗎？可以去餐廳坐下來吃，或在下一個行程前外帶。"
+            preset_options = [
+                {
+                    "option_key": "A",
+                    "intent_hint": "是，我想吃晚餐（挑選想去的餐廳美食）",
+                    "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                    "action_type": "open_dinner_menu"
+                },
+                {
+                    "option_key": "B",
+                    "intent_hint": "否，先不吃晚餐（繼續準備後續行程）",
+                    "effects": {"stamina": -5, "study": 5, "social": 0, "money": 0},
+                    "action_type": "skip"
+                }
+            ]
         elif slot_info.get("type") == "leisure_prompt":
             event_instruction = f"下課或午後空閒時間到了（{start_t}），目前沒有任何課程或活動安排。系統詢問你是否要回宿舍休息，或者前往校園休閒設施？"
             preset_options = [
@@ -1356,6 +1674,22 @@ class SimEngine:
                         "action_type": "go_to_sleep"
                     }
                 ]
+            elif day_num >= len(DAY_NAMES):
+                event_instruction = f"週五夜幕低垂（{start_t}），這一週的校園生活就要告一段落了。你可以回宿舍結束這一週，或再進行最後的夜間活動。"
+                preset_options = [
+                    {
+                        "option_key": "A",
+                        "intent_hint": "🎓 結束這一週（回宿舍，迎接週末）",
+                        "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0},
+                        "action_type": "end_week"
+                    },
+                    {
+                        "option_key": "B",
+                        "intent_hint": "🌙 進行活動（宿舍休閒或校園活動）",
+                        "effects": {"stamina": -5, "study": 0, "social": 5, "money": 0},
+                        "action_type": "open_night_activity"
+                    }
+                ]
             else:
                 event_instruction = f"夜幕低垂（{start_t}），中大校園夜色已深。你可以準備就寢（設定明日鬧鐘並預排{next_day_str}行程），或是繼續進行宿舍休閒或校園夜間活動。"
                 preset_options = [
@@ -1372,6 +1706,17 @@ class SimEngine:
                         "action_type": "open_night_activity"
                     }
                 ]
+        elif str(slot_info.get("slot") or "").startswith("alarm_"):
+            # 起床回合只有敘事差異，不給數值獎勵（睡眠回復已在就寢時結算）
+            event_instruction = f"鬧鐘在 {start_t} 響起，新的一天開始了。你要怎麼展開這個早晨？"
+            preset_options = [
+                {"option_key": "A", "intent_hint": "起身梳洗，從容整理書包準備出門",
+                 "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0}},
+                {"option_key": "B", "intent_hint": "賴在被窩滑一下手機，再慢慢起床",
+                 "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0}},
+                {"option_key": "C", "intent_hint": "和室友聊幾句，一起結伴出門",
+                 "effects": {"stamina": 0, "study": 0, "social": 0, "money": 0}},
+            ]
         elif slot_info.get("type") == "club":
             event_instruction = f"社團活動時段：你在 {loc_name} 參與【{slot_info.get('title')}】。請描述你沉浸於社團練習、交流或例會討論的熱血情境。"
             preset_options = [
@@ -1419,29 +1764,30 @@ class SimEngine:
                 event_instruction = f"【校園動態活動：{matched_act.title}】\n{matched_act.event_prompt}"
                 preset_options = matched_act.preset_options
             else:
+                hint_a, hint_b, hint_c = COURSE_OPTION_VARIANTS[turn % len(COURSE_OPTION_VARIANTS)]
                 event_instruction = f"常規校園作息：你在 {loc_name} 進行【{slot_info.get('title', '活動')}】。請描述你沉浸在此時段的心情與學習/活動情境。"
                 preset_options = [
                     {
                         "option_key": "A",
-                        "intent_hint": "全神貫注認真參與，主動與教授或身旁同學交流提問",
+                        "intent_hint": hint_a,
                         "effects": {"stamina": -10, "study": 12, "social": 5, "money": 0}
                     },
                     {
                         "option_key": "B",
-                        "intent_hint": "稍微放空小憩片刻，適度維持體力並順手滑滑手機中大校園論壇",
+                        "intent_hint": hint_b,
                         "effects": {"stamina": 10, "study": 0, "social": 0, "money": 0}
                     },
                     {
                         "option_key": "C",
-                        "intent_hint": "活動結束後揪身邊同學一起去附近的學餐或外帶手搖飲聊八卦",
+                        "intent_hint": hint_c,
                         "effects": {"stamina": -5, "study": 0, "social": 12, "money": -60}
                     }
                 ]
 
         # Special handling for interactive prompt checkpoints: return crisp predefined narrative & options immediately
-        if (slot_info.get("type") in ("lunch_prompt", "leisure_prompt", "day_end") or is_night_time) and not chosen_event:
+        if (slot_info.get("type") in ("lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end") or is_night_time) and not chosen_event:
             story = TurnGenerationSchema(
-                narrative=f"【{day_str} {slot_str}】{event_instruction}",
+                narrative=f"【{when_str}】{event_instruction}",
                 options=[
                     OptionItem(
                         option_key=opt.get("option_key", chr(65 + i)),
@@ -1464,7 +1810,7 @@ class SimEngine:
         if chosen_event:
             fallback_narrative = f"【突發狀況：{chosen_event.title}】{chosen_event.event_prompt}"
         else:
-            fallback_narrative = f"【{day_str} {slot_str}】你來到了{loc_name}。四周充滿了中大學生來來往往的交談聲，空氣中帶著松林泥土的清香。現在正進行著「{slot_info.get('title')}」，你的大學一週日常正精彩展開。"
+            fallback_narrative = f"【{when_str}】" + fallback_scene(slot_info, loc_name, turn)
         fallback_story = TurnGenerationSchema(
             narrative=fallback_narrative,
             options=fallback_options,
@@ -1518,17 +1864,19 @@ class SimEngine:
         effects_map: dict[str, dict[str, int]],
         choice_key: str
     ) -> dict[str, int]:
+        """套用選項效果（數值限制在 0~100，金錢不低於 0），回傳「實際生效」的變化量。"""
         eff = effects_map.get(choice_key, {"stamina": 0, "study": 0, "social": 0, "money": 0})
-        stats = session.stats.copy()
+        before = dict(session.stats)
+        stats = dict(session.stats)
 
-        # Update stats with bounded stamina
         stats["stamina"] = max(0, min(100, stats.get("stamina", 80) + eff.get("stamina", 0)))
         stats["study"] = max(0, min(100, stats.get("study", 50) + eff.get("study", 0)))
         stats["social"] = max(0, min(100, stats.get("social", 50) + eff.get("social", 0)))
         stats["money"] = max(0, stats.get("money", 1500) + eff.get("money", 0))
 
         session.stats = stats
-        return eff
+        defaults = {"stamina": 80, "study": 50, "social": 50, "money": 1500}
+        return {k: stats[k] - before.get(k, defaults[k]) for k in defaults}
 
     async def generate_week_summary(
         self,
@@ -1542,16 +1890,8 @@ class SimEngine:
         stamina = stats.get("stamina", 50)
 
         # 稱號判定邏輯
-        if study >= 80:
-            title = "中大書卷獎領跑者"
-        elif social >= 80:
-            title = "全方位百花川系核"
-        elif stamina <= 20:
-            title = "被早八榨乾的極限生存狂"
-        elif "loc_night_street" in (session.visited_locs or []):
-            title = "中大宵夜街守護神"
-        else:
-            title = "從容漫步的大一新鮮人"
+        fainted = (session.player_profile or {}).get("ending") == ENDING_FAINT
+        title = pick_title(session)
 
         hist_summary = "\n".join([f"- {h}" for h in (session.history_logs or [])])
         prompt = WEEK_SUMMARY_PROMPT_TEMPLATE.format(
@@ -1564,6 +1904,9 @@ class SimEngine:
         )
 
         fallback_diary = (
+            f"體力見底的你在校園裡當場昏倒，被同學送到保健室，這一週只好提前結束。"
+            f"最終體力 {stamina}、學業 {study}、社交 {social}，獲得「{title}」稱號。下次記得多休息！"
+            if fainted else
             f"這一週在中大，你經歷了必修課的挑戰、社團的熱情與百花川的微風。"
             f"最終你以體力 {stamina}、學業 {study}、社交 {social} 的亮眼成績，"
             f"榮獲「{title}」的殊榮！中央大學的校園還有更多未知等著你繼續探索！"

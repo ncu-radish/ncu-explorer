@@ -63,7 +63,7 @@ export function GoogleCalendarWeekView({
       1: [], 2: [], 3: [], 4: [], 5: []
     };
     schedule.forEach((slot, index) => {
-      if (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") {
+      if (slot.type === "lunch_prompt" || slot.type === "dinner_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") {
         return;
       }
       if (slot.day >= 1 && slot.day <= 5) {

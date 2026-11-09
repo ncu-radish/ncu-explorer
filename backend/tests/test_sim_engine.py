@@ -11,7 +11,7 @@ def test_build_weekly_schedule_default():
     assert len(schedule) >= 3
 
     # Ensure ONLY valid courses, clubs, and checkpoints exist; dorm, free, and lunch must be removed
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
@@ -37,7 +37,7 @@ def test_build_weekly_schedule_freshman_im():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
@@ -64,7 +64,7 @@ def test_build_weekly_schedule_sophomore():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
@@ -90,7 +90,7 @@ def test_build_weekly_schedule_junior():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
@@ -116,7 +116,7 @@ def test_build_weekly_schedule_senior():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     assert len(schedule) >= 3
 
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
     assert not any(s.type in ("dorm", "free", "lunch") for s in schedule)
     assert all(s.start_time and s.end_time and s.display_time for s in schedule)
@@ -162,7 +162,7 @@ def test_build_weekly_schedule_double_major():
         clubs=["熱音社"],
     )
     schedule = sim_engine.build_weekly_schedule(None, profile)
-    valid_types = ("course", "club", "lunch_prompt", "leisure_prompt", "day_end")
+    valid_types = ("course", "club", "lunch_prompt", "dinner_prompt", "leisure_prompt", "day_end")
     assert all(s.type in valid_types for s in schedule)
 
     # 驗證包含「雙主修必修」之課程標籤
