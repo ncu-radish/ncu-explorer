@@ -63,6 +63,10 @@ export default function SimulatorPage() {
 
   const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
 
+  // While the clock is running through the previous activity the map stays put;
+  // the commute and the new focus only play once the time flow is done.
+  const [isTimeFlowing, setIsTimeFlowing] = useState(false);
+
   // Activity Database State
   const [activities, setActivities] = useState<CampusActivity[]>([]);
 
@@ -85,11 +89,12 @@ export default function SimulatorPage() {
   }, []);
 
   useEffect(() => {
+    if (isTimeFlowing) return;
     const locId = currentLocationId || currentSlotInfo?.location_id;
     if (locId) {
       setFocusedLoc(locId);
     }
-  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
+  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing]);
 
   // Show the walking route from the previous stop to the current one on the 3D map
   const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
@@ -101,6 +106,7 @@ export default function SimulatorPage() {
       : homeLocationId;
 
   useEffect(() => {
+    if (isTimeFlowing) return;
     const { setRoute } = useMapStore.getState();
     if (!routeToId || routeToId === routeFromId) {
       setRoute(null);
@@ -114,7 +120,7 @@ export default function SimulatorPage() {
         setRoute(
           r.distance < 1
             ? null
-            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path }
+            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true }
         );
       })
       .catch(() => {
@@ -123,7 +129,7 @@ export default function SimulatorPage() {
     return () => {
       cancelled = true;
     };
-  }, [routeFromId, routeToId, currentTurn]);
+  }, [routeFromId, routeToId, currentTurn, isTimeFlowing]);
 
   // The route lives in a global store; clear it when leaving the simulator
   useEffect(() => {
@@ -131,7 +137,6 @@ export default function SimulatorPage() {
   }, []);
 
   // Time Transition Pipeline States
-  const [isTimeFlowing, setIsTimeFlowing] = useState(false);
   const [flowFrom, setFlowFrom] = useState("08:00");
   const [flowTo, setFlowTo] = useState("12:00");
   const flowResolverRef = useRef<(() => void) | null>(null);
