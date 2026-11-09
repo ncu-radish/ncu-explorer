@@ -27,36 +27,36 @@ export function WeeklySchedule({
   return (
     <div className="flex flex-col h-full gap-2">
       {/* Top Switcher Tabs: Daily vs. Google Calendar Week */}
-      <div className="flex items-center justify-between p-1 bg-stone-100 rounded-xl border border-stone-200">
+      <div className="flex items-center justify-between p-0.5 bg-stone-100 rounded-xl border border-stone-200">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setViewMode("day")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
               viewMode === "day"
                 ? "bg-white text-violet-700 shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>當日行程 ({dayName})</span>
+            <span>當日行程</span>
           </button>
 
           <button
             onClick={() => setViewMode("week")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
               viewMode === "week"
                 ? "bg-white text-violet-700 shadow-xs"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>整週行事曆 (週檢視)</span>
+            <span>整週行事曆</span>
           </button>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-stone-500 hover:text-stone-800 text-xs transition-colors cursor-pointer"
+          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-stone-500 hover:text-stone-800 text-xs transition-colors cursor-pointer"
           title="全螢幕放大週行事曆"
         >
           <Maximize2 className="w-3.5 h-3.5" />
@@ -65,7 +65,7 @@ export function WeeklySchedule({
       </div>
 
       {/* Main View Area */}
-      <div className="flex-1 min-h-[460px]">
+      <div className="flex-1 min-h-0">
         {viewMode === "day" ? (
           <DailyTimelineView
             schedule={schedule}
