@@ -74,7 +74,7 @@ const BUS_ROUTES: BusRoute[] = [
     links: [
       {
         label: "172 即時公車動態",
-        url: "https://ebus.tycg.gov.tw/ebus/driving-map/172",
+        url: "https://ebus.tycg.gov.tw/ebus/driving-map/3221",
       },
     ],
   },
