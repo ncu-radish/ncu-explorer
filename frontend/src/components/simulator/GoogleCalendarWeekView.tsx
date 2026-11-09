@@ -107,7 +107,7 @@ export function GoogleCalendarWeekView({
       </div>
 
       {/* Calendar Body: Scrollable Time Grid */}
-      <div className="flex-1 overflow-y-auto relative min-h-[520px]">
+      <div className="flex-1 overflow-y-auto relative min-h-0">
         <div
           className="grid grid-cols-[56px_repeat(5,1fr)] relative"
           style={{ height: "960px" }}
