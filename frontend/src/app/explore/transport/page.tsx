@@ -279,17 +279,25 @@ export default function TransportPage() {
               YouBike 2.0 公共自行車
             </h2>
             <p className="mb-4 text-sm leading-relaxed text-stone-600">
-              校園內外設有多處熱門借還站點，方便同學與訪客在廣大校園及周邊商圈快速穿梭。
+              校園內設有 3 處 YouBike 2.0 借還站點，方便同學與訪客在校園及周邊生活圈短程代步。
             </p>
 
             <div className="mb-4 flex flex-col gap-2.5 rounded-xl border border-stone-200/60 bg-stone-50/70 p-3.5 text-xs">
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-                <div>
-                  <span className="font-bold text-stone-800">主要借還站點：</span>
-                  <p className="text-stone-600 mt-0.5">
-                    正門圓環警衛室、後門商圈、依仁堂體育館、男九舍後方、女十四舍旁
-                  </p>
+                <div className="w-full">
+                  <span className="font-bold text-stone-800">校內 3 大借還站點：</span>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span className="rounded-md bg-white px-2 py-0.5 font-medium text-stone-700 border border-stone-200/60 shadow-2xs">
+                      📍 中大國民運動中心
+                    </span>
+                    <span className="rounded-md bg-white px-2 py-0.5 font-medium text-stone-700 border border-stone-200/60 shadow-2xs">
+                      📍 中央大學依仁堂
+                    </span>
+                    <span className="rounded-md bg-white px-2 py-0.5 font-medium text-stone-700 border border-stone-200/60 shadow-2xs">
+                      📍 中央大學圖書館
+                    </span>
+                  </div>
                 </div>
               </div>
 
