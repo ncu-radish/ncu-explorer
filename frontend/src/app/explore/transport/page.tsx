@@ -38,7 +38,7 @@ const BUS_ROUTES: BusRoute[] = [
     links: [
       {
         label: "132 即時公車動態",
-        url: "https://ebus.tycg.gov.tw/ebus/driving-map/132",
+        url: "https://ebus.tycg.gov.tw/ebus/driving-map/3220",
       },
       {
         label: "官方詳細時刻表",
