@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     SQLITE_DB_PATH: Path = DATA_DIR / "ncu_sim.sqlite"
     DATABASE_URL: str = f"sqlite:///{SQLITE_DB_PATH.as_posix()}"
 
+    # 3D map / road network
+    ROAD_NETWORK_PATH: Path = DATA_DIR / "road_network.json"
+    CAMPUS_MODEL_PATH: Path = BASE_DIR.parent / "frontend" / "public" / "models" / "campus_buildings.glb"
+
     # Qdrant Vector DB
     QDRANT_URL: str | None = None
     QDRANT_API_KEY: str | None = None

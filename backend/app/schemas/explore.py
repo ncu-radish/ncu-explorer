@@ -51,6 +51,18 @@ class BuildingResponse(BaseModel):
         from_attributes = True
 
 
+class RouteResponse(BaseModel):
+    from_id: str
+    to_id: str
+    distance: float  # 沿路網行走的總長度（場景單位）
+    path: list[list[float]]  # [[x, y, z], ...] Three.js 世界座標，起訖點為建築接入路網的位置
+
+
+class RoadNetworkResponse(BaseModel):
+    # 每條路段的兩端座標：[[[x, y, z], [x, y, z]], ...]（Three.js 世界座標）
+    segments: list[list[list[float]]]
+
+
 class ClubResponse(BaseModel):
     id: str
     name: str

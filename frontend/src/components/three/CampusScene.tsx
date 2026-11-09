@@ -2,10 +2,10 @@
 
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Html } from "@react-three/drei";
+import { OrbitControls, useGLTF, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { useMapStore, DEFAULT_CAMERA_POS, DEFAULT_CAMERA_TARGET } from "@/store/useMapStore";
-import { Building, exploreApi } from "@/lib/api";
+import { Building, RoadNetworkData, exploreApi } from "@/lib/api";
 
 // Campus geometry center offset to bring the model origin to (0, 0, 0)
 // Blender ground height Z = 0 corresponds directly to Three.js Y = 0
@@ -13,12 +13,16 @@ const CAMPUS_OFFSET: [number, number, number] = [-535.8, 0, 344.54];
 
 // Category color palettes for subtle architectural clay materials
 const CATEGORY_MATERIALS: Record<string, { color: string; emissive?: string }> = {
-  teaching: { color: "#EDE7DE" },   // Warm architectural stone
-  dorm: { color: "#E5E7EE" },       // Soft mist slate
-  function: { color: "#ECE6DB" },   // Warm ivory sandstone
-  sport: { color: "#E0EAE2" },      // Soft sage
-  restaurant: { color: "#EFE5E0" }, // Terracotta cream
-  default: { color: "#EAE6DE" },
+  teaching: { color: "#E8C48A" },   // Sand
+  dorm: { color: "#E58FB5" },       // Pink
+  function: { color: "#6F9BD9" },   // Blue
+  sport: { color: "#6FCF97" },      // Green
+  restaurant: { color: "#F28C52" }, // Orange
+  youbike: { color: "#D4C27A" },    // Muted yellow
+  bus: { color: "#B87671" },        // Muted brick
+  view: { color: "#2F8FA8" },       // Teal
+  street: { color: "#E0B04A" },     // Amber (food street entrance)
+  default: { color: "#B8B4AC" },
 };
 
 interface BuildingBounds {
@@ -31,10 +35,27 @@ interface CampusModelProps {
   buildings: Building[];
   onSelectBuilding: (id: string) => void;
   onBoundsComputed: (boundsMap: Map<string, BuildingBounds>) => void;
+  /** Light up buildings of this category and dim the rest. */
+  highlightCategory?: string;
+  /** Only buildings of this category react to hover / click. */
+  selectableCategory?: string;
 }
 
-function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusModelProps) {
-  const { scene } = useGLTF("/models/campus_buildings.glb");
+const HIGHLIGHT_STYLE = { color: "#4ADE80", emissive: "#22C55E" };
+const DIM_STYLE = { color: "#3A4050" };
+
+function CampusModel({
+  buildings,
+  onSelectBuilding,
+  onBoundsComputed,
+  highlightCategory,
+  selectableCategory,
+}: CampusModelProps) {
+  const { scene: sharedScene } = useGLTF("/models/campus_buildings.glb");
+  // useGLTF caches one scene graph for the whole app. An Object3D can only have one parent,
+  // so every <CampusScene> (map page, simulator PiP, activity modal) needs its own copy;
+  // otherwise mounting a second scene steals the model from the first one.
+  const scene = useMemo(() => sharedScene.clone(true), [sharedScene]);
   const { selectedBuildingId, hoveredBuildingId, setHoveredBuilding } = useMapStore();
   const groupRef = useRef<THREE.Group>(null);
 
@@ -83,18 +104,18 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
 
     // Pre-create highlight materials
     const selectedMat = new THREE.MeshStandardMaterial({
-      color: "#2563EB",
+      color: "#7C3AED",
       roughness: 0.35,
       metalness: 0.1,
-      emissive: "#1D4ED8",
+      emissive: "#6D28D9",
       emissiveIntensity: 0.35,
     });
 
     const hoveredMat = new THREE.MeshStandardMaterial({
-      color: "#60A5FA",
+      color: "#A78BFA",
       roughness: 0.4,
       metalness: 0.05,
-      emissive: "#3B82F6",
+      emissive: "#8B5CF6",
       emissiveIntensity: 0.2,
     });
 
@@ -109,8 +130,10 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
       if ((child as THREE.Mesh).isMesh && child.name) {
         const mesh = child as THREE.Mesh;
         const bldgId = mesh.name;
-        const isSelected = bldgId === selectedBuildingId;
-        const isHovered = bldgId === hoveredBuildingId;
+        const inScope =
+          !selectableCategory || buildingMap.get(bldgId)?.category === selectableCategory;
+        const isSelected = inScope && bldgId === selectedBuildingId;
+        const isHovered = inScope && bldgId === hoveredBuildingId;
 
         if (isSelected) {
           mesh.material = materials.selectedMat;
@@ -119,8 +142,19 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
         } else {
           // Base material based on building category
           const bldg = buildingMap.get(bldgId);
-          const cat = bldg?.category || "default";
-          const config = CATEGORY_MATERIALS[cat] || CATEGORY_MATERIALS.default;
+          const baseCat = bldg?.category || "default";
+          // In highlight mode every building is either lit or dimmed
+          const cat = highlightCategory
+            ? baseCat === highlightCategory
+              ? "__highlight"
+              : "__dim"
+            : baseCat;
+          const config: { color: string; emissive?: string } =
+            cat === "__highlight"
+              ? HIGHLIGHT_STYLE
+              : cat === "__dim"
+                ? DIM_STYLE
+                : CATEGORY_MATERIALS[cat] || CATEGORY_MATERIALS.default;
 
           if (!materials.cache.has(cat)) {
             materials.cache.set(
@@ -129,6 +163,9 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
                 color: config.color,
                 roughness: 0.6,
                 metalness: 0.05,
+                ...(config.emissive
+                  ? { emissive: config.emissive, emissiveIntensity: 0.45 }
+                  : {}),
               })
             );
           }
@@ -139,7 +176,10 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
         mesh.receiveShadow = true;
       }
     });
-  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials]);
+  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials, highlightCategory, selectableCategory]);
+
+  const isSelectable = (name?: string) =>
+    !selectableCategory || (!!name && buildingMap.get(name)?.category === selectableCategory);
 
   return (
     <group
@@ -147,6 +187,7 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
       position={CAMPUS_OFFSET}
       onPointerOver={(e) => {
         e.stopPropagation();
+        if (!isSelectable(e.object?.name)) return;
         if (e.object && e.object.name) {
           document.body.style.cursor = "pointer";
           setHoveredBuilding(e.object.name);
@@ -159,6 +200,7 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
       }}
       onClick={(e) => {
         e.stopPropagation();
+        if (!isSelectable(e.object?.name)) return;
         if (e.object && e.object.name) {
           onSelectBuilding(e.object.name);
         }
@@ -173,9 +215,11 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
 function SelectedBuildingBeacon({
   bounds,
   building,
+  showLabel = true,
 }: {
   bounds?: BuildingBounds;
   building?: Building;
+  showLabel?: boolean;
 }) {
   const pinRef = useRef<THREE.Group>(null);
 
@@ -198,14 +242,15 @@ function SelectedBuildingBeacon({
         <mesh>
           <octahedronGeometry args={[2.5, 0]} />
           <meshStandardMaterial
-            color="#2563EB"
-            emissive="#3B82F6"
+            color="#7C3AED"
+            emissive="#8B5CF6"
             emissiveIntensity={0.6}
             roughness={0.2}
           />
         </mesh>
 
         {/* Floating HTML Tag */}
+        {showLabel && (
         <Html position={[0, 4.5, 0]} center distanceFactor={140} zIndexRange={[100, 0]}>
           <div className="pointer-events-none select-none flex flex-col items-center">
             <div className="bg-stone-900/90 text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg backdrop-blur-xs flex items-center gap-1.5 whitespace-nowrap border border-stone-700">
@@ -219,7 +264,117 @@ function SelectedBuildingBeacon({
             <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-stone-900/90" />
           </div>
         </Html>
+        )}
       </group>
+    </group>
+  );
+}
+
+// The whole road network drawn as flat ribbons with a real width.
+// (The planned route is drawn separately as a thin line.)
+const ROAD_WIDTH = 6; // scene units (~meters)
+const ROAD_LIFT = 0.15; // above the ground plane, below the route line
+const ROAD_COLOR = "#5A6378";
+const JOINT_SEGMENTS = 12;
+
+function RoadNetworkLayer() {
+  const [network, setNetwork] = useState<RoadNetworkData | null>(null);
+
+  useEffect(() => {
+    exploreApi.getRoadNetwork().then(setNetwork).catch(console.error);
+  }, []);
+
+  const geometry = useMemo(() => {
+    if (!network || network.segments.length === 0) return null;
+    const half = ROAD_WIDTH / 2;
+    const pos: number[] = [];
+    const joints = new Map<string, [number, number, number]>();
+
+    for (const [a, b] of network.segments) {
+      const dx = b[0] - a[0];
+      const dz = b[2] - a[2];
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-6) continue;
+      const nx = (-dz / len) * half;
+      const nz = (dx / len) * half;
+      const y = a[1] + ROAD_LIFT;
+      const y2 = b[1] + ROAD_LIFT;
+      // two triangles forming the ribbon quad
+      pos.push(a[0] + nx, y, a[2] + nz, a[0] - nx, y, a[2] - nz, b[0] + nx, y2, b[2] + nz);
+      pos.push(a[0] - nx, y, a[2] - nz, b[0] - nx, y2, b[2] - nz, b[0] + nx, y2, b[2] + nz);
+      for (const p of [a, b]) joints.set(`${p[0].toFixed(2)},${p[2].toFixed(2)}`, p);
+    }
+
+    // round joints so bends and junctions have no gaps
+    joints.forEach((p) => {
+      const y = p[1] + ROAD_LIFT;
+      for (let i = 0; i < JOINT_SEGMENTS; i++) {
+        const t0 = (i / JOINT_SEGMENTS) * Math.PI * 2;
+        const t1 = ((i + 1) / JOINT_SEGMENTS) * Math.PI * 2;
+        pos.push(
+          p[0], y, p[2],
+          p[0] + Math.cos(t0) * half, y, p[2] + Math.sin(t0) * half,
+          p[0] + Math.cos(t1) * half, y, p[2] + Math.sin(t1) * half
+        );
+      }
+    });
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    return geo;
+  }, [network]);
+
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} raycast={() => null} renderOrder={1}>
+      <meshBasicMaterial color={ROAD_COLOR} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+// Route line along the road network with a marker walking along it
+const ROUTE_LIFT = 0.8; // keep the line above the ground plane
+const WALK_SPEED = 60; // scene units per second
+
+function RouteLayer() {
+  const route = useMapStore((s) => s.route);
+  const markerRef = useRef<THREE.Mesh>(null);
+
+  const { points, cumulative, total } = useMemo(() => {
+    const pts = (route?.path ?? []).map(([x, y, z]) => new THREE.Vector3(x, y + ROUTE_LIFT, z));
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    }
+    return { points: pts, cumulative: cum, total: cum[cum.length - 1] ?? 0 };
+  }, [route]);
+
+  useFrame((state) => {
+    const marker = markerRef.current;
+    if (!marker || points.length < 2 || total <= 0) return;
+    const pause = 0.8; // seconds to rest at the destination
+    const duration = total / WALK_SPEED;
+    const t = state.clock.getElapsedTime() % (duration + pause);
+    const dist = Math.min(t / duration, 1) * total;
+    let i = 1;
+    while (i < cumulative.length - 1 && cumulative[i] < dist) i++;
+    const segLen = cumulative[i] - cumulative[i - 1] || 1;
+    const k = (dist - cumulative[i - 1]) / segLen;
+    marker.position.lerpVectors(points[i - 1], points[i], Math.min(Math.max(k, 0), 1));
+    marker.position.y += 2.2;
+  });
+
+  if (!route || points.length < 2) return null;
+
+  return (
+    <group>
+      <Line points={points} color="#7C3AED" lineWidth={5} />
+      <mesh ref={markerRef}>
+        <sphereGeometry args={[2.2, 16, 16]} />
+        <meshStandardMaterial color="#F5F3FF" emissive="#8B5CF6" emissiveIntensity={0.8} />
+      </mesh>
     </group>
   );
 }
@@ -358,12 +513,30 @@ interface CampusSceneProps {
   onSelectBuilding?: (id: string) => void;
   focusedLocationId?: string | null;
   interactive?: boolean;
+  /** Light up this category and dim everything else (e.g. "sport"). */
+  highlightCategory?: string;
+  /** Only this category can be hovered / clicked. */
+  selectableCategory?: string;
+  /** false = always show the whole campus instead of zooming to the selection. */
+  fitSelection?: boolean;
+  /** false = hide the planned route overlay. */
+  showRoute?: boolean;
+  /** false = no floating HTML name tags (used in the modal map). */
+  showLabels?: boolean;
+  /** Look straight down at the highlighted buildings (used for picking a venue). */
+  topDown?: boolean;
 }
 
 export function CampusScene({
   buildings: propBuildings,
   onSelectBuilding,
   focusedLocationId,
+  highlightCategory,
+  selectableCategory,
+  fitSelection = true,
+  showRoute = true,
+  showLabels = true,
+  topDown = false,
 }: CampusSceneProps) {
   const {
     selectedBuildingId,
@@ -371,6 +544,7 @@ export function CampusScene({
     hoveredBuildingId,
     resetTrigger,
     focusTrigger,
+    route,
   } = useMapStore();
   const [internalBuildings, setInternalBuildings] = useState<Building[]>([]);
   const [extraBuilding, setExtraBuilding] = useState<Building | null>(null);
@@ -389,10 +563,15 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   loc_mgt2: "bldg_mgmt_2",
   loc_eng5: "bldg_eng_5",
   loc_sci5: "bldg_science_5",
-  loc_teaching: "bldg_general_edu",
+  loc_teaching: "bldg_tr",
   loc_lib: "bldg_lib_main",
   loc_yiren: "bldg_yireng",
-  loc_dorm_boy9: "bldg_dorm_b9",
+  loc_dorm_boy9: "bldg_dorm_b9a",
+  loc_dorm_girl14: "bldg_dorm_g14",
+  loc_pine_restaurant: "bldg_res_core",
+  loc_bus_station: "bldg_bus_guard",
+  loc_night_street: "bldg_street_night",
+  loc_backgate: "bldg_street_back",
   I1: "bldg_mgmt_2",
   I: "bldg_mgmt_1",
   E6: "bldg_eng_5",
@@ -451,6 +630,63 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   const { targetPos, targetLookAt } = useMemo(() => {
     void resetTrigger;
     void focusTrigger;
+
+    // Bird's-eye view framing every highlighted building
+    if (topDown && highlightCategory) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minZ = Infinity;
+      let maxZ = -Infinity;
+      boundsMap.forEach((b, id) => {
+        if (buildingMap.get(id)?.category !== highlightCategory) return;
+        minX = Math.min(minX, b.center.x - b.size.x / 2);
+        maxX = Math.max(maxX, b.center.x + b.size.x / 2);
+        minZ = Math.min(minZ, b.center.z - b.size.z / 2);
+        maxZ = Math.max(maxZ, b.center.z + b.size.z / 2);
+      });
+      if (Number.isFinite(minX)) {
+        const cx = (minX + maxX) / 2;
+        const cz = (minZ + maxZ) / 2;
+        // fov 45 => visible height = 0.83 * distance; assume a ~2:1 viewport for the width
+        const fitH = (maxZ - minZ) / 0.83;
+        const fitW = (maxX - minX) / (0.83 * 2);
+        const height = Math.max(Math.max(fitH, fitW) * 1.25, 120);
+        // tiny z offset keeps OrbitControls away from the exact pole
+        return {
+          targetPos: new THREE.Vector3(cx, height, cz + 0.5),
+          targetLookAt: new THREE.Vector3(cx, 0, cz),
+        };
+      }
+      return {
+        targetPos: new THREE.Vector3(0, 800, 0.5),
+        targetLookAt: new THREE.Vector3(0, 0, 0),
+      };
+    }
+
+    if (!fitSelection) {
+      return {
+        targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
+        targetLookAt: new THREE.Vector3(...DEFAULT_CAMERA_TARGET),
+      };
+    }
+
+    // Fit the whole planned route in view (while its destination is the selected building)
+    if (route && route.path.length >= 2 && selectedBuildingId === route.toId) {
+      const xs = route.path.map((p) => p[0]);
+      const zs = route.path.map((p) => p[2]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minZ = Math.min(...zs);
+      const maxZ = Math.max(...zs);
+      const cx = (minX + maxX) / 2;
+      const cz = (minZ + maxZ) / 2;
+      const span = Math.max(maxX - minX, maxZ - minZ, 80);
+      return {
+        targetPos: new THREE.Vector3(cx + span * 0.25, span * 1.15 + 40, cz + span * 0.6),
+        targetLookAt: new THREE.Vector3(cx, 0, cz),
+      };
+    }
+
     if (!selectedBuildingId || !boundsMap.has(selectedBuildingId)) {
       return {
         targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
@@ -462,17 +698,25 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     const { center, size } = bounds;
     const radius = Math.max(size.x, size.z, 35);
 
+    // Flat objects (track, courts, lake...) get a steeper, near top-down view
+    // instead of the default oblique one, which looks too horizontal for them.
+    const isFlat = size.y < 3;
+    const offset = isFlat ? radius * 0.9 : radius * 1.3;
+    const height = isFlat
+      ? Math.max(offset * Math.SQRT2 * 1.7, 60)
+      : Math.max(size.y * 1.4, 45);
+
     const pos = new THREE.Vector3(
-      center.x + radius * 1.3,
-      center.y + Math.max(size.y * 1.4, 45),
-      center.z + radius * 1.3
+      center.x + offset,
+      center.y + height,
+      center.z + offset
     );
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
     return { targetPos: pos, targetLookAt: lookAt };
-  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger]);
+  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route, fitSelection, topDown, highlightCategory, buildingMap]);
 
-  const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${
+  const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${route ? `${route.fromId}>${route.toId}` : "noroute"}-${
     boundsMap.size > 0 ? 1 : 0
   }`;
 
@@ -482,6 +726,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   const selectedBounds = selectedBuildingId ? boundsMap.get(selectedBuildingId) : undefined;
 
   const hoveredBuilding = hoveredBuildingId ? buildingMap.get(hoveredBuildingId) : undefined;
+  const inScope = (b?: Building) => !selectableCategory || b?.category === selectableCategory;
   const hoveredBounds = hoveredBuildingId ? boundsMap.get(hoveredBuildingId) : undefined;
 
   return (
@@ -495,7 +740,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
           far: 3500,
         }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-        style={{ background: "#faf8ff" }}
+        style={{ background: "#1c2029" }}
       >
         {/* Warm Natural Lighting Setup */}
         <ambientLight intensity={0.75} color="#FFFDF7" />
@@ -520,25 +765,34 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
         {/* Flat Warm Architectural Ground Plane */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
           <planeGeometry args={[2400, 2400]} />
-          <meshStandardMaterial color="#EFECE5" roughness={0.9} metalness={0.0} />
+          <meshStandardMaterial color="#262b36" roughness={0.95} metalness={0.0} />
         </mesh>
 
         {/* Subtle grid lines for depth perception */}
-        <gridHelper args={[1400, 70, "#D5CFC5", "#E8E3DA"]} position={[0, -0.02, 0]} />
+        <gridHelper args={[1400, 70, "#3a4150", "#2f3542"]} position={[0, -0.02, 0]} />
 
         {/* Campus 3D Model */}
         <CampusModel
           buildings={buildings}
           onSelectBuilding={handleSelect}
           onBoundsComputed={setBoundsMap}
+          highlightCategory={highlightCategory}
+          selectableCategory={selectableCategory}
         />
 
+        <RoadNetworkLayer />
+        {showRoute && <RouteLayer />}
+
         {/* Selected Beacon & Hover Tooltip */}
-        {selectedBuilding && (
-          <SelectedBuildingBeacon bounds={selectedBounds} building={selectedBuilding} />
+        {selectedBuilding && inScope(selectedBuilding) && (
+          <SelectedBuildingBeacon
+            bounds={selectedBounds}
+            building={selectedBuilding}
+            showLabel={showLabels}
+          />
         )}
 
-        {hoveredBuilding && hoveredBuildingId !== selectedBuildingId && (
+        {showLabels && hoveredBuilding && inScope(hoveredBuilding) && hoveredBuildingId !== selectedBuildingId && (
           <HoverTooltip bounds={hoveredBounds} building={hoveredBuilding} />
         )}
 

@@ -13,7 +13,8 @@ import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
 import { PrePlanModal } from "@/components/simulator/PrePlanModal";
-import { adminApi, CampusActivity } from "@/lib/api";
+import { adminApi, exploreApi, CampusActivity } from "@/lib/api";
+import { useMapStore } from "@/store/useMapStore";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -28,11 +29,15 @@ const CampusScene = dynamic(
   }
 );
 
+// Fallback home when the session has no chosen dorm
+const DEFAULT_HOME_LOCATION_ID = "bldg_dorm_b9a";
+
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 export default function SimulatorPage() {
   const {
     sessionId,
+    playerProfile,
     weeklySchedule,
     currentTurn,
     currentTime,
@@ -85,6 +90,45 @@ export default function SimulatorPage() {
       setFocusedLoc(locId);
     }
   }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
+
+  // Show the walking route from the previous stop to the current one on the 3D map
+  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
+  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
+  const routeToId = currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
+  const routeFromId =
+    prevSlot && prevSlot.day === currentSlotInfo.day && !prevSlot.is_skipped && prevSlot.location_id
+      ? prevSlot.location_id
+      : homeLocationId;
+
+  useEffect(() => {
+    const { setRoute } = useMapStore.getState();
+    if (!routeToId || routeToId === routeFromId) {
+      setRoute(null);
+      return;
+    }
+    let cancelled = false;
+    exploreApi
+      .getRoute(routeFromId, routeToId)
+      .then((r) => {
+        if (cancelled) return;
+        setRoute(
+          r.distance < 1
+            ? null
+            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path }
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setRoute(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeFromId, routeToId, currentTurn]);
+
+  // The route lives in a global store; clear it when leaving the simulator
+  useEffect(() => {
+    return () => useMapStore.getState().setRoute(null);
+  }, []);
 
   // Time Transition Pipeline States
   const [isTimeFlowing, setIsTimeFlowing] = useState(false);
@@ -243,7 +287,8 @@ export default function SimulatorPage() {
     durationHours: number,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) => {
     await executeWithTimeFlow(() =>
       triggerDynamicActivity(
@@ -252,7 +297,8 @@ export default function SimulatorPage() {
         durationHours,
         customTitle,
         durationMinutes,
-        customEndTime
+        customEndTime,
+        locationId
       )
     );
   };
@@ -294,6 +340,7 @@ export default function SimulatorPage() {
         isOpen={activityModalOpen}
         onClose={() => setActivityModalOpen(false)}
         category={activityCategory}
+        sessionId={sessionId}
         activities={activities}
         maxAvailableHours={calcAvailableHours()}
         currentStartTime={currentStartTime}

@@ -1,3 +1,4 @@
+import random
 import uuid
 from typing import Any
 
@@ -5,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.api.admin import ensure_activities_seeded
 from app.core.database import get_db
-from app.models.tables import CampusActivity, CampusLocation, GameSession, RandomEvent, SystemConfig
+from app.models.tables import Building, CampusActivity, CampusLocation, GameSession, RandomEvent, SystemConfig
 from app.schemas.sim import (
+    MealOptionResponse,
     ScheduleSlot,
     SimNextTurnRequest,
     SimNextTurnResponse,
@@ -20,7 +23,16 @@ from app.schemas.sim import (
     SimTriggerActivityRequest,
     SimTriggerActivityResponse,
 )
-from app.services.sim_engine import sim_engine
+from app.services.road_network import RoadNetworkError, RouteNotFoundError, get_network
+from app.services.sim_engine import (
+    MEAL_CATEGORIES,
+    SPORT_ACTIVITY_ID,
+    pick_meal_options,
+    resolve_home_dorm,
+    sim_engine,
+    walking_minutes,
+    walking_stamina_cost,
+)
 
 router = APIRouter(prefix="/sim", tags=["Simulation"])
 
@@ -56,6 +68,88 @@ def sync_active_event(session: GameSession, story: Any, effects_map: dict[str, A
     session.player_profile = profile
     flag_modified(session, "player_profile")
 
+def session_home_dorm(db: Session, session: GameSession) -> tuple[str, str]:
+    """玩家在開始模擬時選擇的宿舍 (id, 名稱)。"""
+    profile = session.player_profile or {}
+    return resolve_home_dorm(db, profile.get("home_dorm_id"))
+
+
+def previous_location_id(session: GameSession, home_id: str) -> str:
+    """玩家「目前所在」的地點：同一天上一個沒被跳過的行程，否則是宿舍。"""
+    schedule = session.weekly_schedule or []
+    turn = min(int(session.current_turn), max(0, len(schedule) - 1))
+    if not schedule or turn <= 0:
+        return home_id
+    curr, prev = schedule[turn], schedule[turn - 1]
+    if prev.get("day") == curr.get("day") and not prev.get("is_skipped") and prev.get("location_id"):
+        return prev["location_id"]
+    return home_id
+
+
+def travel_distance_between(origin_id: str | None, dest_id: str | None) -> float:
+    """沿校園道路從 origin 走到 dest 的距離（公尺）；起訖相同或路網無法使用時為 0。"""
+    if not origin_id or not dest_id or origin_id == dest_id:
+        return 0.0
+    try:
+        distance, _ = get_network().route(origin_id, dest_id)
+    except (RoadNetworkError, RouteNotFoundError, KeyError):
+        return 0.0
+    return float(distance)
+
+
+def travel_minutes_between(origin_id: str | None, dest_id: str | None) -> int:
+    """沿校園道路從 origin 步行到 dest 所需分鐘數。"""
+    return walking_minutes(travel_distance_between(origin_id, dest_id))
+
+
+def compute_meal_options(db: Session, session: GameSession, category: str) -> list[dict[str, Any]]:
+    """午／晚餐可選的三個地點（餐廳與街口），同一回合重複查詢結果一致。"""
+    buildings = {
+        b.id: b
+        for b in db.query(Building).filter(Building.category.in_(["restaurant", "street"])).all()
+    }
+    home_id = session_home_dorm(db, session)[0]
+    origin = previous_location_id(session, home_id)
+
+    distances: dict[str, float] = {}
+    try:
+        network = get_network()
+        for bid in list(buildings):
+            if bid not in network.access:
+                del buildings[bid]  # 3D 地圖或路網上還沒有這個地點
+                continue
+            try:
+                distances[bid] = network.route(origin, bid)[0]
+            except (KeyError, RouteNotFoundError):
+                pass
+    except RoadNetworkError:
+        pass  # 沒有路網資料：退化成隨機三選
+
+    rng = random.Random(f"{session.session_id}:{session.current_turn}:{category}")
+    streets = {bid for bid, b in buildings.items() if b.category == "street"}
+    picked = pick_meal_options(list(buildings), distances, streets, rng)
+    return [
+        {
+            "id": bid,
+            "name_zh": buildings[bid].name_zh,
+            "category": buildings[bid].category,
+            "distance": round(distances[bid], 1) if bid in distances else None,
+            "walk_minutes": walking_minutes(distances[bid]) if bid in distances else None,
+        }
+        for bid in picked
+    ]
+
+
+@router.get("/meal-options", response_model=list[MealOptionResponse])
+def get_meal_options(session_id: str, category: str = "lunch", db: Session = Depends(get_db)):
+    if category not in MEAL_CATEGORIES:
+        raise HTTPException(status_code=400, detail="category 必須是 lunch 或 dinner")
+    session = db.query(GameSession).filter(GameSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="找不到指定的遊戲工作階段")
+    return compute_meal_options(db, session, category)
+
+
 def get_system_config(db: Session):
     config = db.query(SystemConfig).first()
     if not config:
@@ -74,8 +168,12 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
         grade_hint=req.grade
     )
 
-    # 2. 排定週一至週五完整時間軸課表
-    weekly_schedule = sim_engine.build_weekly_schedule(db, profile)
+    # 2. 排定週一至週五完整時間軸課表（以玩家選擇的宿舍作為住處）
+    home_dorm = resolve_home_dorm(db, req.dorm_id)
+    weekly_schedule = sim_engine.build_weekly_schedule(db, profile, home_dorm=home_dorm)
+    profile_data = profile.model_dump()
+    profile_data["home_dorm_id"] = home_dorm[0]
+    profile_data["home_dorm_name"] = home_dorm[1]
 
     # 3. 建立 Session
     session_id = str(uuid.uuid4())
@@ -83,7 +181,7 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
 
     new_session = GameSession(
         session_id=session_id,
-        player_profile=profile.model_dump(),
+        player_profile=profile_data,
         weekly_schedule=[s.model_dump() for s in weekly_schedule],
         current_turn=0,
         stats=initial_stats,
@@ -111,7 +209,7 @@ async def start_simulation(req: SimStartRequest, db: Session = Depends(get_db)):
 
     return SimStartResponse(
         session_id=session_id,
-        player_profile=profile.model_dump(),
+        player_profile=profile_data,
         weekly_schedule=weekly_schedule,
         current_turn=0,
         current_time=curr_time,
@@ -468,9 +566,24 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     if not session:
         raise HTTPException(status_code=404, detail="找不到指定的遊戲工作階段")
 
+    ensure_activities_seeded(db)
     activity = db.query(CampusActivity).filter(CampusActivity.id == req.activity_id).first()
     if not activity:
         raise HTTPException(status_code=404, detail="找不到指定的校園活動")
+
+    # 玩家指定的地點必須是這個活動允許的選項
+    chosen_building: Building | None = None
+    if req.location_id:
+        chosen_building = db.query(Building).filter(Building.id == req.location_id).first()
+        if activity.category in MEAL_CATEGORIES:
+            allowed = {o["id"] for o in compute_meal_options(db, session, activity.category)}
+            valid = chosen_building is not None and chosen_building.id in allowed
+        elif activity.id == SPORT_ACTIVITY_ID:
+            valid = chosen_building is not None and chosen_building.category == "sport"
+        else:
+            valid = False
+        if not valid:
+            raise HTTPException(status_code=400, detail="這個活動不能選擇該地點")
 
     # Find the matching option
     chosen_opt = None
@@ -491,6 +604,21 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     cat = activity.category
     default_start = "12:00" if cat == "lunch" else ("07:30" if cat == "breakfast" else ("18:00" if cat == "dinner" else "15:00"))
     start_time = curr_slot.get("start_time") or default_start
+
+    # 活動地點，以及從目前所在位置步行過去所需的時間
+    home_dorm_id, home_dorm_name = session_home_dorm(db, session)
+    if chosen_building is not None:
+        loc_id, loc_name = chosen_building.id, chosen_building.name_zh
+    elif cat == "dorm_leisure":
+        # 宿舍休閒一律在玩家自己的宿舍
+        loc_id, loc_name = home_dorm_id, home_dorm_name
+    else:
+        loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else home_dorm_id)
+        loc_name = activity.location_name or "校園活動地點"
+    # 走過去的時間算在活動時段「內」：活動結束時間不變，只是實際待在現場的時間變短
+    travel_dist = travel_distance_between(previous_location_id(session, home_dorm_id), loc_id)
+    travel_mins = walking_minutes(travel_dist)
+    travel_stamina = walking_stamina_cost(travel_dist)
 
     # 解析使用者自訂時長 (支援分鐘、自訂結束時間、或浮點數小時)
     if req.custom_end_time:
@@ -515,10 +643,13 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
     duration = max(0.25, min(8.0, duration))
     duration_minutes = max(15, min(480, duration_minutes))
 
-    # Apply effects scaled by duration
+    # 效果依「實際待在現場的時間」計算（總時段扣掉步行），並另外扣步行消耗的體力
+    on_site_hours = max(0.25, (duration_minutes - travel_mins) / 60.0)
     scaled_effects = {}
     for k, v in effects.items():
-        scaled_effects[k] = int(round(v * duration))
+        scaled_effects[k] = int(round(v * on_site_hours))
+    if travel_stamina:
+        scaled_effects["stamina"] = scaled_effects.get("stamina", 0) - travel_stamina
 
     applied_effects = sim_engine.apply_choice_effects(session, {req.option_key: scaled_effects}, req.option_key)
 
@@ -539,21 +670,30 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
             and (s.get("start_time") or "00:00") > start_time
             and s.get("type") in ("course", "club", "day_end")
         ]
-        next_limit_time = min((s.get("start_time") for s in following_slots), default="21:00")
+        # 下一個固定行程要提早出發：扣掉從活動地點走過去的時間
+        next_limit_time = min(
+            (
+                add_time_minutes(
+                    s.get("start_time") or "21:00",
+                    -travel_minutes_between(loc_id, s.get("location_id")),
+                )
+                for s in following_slots
+            ),
+            default="21:00",
+        )
         tentative_end = add_time_minutes(start_time, duration_minutes)
         end_time = min(tentative_end, next_limit_time) if next_limit_time > start_time else tentative_end
 
     slot_type = "lunch" if cat == "lunch" else ("dorm" if cat == "dorm_leisure" else ("breakfast" if cat == "breakfast" else ("dinner" if cat == "dinner" else "campus_leisure")))
-    loc_id = activity.location_id or ("loc_pine_restaurant" if cat == "lunch" else "loc_dorm_boy9")
-    loc_name = activity.location_name or "校園活動地點"
-
     intent_text = req.custom_title or (chosen_opt.get("intent_hint", activity.title) if chosen_opt else activity.title)
     dur_label = f"{int(duration)}小時" if duration == int(duration) else (f"{duration}小時" if duration >= 1 else f"{duration_minutes}分鐘")
 
     new_slot = {
         "day": day,
         "slot": f"dynamic_{cat}_{session.current_turn}",
-        "title": f"【{activity.title}】{intent_text[:18]} ({dur_label})",
+        "title": f"【{activity.title}】{intent_text[:18]} ({dur_label}"
+        + (f"，含步行 {travel_mins} 分鐘)" if travel_mins else ")"),
+        "travel_minutes": travel_mins,
         "type": slot_type,
         "location_id": loc_id,
         "location_name": loc_name,
@@ -582,8 +722,8 @@ async def trigger_activity(req: SimTriggerActivityRequest, db: Session = Depends
                 "slot": end_time,
                 "title": f"週{['一','二','三','四','五'][day-1]} {end_time} 夜幕低垂 · 晚間作息與明日規劃",
                 "type": "day_end",
-                "location_id": "loc_dorm_boy9",
-                "location_name": "學生宿舍",
+                "location_id": home_dorm_id,
+                "location_name": home_dorm_name,
                 "start_time": end_time,
                 "end_time": add_time_hours(end_time, 1),
                 "display_time": end_time,
@@ -708,8 +848,8 @@ async def pre_plan_tomorrow(req: SimPrePlanRequest, db: Session = Depends(get_db
             "slot": f"alarm_{req.target_day}_{alarm_t}",
             "title": f"⏰ 鬧鐘響起 · 晨起梳洗 ({alarm_t})",
             "type": "dorm",
-            "location_id": "loc_dorm_boy9",
-            "location_name": "學生宿舍",
+            "location_id": session_home_dorm(db, session)[0],
+            "location_name": session_home_dorm(db, session)[1],
             "start_time": alarm_t,
             "end_time": add_time_minutes(alarm_t, 30),
             "display_time": f"{alarm_t} ~ {add_time_minutes(alarm_t, 30)}",

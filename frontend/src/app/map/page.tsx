@@ -19,6 +19,11 @@ import {
   Landmark,
   Layers,
   Info,
+  Bike,
+  Store,
+  Route as RouteIcon,
+  Bus,
+  Trees,
 } from "lucide-react";
 import { useMapStore } from "@/store/useMapStore";
 import { exploreApi, Building } from "@/lib/api";
@@ -28,7 +33,7 @@ const CampusScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-[#faf8ff] text-stone-600 gap-3">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#1c2029] text-stone-300 gap-3">
         <div className="w-8 h-8 border-3 border-stone-300 border-t-violet-600 rounded-full animate-spin" />
         <span className="text-sm font-medium tracking-wide">載入中央大學 3D 校園地圖...</span>
       </div>
@@ -43,6 +48,10 @@ const CATEGORIES = [
   { key: "function", label: "行政功能", icon: Landmark },
   { key: "sport", label: "運動場館", icon: Trophy },
   { key: "restaurant", label: "生活餐飲", icon: Utensils },
+  { key: "street", label: "美食街", icon: Store },
+  { key: "youbike", label: "YouBike", icon: Bike },
+  { key: "bus", label: "公車站", icon: Bus },
+  { key: "view", label: "校園景觀", icon: Trees },
 ];
 
 function CategoryBadge({ category }: { category?: string | null }) {
@@ -62,6 +71,18 @@ function CategoryBadge({ category }: { category?: string | null }) {
       break;
     case "restaurant":
       label = "生活餐飲";
+      break;
+    case "street":
+      label = "美食街";
+      break;
+    case "youbike":
+      label = "YouBike";
+      break;
+    case "bus":
+      label = "公車站";
+      break;
+    case "view":
+      label = "校園景觀";
       break;
     default:
       label = "校園館舍";
@@ -84,7 +105,14 @@ function MapContent() {
     hoveredBuildingId,
     setHoveredBuilding,
     resetCamera,
+    routeOriginId,
+    route,
+    setRouteOrigin,
+    setRoute,
   } = useMapStore();
+
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [allBuildings, setAllBuildings] = useState<Building[]>([]);
@@ -162,6 +190,41 @@ function MapContent() {
     }, 250);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  const nameOf = (id: string | null) =>
+    (id && (allBuildings.find((b) => b.id === id)?.name_zh ?? id)) || "";
+
+  const handlePlanRoute = async (toId: string) => {
+    if (!routeOriginId) return;
+    setRouteLoading(true);
+    setRouteError(null);
+    try {
+      const r = await exploreApi.getRoute(routeOriginId, toId);
+      setRoute({ fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path });
+    } catch (err) {
+      console.error(err);
+      setRoute(null);
+      setRouteError("找不到這兩處之間的路線");
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  // The route lives in a global store, so clear it when leaving the map page;
+  // otherwise it keeps replaying on any other screen that shows the 3D map.
+  useEffect(() => {
+    return () => {
+      const { setRoute: resetRoute, setRouteOrigin: resetOrigin } = useMapStore.getState();
+      resetRoute(null);
+      resetOrigin(null);
+    };
+  }, []);
+
+  const clearRoute = () => {
+    setRoute(null);
+    setRouteOrigin(null);
+    setRouteError(null);
+  };
 
   const handleSelectBuilding = (id: string) => {
     selectBuilding(id);
@@ -313,6 +376,38 @@ function MapContent() {
               </div>
             )}
 
+            {/* Route planning */}
+            <div className="mt-3 ml-5.5 flex flex-wrap items-center gap-2">
+              {routeOriginId !== selectedBuildingDetail.id && (
+                <button
+                  onClick={() => {
+                    setRoute(null);
+                    setRouteError(null);
+                    setRouteOrigin(selectedBuildingDetail.id);
+                  }}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-md border border-violet-300 text-violet-700 bg-white hover:bg-violet-50 cursor-pointer"
+                >
+                  設為路線起點
+                </button>
+              )}
+              {routeOriginId && routeOriginId !== selectedBuildingDetail.id && (
+                <button
+                  onClick={() => handlePlanRoute(selectedBuildingDetail.id)}
+                  disabled={routeLoading}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60 flex items-center gap-1 cursor-pointer"
+                >
+                  <RouteIcon className="w-3.5 h-3.5" />
+                  {routeLoading ? "規劃中..." : `從${nameOf(routeOriginId)}到這裡`}
+                </button>
+              )}
+              {routeOriginId === selectedBuildingDetail.id && (
+                <span className="text-xs text-violet-700 font-medium">
+                  已設為起點，請選擇終點建築
+                </span>
+              )}
+            </div>
+            {routeError && <p className="mt-1 ml-5.5 text-xs text-red-600">{routeError}</p>}
+
             <div className="mt-3 ml-5.5 flex items-center gap-2">
               <button
                 onClick={() => selectBuilding(selectedBuildingDetail.id)}
@@ -427,7 +522,23 @@ function MapContent() {
       </aside>
 
       {/* ================= RIGHT 3D CANVAS ================= */}
-      <main className="flex-1 h-full relative overflow-hidden bg-[#faf8ff]">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#1c2029]">
+        {route && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-stone-900/90 text-white text-sm px-4 py-2 rounded-xl border border-violet-400/60 shadow-lg">
+            <RouteIcon className="w-4 h-4 text-violet-300 shrink-0" />
+            <span className="font-medium">
+              {nameOf(route.fromId)} → {nameOf(route.toId)}
+            </span>
+            <span className="font-mono text-violet-200">約 {Math.round(route.distance)} 公尺</span>
+            <button
+              onClick={clearRoute}
+              className="p-1 rounded-md hover:bg-white/10 cursor-pointer"
+              title="清除路線"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* Top Control Bar Overlay */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           <button

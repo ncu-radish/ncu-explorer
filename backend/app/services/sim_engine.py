@@ -1,6 +1,7 @@
 import difflib
 import json
 import logging
+import math
 import random
 import re
 from pathlib import Path
@@ -234,6 +235,70 @@ def map_campus_location(
 
     # 4. 全校通用回退 (綜教館)
     return "bldg_general_edu", loc_raw or "綜合教學大樓"
+
+
+DEFAULT_HOME_DORM_ID = "bldg_dorm_b9a"
+SPORT_ACTIVITY_ID = "act_campus_sport"
+MEAL_CATEGORIES = ("lunch", "dinner")
+WALK_SPEED_M_PER_MIN = 80.0  # 約 4.8 km/h 的步行速度
+
+
+WALK_METERS_PER_STAMINA = 200.0  # 每走這麼遠扣 1 點體力
+
+
+def walking_stamina_cost(distance_m: float) -> int:
+    """走 distance_m 公尺消耗的體力點數（每 200 公尺 1 點，不足不計）。"""
+    return int(distance_m // WALK_METERS_PER_STAMINA)
+
+
+def walking_minutes(distance_m: float) -> int:
+    """步行 distance_m 公尺需要的分鐘數（無條件進位；距離極短視為 0）。"""
+    if distance_m < 1:
+        return 0
+    return max(1, math.ceil(distance_m / WALK_SPEED_M_PER_MIN))
+
+
+def pick_meal_options(
+    candidates: list[str],
+    distances: dict[str, float],
+    streets: set[str],
+    rng: random.Random,
+    count: int = 3,
+) -> list[str]:
+    """從餐廳與街口候選中挑出供玩家選擇的地點。
+
+    規則：一個是離目前位置最近的；一個是街口（宵夜街／後門，有的話）；其餘隨機補滿。
+    沒有距離資料時，最近的那一項會略過，整體退化成隨機抽取。
+    """
+    pool = sorted(set(candidates))
+    if len(pool) <= count:
+        return pool
+
+    chosen: list[str] = []
+    reachable = [c for c in pool if c in distances]
+    if reachable:
+        chosen.append(min(reachable, key=lambda c: (distances[c], c)))
+
+    street_pool = [c for c in pool if c in streets and c not in chosen]
+    if street_pool and not any(c in streets for c in chosen):
+        chosen.append(rng.choice(street_pool))
+
+    rest = [c for c in pool if c not in chosen]
+    rng.shuffle(rest)
+    chosen.extend(rest[: count - len(chosen)])
+    return chosen[:count]
+
+
+def resolve_home_dorm(db: Session | None, dorm_id: str | None) -> tuple[str, str]:
+    """回傳 (宿舍建築 id, 中文名稱)。id 無效或不是宿舍時退回預設宿舍。"""
+    if db is not None:
+        for candidate in (dorm_id, DEFAULT_HOME_DORM_ID):
+            if not candidate:
+                continue
+            bldg = db.query(Building).filter(Building.id == candidate).first()
+            if bldg is not None and bldg.category == "dorm":
+                return bldg.id, bldg.name_zh
+    return DEFAULT_HOME_DORM_ID, "學生宿舍"
 
 
 class SimEngine:
@@ -628,6 +693,7 @@ class SimEngine:
         self,
         db: Session | None = None,
         profile: OnboardingParseSchema | None = None,
+        home_dorm: tuple[str, str] | None = None,
     ) -> list[ScheduleSlot]:
         """
         為週一至週五排定完整一日時間軸 (僅保留真實課程與社團行程)
@@ -638,6 +704,7 @@ class SimEngine:
         """
         if profile is None:
             profile = OnboardingParseSchema()
+        dorm_id, dorm_name = home_dorm or (DEFAULT_HOME_DORM_ID, "學生宿舍")
         dept = profile.department or "資訊管理學系"
         grade = profile.grade if profile.grade in (1, 2, 3, 4) else 1
 
@@ -1016,8 +1083,8 @@ class SimEngine:
                         slot=max_class_end,
                         title=f"{max_class_end} 課餘空閒時間",
                         type="leisure_prompt",
-                        location_id="loc_dorm_girl14",
-                        location_name="學生宿舍 / 校園設施",
+                        location_id=dorm_id,
+                        location_name=dorm_name,
                         start_time=max_class_end,
                         end_time=next_act_start,
                         display_time=f"{max_class_end} ~ {next_act_start}",
@@ -1033,8 +1100,8 @@ class SimEngine:
                     slot="21:00",
                     title=f"{day_name} 夜幕結算 · 明日活動預排",
                     type="day_end",
-                    location_id="loc_dorm_boy9",
-                    location_name="學生宿舍",
+                    location_id=dorm_id,
+                    location_name=dorm_name,
                     start_time="21:00",
                     end_time="22:00",
                     display_time="21:00",

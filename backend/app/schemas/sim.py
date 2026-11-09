@@ -9,6 +9,7 @@ class SimStartRequest(BaseModel):
     user_input: str
     department: str | None = None
     grade: int | None = None
+    dorm_id: str | None = None  # 玩家住的宿舍（buildings 的 dorm 建築 id）
 
 class ScheduleSlot(BaseModel):
     day: int  # 1~5 (週一至週五)
@@ -31,6 +32,7 @@ class ScheduleSlot(BaseModel):
     display_time: str | None = None  # e.g. "10:00 ~ 12:50"
     is_skipped: bool | None = False
     skip_reason: str | None = None
+    travel_minutes: int | None = None  # 從上一個地點步行過來所花的分鐘數（含在 start~end 內）
 
 class SimStartResponse(BaseModel):
     session_id: str
@@ -70,6 +72,15 @@ class SimTriggerActivityRequest(BaseModel):
     duration_minutes: int | None = None  # Flexible minutes e.g. 45, 90, 120
     custom_end_time: str | None = None  # e.g. '22:30'
     custom_title: str | None = None
+    location_id: str | None = None  # 玩家選擇的地點（午晚餐／運動活動需要）
+
+
+class MealOptionResponse(BaseModel):
+    id: str
+    name_zh: str
+    category: str | None = None
+    distance: float | None = None  # 從目前位置沿路網走過去的距離
+    walk_minutes: int | None = None  # 步行所需分鐘數
 
 
 class SimTriggerActivityResponse(BaseModel):

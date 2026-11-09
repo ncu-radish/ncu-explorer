@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Utensils, Home, Compass, Clock, Check, X, Sparkles, MapPin, Coffee, Moon } from "lucide-react";
-import { CampusActivity } from "@/lib/api";
+import { Building, CampusActivity, MealOption, exploreApi, simApi } from "@/lib/api";
+
+const SPORT_ACTIVITY_ID = "act_campus_sport";
+
+// 3D map used to pick a sport venue
+const CampusScene = dynamic(
+  () => import("@/components/three/CampusScene").then((mod) => mod.CampusScene),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-stone-900 text-stone-300 text-xs">
+        載入 3D 校園...
+      </div>
+    ),
+  }
+);
 
 interface ActivitySelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  category: "lunch" | "dorm_leisure" | "campus_leisure" | "night_leisure" | string;
+  category: "lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | "night_leisure" | string;
+  sessionId?: string | null;
   activities: CampusActivity[];
   maxAvailableHours?: number;
   currentStartTime?: string;
@@ -17,7 +34,8 @@ interface ActivitySelectionModalProps {
     durationHours: number,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) => Promise<void>;
   isLoading?: boolean;
 }
@@ -38,6 +56,7 @@ export function ActivitySelectionModal({
   isOpen,
   onClose,
   category,
+  sessionId,
   activities,
   maxAvailableHours = 3,
   currentStartTime = "12:00",
@@ -50,6 +69,43 @@ export function ActivitySelectionModal({
   const effectiveMaxHours = Math.max(1, Math.min(4, maxAvailableHours));
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Meal (lunch / dinner): pick one of three places
+  const isMealMode = category === "lunch" || category === "dinner";
+  const [mealOptions, setMealOptions] = useState<MealOption[]>([]);
+  const [mealLoading, setMealLoading] = useState(false);
+  const [selectedMealId, setSelectedMealId] = useState<string>("");
+
+  // Sport: pick a venue on the 3D map
+  const [sportBuildings, setSportBuildings] = useState<Building[]>([]);
+  const [selectedSportId, setSelectedSportId] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen || !isMealMode || !sessionId) return;
+    let cancelled = false;
+    setMealLoading(true);
+    setSelectedMealId("");
+    simApi
+      .getMealOptions(sessionId, category as "lunch" | "dinner")
+      .then((opts) => {
+        if (!cancelled) setMealOptions(opts);
+      })
+      .catch(() => {
+        if (!cancelled) setMealOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMealLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isMealMode, sessionId, category]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedSportId("");
+    exploreApi.getBuildings({ category: "sport" }).then(setSportBuildings).catch(() => setSportBuildings([]));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -95,6 +151,12 @@ export function ActivitySelectionModal({
 
   const campusItems = [
     {
+      id: SPORT_ACTIVITY_ID,
+      title: "運動",
+      location_name: "在 3D 地圖選擇運動場館",
+      options: [{ key: "A", name: "運動", effects: "+15體力, +5社交/小時" }],
+    },
+    {
       id: "act_campus_leisure",
       title: "宵夜街 / 後門炭烤美食探訪",
       location_name: "後門宵夜街",
@@ -123,8 +185,8 @@ export function ActivitySelectionModal({
     },
     {
       id: "act_campus_leisure",
-      title: "中大湖與百花川夜景散步",
-      location_name: "中大湖畔 / 百花川步道",
+      title: "中大湖夜景散步",
+      location_name: "中大湖畔",
       options: [
         { key: "A", name: "湖畔夜風散心放鬆", effects: "+16體力, +8社交/小時" },
         { key: "B", name: "大草坪看星空沉澱心靈", effects: "+18體力/小時" },
@@ -177,7 +239,16 @@ export function ActivitySelectionModal({
         icon: <Utensils className="w-5 h-5 text-stone-700" />,
         badge: "午餐時段",
         title: "正午十二點，你打算如何打發午膳？",
-        subtitle: "選擇今日的午餐地點與餐點偏好",
+        subtitle: "從三個地點中選一處前往用餐",
+        showDuration: false,
+      };
+    }
+    if (category === "dinner") {
+      return {
+        icon: <Utensils className="w-5 h-5 text-stone-700" />,
+        badge: "晚餐時段",
+        title: "傍晚了，晚餐要去哪裡吃？",
+        subtitle: "從三個地點中選一處前往用餐",
         showDuration: false,
       };
     }
@@ -203,18 +274,36 @@ export function ActivitySelectionModal({
       icon: <Compass className="w-5 h-5 text-stone-700" />,
       badge: "校園休閒",
       title: "漫步校園，你打算前往哪項休閒設施？",
-      subtitle: "依仁堂健身房、總圖自習或百花川散步，可自主選擇 1 ~ 3 小時",
+      subtitle: "運動（可在 3D 地圖挑場館）、總圖自習或中大湖散步，可自主選擇 1 ~ 3 小時",
       showDuration: true,
     };
   };
 
   const header = getHeaderInfo();
 
+  const effectiveMealId = selectedMealId || mealOptions[0]?.id || "";
+  const selectedItem = activeList.find((a: any) => a.id === selectedActId) || activeList[0];
+  const isSportSelected =
+    !isMealMode && targetCategory === "campus_leisure" && selectedItem?.id === SPORT_ACTIVITY_ID;
+  const confirmBlocked = isMealMode ? !effectiveMealId : isSportSelected && !selectedSportId;
+  const sportName = sportBuildings.find((b) => b.id === selectedSportId)?.name_zh;
+
   const handleConfirmAction = async () => {
     if (isSubmitting || isLoading) return;
     setIsSubmitting(true);
 
-    const chosenAct = activeList.find((a) => a.id === selectedActId) || activeList[0];
+    const chosenAct: { id?: string; title?: string } | undefined = isMealMode
+      ? {
+          id:
+            activities.find((a) => a.category === category)?.id ||
+            (category === "dinner" ? "act_dinner" : "act_lunch"),
+        }
+      : activeList.find((a) => a.id === selectedActId) || activeList[0];
+    const locationId = isMealMode
+      ? effectiveMealId || undefined
+      : isSportSelected
+        ? selectedSportId || undefined
+        : undefined;
     const durationHours = Math.round((durationMinutes / 60) * 10) / 10;
     const finalActId = chosenAct?.id || "act_lunch";
     const customTitle = chosenAct?.title;
@@ -228,7 +317,8 @@ export function ActivitySelectionModal({
         durationHours,
         customTitle,
         durationMinutes,
-        customEndTime
+        customEndTime,
+        locationId
       );
     } catch (err) {
       console.error(err);
@@ -401,7 +491,63 @@ export function ActivitySelectionModal({
             </div>
           )}
 
+          {/* Meal: pick one of three places */}
+          {isMealMode && (
+            <div>
+              <label className="text-xs font-bold text-stone-800 block mb-2.5">
+                選擇用餐地點：
+              </label>
+              {mealLoading && <p className="text-xs text-stone-500">正在尋找附近的用餐地點...</p>}
+              {!mealLoading && mealOptions.length === 0 && (
+                <p className="text-xs text-stone-500">目前沒有可選的地點，仍可直接確認。</p>
+              )}
+              <div className="space-y-3">
+                {mealOptions.map((opt, idx) => {
+                  const isSel = opt.id === effectiveMealId;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSelectedMealId(opt.id)}
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSel
+                          ? "bg-violet-50/50 border-violet-400 ring-2 ring-violet-500/20 shadow-xs"
+                          : "bg-white border-stone-200 hover:border-stone-300 hover:bg-stone-50/60"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${
+                            isSel ? "bg-violet-600 text-white" : "bg-stone-100 text-stone-700"
+                          }`}
+                        >
+                          {idx + 1}
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-bold text-stone-900">{opt.name_zh}</h4>
+                          <p className="text-xs text-stone-500">
+                            {opt.category === "street" ? "美食街" : "餐廳"}
+                          </p>
+                        </div>
+                      </div>
+                      {opt.distance != null && (
+                        <span className="flex items-center gap-1 text-xs text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200 shrink-0">
+                          <MapPin className="w-3.5 h-3.5 text-stone-500" />
+                          <span>
+                            約 {Math.round(opt.distance)} 公尺
+                            {opt.walk_minutes ? `・步行 ${opt.walk_minutes} 分` : ""}
+                          </span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Activity Category Selection List */}
+          {!isMealMode && (
           <div>
             <label className="text-xs font-bold text-stone-800 block mb-2.5">
               選擇活動地點與具體項目：
@@ -440,7 +586,7 @@ export function ActivitySelectionModal({
                     </div>
 
                     {/* Sub-options for this activity */}
-                    {isSelected && itemOptions.length > 0 && (
+                    {isSelected && itemOptions.length > 0 && item.id !== SPORT_ACTIVITY_ID && (
                       <div className="mt-3 pt-3 border-t border-violet-100 space-y-1.5">
                         <span className="text-xs text-stone-600 font-semibold block mb-1">
                           詳細方案選擇：
@@ -487,6 +633,46 @@ export function ActivitySelectionModal({
               })}
             </div>
           </div>
+          )}
+
+          {/* Sport: pick a venue on the 3D map */}
+          {isSportSelected && (
+            <div>
+              <label className="text-xs font-bold text-stone-800 block mb-2">
+                在地圖上選擇運動場館（綠色為可選）：
+              </label>
+              <div className="h-64 rounded-2xl overflow-hidden border border-stone-300 bg-stone-900">
+                <CampusScene
+                  highlightCategory="sport"
+                  selectableCategory="sport"
+                  fitSelection={false}
+                  topDown
+                  showRoute={false}
+                  showLabels={false}
+                  onSelectBuilding={(id) => setSelectedSportId(id)}
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {sportBuildings.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setSelectedSportId(b.id)}
+                    className={`text-xs px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
+                      selectedSportId === b.id
+                        ? "bg-violet-600 text-white border-violet-600 font-bold"
+                        : "bg-white text-stone-700 border-stone-200 hover:border-violet-300 hover:bg-stone-50"
+                    }`}
+                  >
+                    {b.name_zh}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs mt-2 text-stone-600">
+                {sportName ? `已選擇：${sportName}` : "請先選擇一處運動場館才能確認。"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -500,7 +686,7 @@ export function ActivitySelectionModal({
           </button>
           <button
             type="button"
-            disabled={isSubmitting || isLoading}
+            disabled={isSubmitting || isLoading || confirmBlocked}
             onClick={handleConfirmAction}
             className="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >

@@ -15,30 +15,48 @@ from app.schemas.explore import (
     ClubResponse,
     LocationDetailResponse,
     LocationResponse,
+    RoadNetworkResponse,
+    RouteResponse,
+)
+from app.services.road_network import (
+    RoadNetworkError,
+    RouteNotFoundError,
+    get_network,
+    resolve_building_id,
 )
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
+_buildings_synced_mtime: float | None = None
+
+
 def ensure_buildings_seeded(db: Session):
+    """Upsert buildings from data/buildings.json whenever the file changes."""
+    global _buildings_synced_mtime
     Base.metadata.create_all(bind=engine)
-    count = db.query(Building).count()
-    if count == 0:
-        buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
-        if buildings_file.exists():
-            with open(buildings_file, encoding="utf-8") as f:
-                bldgs = json.load(f)
-            for b in bldgs:
-                db.add(Building(
-                    id=b["id"],
-                    name_zh=b["name_zh"],
-                    name_en=b.get("name_en"),
-                    category=b.get("category"),
-                    classroom_code=b.get("classroom_code"),
-                    departments=b.get("departments") or [],
-                    alias=b.get("alias"),
-                    description=b.get("description"),
-                ))
-            db.commit()
+    buildings_file = Path(__file__).resolve().parent.parent.parent / "data" / "buildings.json"
+    if not buildings_file.exists():
+        return
+    mtime = buildings_file.stat().st_mtime
+    if _buildings_synced_mtime == mtime and db.query(Building).count() > 0:
+        return
+    with open(buildings_file, encoding="utf-8") as f:
+        bldgs = json.load(f)
+    existing = {b.id: b for b in db.query(Building).all()}
+    for b in bldgs:
+        row = existing.get(b["id"])
+        if row is None:
+            row = Building(id=b["id"])
+            db.add(row)
+        row.name_zh = b["name_zh"]
+        row.name_en = b.get("name_en")
+        row.category = b.get("category")
+        row.classroom_code = b.get("classroom_code")
+        row.departments = b.get("departments") or []
+        row.alias = b.get("alias")
+        row.description = b.get("description")
+    db.commit()
+    _buildings_synced_mtime = mtime
 
 
 # Common NCU department/school abbreviations for smarter search
@@ -62,6 +80,46 @@ COMMON_ACRONYMS = {
     "地科": "地球科學",
     "大氣": "大氣科學",
 }
+
+
+@router.get("/road-network", response_model=RoadNetworkResponse)
+def get_road_network():
+    """回傳整個路網的路段，供前端在地圖上繪製。"""
+    try:
+        network = get_network()
+    except RoadNetworkError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return RoadNetworkResponse(
+        segments=[
+            [[round(c, 3) for c in network.nodes[a]], [round(c, 3) for c in network.nodes[b]]]
+            for a, b in network.edges
+            if network.nodes[a] != network.nodes[b]
+        ]
+    )
+
+
+@router.get("/route", response_model=RouteResponse)
+def get_route(
+    from_id: str = Query(..., description="起點建築 id"),
+    to_id: str = Query(..., description="終點建築 id"),
+):
+    """沿路網計算兩處之間的最短路徑。id 可為建築 id，或模擬器使用的舊地點代碼 (loc_*)。"""
+    try:
+        distance, path = get_network().route(from_id, to_id)
+    except RoadNetworkError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=f"找不到建築或無法接入路網：{exc.args[0]}"
+        ) from exc
+    except RouteNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return RouteResponse(
+        from_id=resolve_building_id(from_id),
+        to_id=resolve_building_id(to_id),
+        distance=round(distance, 3),
+        path=[[round(c, 3) for c in p] for p in path],
+    )
 
 
 @router.get("/buildings", response_model=list[BuildingResponse])

@@ -36,13 +36,14 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
 // Simulator API
 export const simApi = {
-  start: (userInput: string, department?: string, grade?: number) =>
+  start: (userInput: string, department?: string, grade?: number, dormId?: string) =>
     fetchApi<any>("/sim/start", {
       method: "POST",
       body: JSON.stringify({
         user_input: userInput,
         department: department || undefined,
         grade: grade || undefined,
+        dorm_id: dormId || undefined,
       }),
     }),
   nextTurn: (sessionId: string, optionKey: string) =>
@@ -50,6 +51,10 @@ export const simApi = {
       method: "POST",
       body: JSON.stringify({ session_id: sessionId, option_key: optionKey }),
     }),
+  getMealOptions: (sessionId: string, category: "lunch" | "dinner") => {
+    const query = new URLSearchParams({ session_id: sessionId, category });
+    return fetchApi<MealOption[]>(`/sim/meal-options?${query.toString()}`);
+  },
   getSummary: (sessionId: string) =>
     fetchApi<any>("/sim/summary", {
       method: "POST",
@@ -62,7 +67,8 @@ export const simApi = {
     durationHours: number = 1,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) =>
     fetchApi<{
       session_id: string;
@@ -83,6 +89,7 @@ export const simApi = {
         duration_minutes: durationMinutes,
         custom_end_time: customEndTime,
         custom_title: customTitle || undefined,
+        location_id: locationId || undefined,
       }),
     }),
   prePlanTomorrow: (
@@ -297,6 +304,25 @@ export interface Building {
   description?: string | null;
 }
 
+export interface MealOption {
+  id: string;
+  name_zh: string;
+  category?: string | null;
+  distance?: number | null;
+  walk_minutes?: number | null;
+}
+
+export interface RouteResult {
+  from_id: string;
+  to_id: string;
+  distance: number;
+  path: [number, number, number][];
+}
+
+export interface RoadNetworkData {
+  segments: [[number, number, number], [number, number, number]][];
+}
+
 export interface ClubItem {
   id: string;
   name: string;
@@ -355,6 +381,11 @@ export const exploreApi = {
     if (params?.category) query.append("category", params.category);
     const qs = query.toString();
     return fetchApi<Building[]>(`/explore/buildings${qs ? `?${qs}` : ""}`);
+  },
+  getRoadNetwork: () => fetchApi<RoadNetworkData>(`/explore/road-network`),
+  getRoute: (fromId: string, toId: string) => {
+    const query = new URLSearchParams({ from_id: fromId, to_id: toId });
+    return fetchApi<RouteResult>(`/explore/route?${query.toString()}`);
   },
   getBuildingDetail: (id: string) => fetchApi<Building>(`/explore/buildings/${id}`),
   getLocations: (category?: string) => {
