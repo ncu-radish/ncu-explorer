@@ -109,8 +109,8 @@ const BUS_ROUTES: BusRoute[] = [
     tips: "假日自 07:00 晨間即有發車，平日中午 12:00 起發車；北上返家免轉乘火車極度便利。",
     links: [
       {
-        label: "9025 公運即時動態",
-        url: "https://www.taiwanbus.tw/eBusPage.aspx?RouteNo=9025",
+        label: "9025A 即時客運動態",
+        url: "https://www.taiwanbus.tw/eBUSPage/Query/QueryResult.aspx?rno=9025A&lan=C",
       },
     ],
   },
