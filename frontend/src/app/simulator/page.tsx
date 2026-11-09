@@ -13,7 +13,8 @@ import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
 import { PrePlanModal } from "@/components/simulator/PrePlanModal";
-import { adminApi, CampusActivity } from "@/lib/api";
+import { adminApi, exploreApi, CampusActivity } from "@/lib/api";
+import { useMapStore } from "@/store/useMapStore";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -27,6 +28,9 @@ const CampusScene = dynamic(
     ),
   }
 );
+
+// Where the player wakes up each morning (route origin for the first stop of a day)
+const HOME_LOCATION_ID = "loc_dorm_boy9";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
@@ -85,6 +89,44 @@ export default function SimulatorPage() {
       setFocusedLoc(locId);
     }
   }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
+
+  // Show the walking route from the previous stop to the current one on the 3D map
+  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
+  const routeToId = currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
+  const routeFromId =
+    prevSlot && prevSlot.day === currentSlotInfo.day && !prevSlot.is_skipped && prevSlot.location_id
+      ? prevSlot.location_id
+      : HOME_LOCATION_ID;
+
+  useEffect(() => {
+    const { setRoute } = useMapStore.getState();
+    if (!routeToId || routeToId === routeFromId) {
+      setRoute(null);
+      return;
+    }
+    let cancelled = false;
+    exploreApi
+      .getRoute(routeFromId, routeToId)
+      .then((r) => {
+        if (cancelled) return;
+        setRoute(
+          r.distance < 1
+            ? null
+            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path }
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setRoute(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeFromId, routeToId, currentTurn]);
+
+  // The route lives in a global store; clear it when leaving the simulator
+  useEffect(() => {
+    return () => useMapStore.getState().setRoute(null);
+  }, []);
 
   // Time Transition Pipeline States
   const [isTimeFlowing, setIsTimeFlowing] = useState(false);

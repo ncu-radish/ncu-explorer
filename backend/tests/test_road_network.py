@@ -60,6 +60,14 @@ def test_unreachable_raises():
         net.route("left", "island")
 
 
+def test_legacy_location_ids_are_resolved():
+    net = _grid()
+    net.access["bldg_res_core"] = net.access["right"]
+    net.access["bldg_dorm_b9a"] = net.access["left"]
+    distance, _ = net.route("loc_dorm_boy9", "loc_pine_restaurant")
+    assert distance == net.route("left", "right")[0]
+
+
 def test_unknown_building_raises_keyerror():
     net = _grid()
     with pytest.raises(KeyError):

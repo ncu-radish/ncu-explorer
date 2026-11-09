@@ -25,6 +25,26 @@ CAMPUS_OFFSET = (-535.8, 0.0, 344.54)
 
 Point = tuple[float, float, float]
 
+# 模擬器沿用的舊地點代碼 (campus_locations) -> 3D 地圖建築 id。
+# 沒有對應建築的地點（如後門美食街、百花川步道）不在表內，無法規劃路線。
+LEGACY_LOCATION_TO_BUILDING: dict[str, str] = {
+    "loc_mgt2": "bldg_mgmt_2",
+    "loc_eng5": "bldg_eng_5",
+    "loc_sci5": "bldg_science_5",
+    "loc_teaching": "bldg_tr",
+    "loc_lib": "bldg_lib_main",
+    "loc_yiren": "bldg_yireng",
+    "loc_dorm_boy9": "bldg_dorm_b9a",
+    "loc_dorm_girl14": "bldg_dorm_g14",
+    "loc_pine_restaurant": "bldg_res_core",
+    "loc_bus_station": "bldg_bus_guard",
+}
+
+
+def resolve_building_id(location_id: str) -> str:
+    """把模擬器的地點 id 轉成建築 id；已經是建築 id 時原樣回傳。"""
+    return LEGACY_LOCATION_TO_BUILDING.get(location_id, location_id)
+
 
 class RoadNetworkError(Exception):
     """路網或模型資料無法使用。"""
@@ -179,10 +199,10 @@ class RoadNetwork:
 
     def route(self, from_id: str, to_id: str) -> tuple[float, list[Point]]:
         """回傳 (總長度, 路徑座標)。建築無法接入路網時拋出 KeyError(building_id)。"""
-        src = self.access.get(from_id)
+        src = self.access.get(resolve_building_id(from_id))
         if src is None:
             raise KeyError(from_id)
-        dst = self.access.get(to_id)
+        dst = self.access.get(resolve_building_id(to_id))
         if dst is None:
             raise KeyError(to_id)
 

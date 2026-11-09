@@ -18,7 +18,12 @@ from app.schemas.explore import (
     RoadNetworkResponse,
     RouteResponse,
 )
-from app.services.road_network import RoadNetworkError, RouteNotFoundError, get_network
+from app.services.road_network import (
+    RoadNetworkError,
+    RouteNotFoundError,
+    get_network,
+    resolve_building_id,
+)
 
 router = APIRouter(prefix="/explore", tags=["Explore & 3D Map"])
 
@@ -98,7 +103,7 @@ def get_route(
     from_id: str = Query(..., description="起點建築 id"),
     to_id: str = Query(..., description="終點建築 id"),
 ):
-    """沿路網計算兩棟建築之間的最短路徑。"""
+    """沿路網計算兩處之間的最短路徑。id 可為建築 id，或模擬器使用的舊地點代碼 (loc_*)。"""
     try:
         distance, path = get_network().route(from_id, to_id)
     except RoadNetworkError as exc:
@@ -110,8 +115,8 @@ def get_route(
     except RouteNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return RouteResponse(
-        from_id=from_id,
-        to_id=to_id,
+        from_id=resolve_building_id(from_id),
+        to_id=resolve_building_id(to_id),
         distance=round(distance, 3),
         path=[[round(c, 3) for c in p] for p in path],
     )
