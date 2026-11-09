@@ -154,11 +154,7 @@ export function ActivitySelectionModal({
       id: SPORT_ACTIVITY_ID,
       title: "運動",
       location_name: "在 3D 地圖選擇運動場館",
-      options: [
-        { key: "A", name: "約同學打球或羽球", effects: "+12體力, +10社交/小時" },
-        { key: "B", name: "慢跑或重訓", effects: "+15體力/小時" },
-        { key: "C", name: "游泳或攀岩", effects: "+18體力, +3社交/小時, -$30" },
-      ],
+      options: [{ key: "A", name: "運動", effects: "+15體力, +5社交/小時" }],
     },
     {
       id: "act_campus_leisure",
@@ -587,7 +583,7 @@ export function ActivitySelectionModal({
                     </div>
 
                     {/* Sub-options for this activity */}
-                    {isSelected && itemOptions.length > 0 && (
+                    {isSelected && itemOptions.length > 0 && item.id !== SPORT_ACTIVITY_ID && (
                       <div className="mt-3 pt-3 border-t border-violet-100 space-y-1.5">
                         <span className="text-xs text-stone-600 font-semibold block mb-1">
                           詳細方案選擇：
@@ -647,7 +643,9 @@ export function ActivitySelectionModal({
                   highlightCategory="sport"
                   selectableCategory="sport"
                   fitSelection={false}
+                  topDown
                   showRoute={false}
+                  showLabels={false}
                   onSelectBuilding={(id) => setSelectedSportId(id)}
                 />
               </div>

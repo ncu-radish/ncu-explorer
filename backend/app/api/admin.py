@@ -490,20 +490,8 @@ DEFAULT_CAMPUS_ACTIVITIES: list[dict[str, Any]] = [
         "preset_options": [
             {
                 "option_key": "A",
-                "intent_hint": "約同學在球場或羽球館打一場球，邊打邊聊",
-                "effects": {"stamina": 12, "study": 0, "social": 10, "money": 0},
-                "marks_activity": True
-            },
-            {
-                "option_key": "B",
-                "intent_hint": "一個人慢跑或重訓，專心把腦袋放空",
-                "effects": {"stamina": 15, "study": 0, "social": 0, "money": 0},
-                "marks_activity": True
-            },
-            {
-                "option_key": "C",
-                "intent_hint": "挑戰游泳或攀岩，換個方式流身汗",
-                "effects": {"stamina": 18, "study": 0, "social": 3, "money": -30},
+                "intent_hint": "到選定的運動場館活動筋骨",
+                "effects": {"stamina": 15, "study": 0, "social": 5, "money": 0},
                 "marks_activity": True
             }
         ]

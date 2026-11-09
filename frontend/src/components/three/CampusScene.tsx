@@ -51,7 +51,11 @@ function CampusModel({
   highlightCategory,
   selectableCategory,
 }: CampusModelProps) {
-  const { scene } = useGLTF("/models/campus_buildings.glb");
+  const { scene: sharedScene } = useGLTF("/models/campus_buildings.glb");
+  // useGLTF caches one scene graph for the whole app. An Object3D can only have one parent,
+  // so every <CampusScene> (map page, simulator PiP, activity modal) needs its own copy;
+  // otherwise mounting a second scene steals the model from the first one.
+  const scene = useMemo(() => sharedScene.clone(true), [sharedScene]);
   const { selectedBuildingId, hoveredBuildingId, setHoveredBuilding } = useMapStore();
   const groupRef = useRef<THREE.Group>(null);
 
@@ -126,8 +130,10 @@ function CampusModel({
       if ((child as THREE.Mesh).isMesh && child.name) {
         const mesh = child as THREE.Mesh;
         const bldgId = mesh.name;
-        const isSelected = bldgId === selectedBuildingId;
-        const isHovered = bldgId === hoveredBuildingId;
+        const inScope =
+          !selectableCategory || buildingMap.get(bldgId)?.category === selectableCategory;
+        const isSelected = inScope && bldgId === selectedBuildingId;
+        const isHovered = inScope && bldgId === hoveredBuildingId;
 
         if (isSelected) {
           mesh.material = materials.selectedMat;
@@ -170,7 +176,7 @@ function CampusModel({
         mesh.receiveShadow = true;
       }
     });
-  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials, highlightCategory]);
+  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials, highlightCategory, selectableCategory]);
 
   const isSelectable = (name?: string) =>
     !selectableCategory || (!!name && buildingMap.get(name)?.category === selectableCategory);
@@ -209,9 +215,11 @@ function CampusModel({
 function SelectedBuildingBeacon({
   bounds,
   building,
+  showLabel = true,
 }: {
   bounds?: BuildingBounds;
   building?: Building;
+  showLabel?: boolean;
 }) {
   const pinRef = useRef<THREE.Group>(null);
 
@@ -242,6 +250,7 @@ function SelectedBuildingBeacon({
         </mesh>
 
         {/* Floating HTML Tag */}
+        {showLabel && (
         <Html position={[0, 4.5, 0]} center distanceFactor={140} zIndexRange={[100, 0]}>
           <div className="pointer-events-none select-none flex flex-col items-center">
             <div className="bg-stone-900/90 text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg backdrop-blur-xs flex items-center gap-1.5 whitespace-nowrap border border-stone-700">
@@ -255,6 +264,7 @@ function SelectedBuildingBeacon({
             <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-stone-900/90" />
           </div>
         </Html>
+        )}
       </group>
     </group>
   );
@@ -511,6 +521,10 @@ interface CampusSceneProps {
   fitSelection?: boolean;
   /** false = hide the planned route overlay. */
   showRoute?: boolean;
+  /** false = no floating HTML name tags (used in the modal map). */
+  showLabels?: boolean;
+  /** Look straight down at the highlighted buildings (used for picking a venue). */
+  topDown?: boolean;
 }
 
 export function CampusScene({
@@ -521,6 +535,8 @@ export function CampusScene({
   selectableCategory,
   fitSelection = true,
   showRoute = true,
+  showLabels = true,
+  topDown = false,
 }: CampusSceneProps) {
   const {
     selectedBuildingId,
@@ -615,6 +631,38 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     void resetTrigger;
     void focusTrigger;
 
+    // Bird's-eye view framing every highlighted building
+    if (topDown && highlightCategory) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minZ = Infinity;
+      let maxZ = -Infinity;
+      boundsMap.forEach((b, id) => {
+        if (buildingMap.get(id)?.category !== highlightCategory) return;
+        minX = Math.min(minX, b.center.x - b.size.x / 2);
+        maxX = Math.max(maxX, b.center.x + b.size.x / 2);
+        minZ = Math.min(minZ, b.center.z - b.size.z / 2);
+        maxZ = Math.max(maxZ, b.center.z + b.size.z / 2);
+      });
+      if (Number.isFinite(minX)) {
+        const cx = (minX + maxX) / 2;
+        const cz = (minZ + maxZ) / 2;
+        // fov 45 => visible height = 0.83 * distance; assume a ~2:1 viewport for the width
+        const fitH = (maxZ - minZ) / 0.83;
+        const fitW = (maxX - minX) / (0.83 * 2);
+        const height = Math.max(Math.max(fitH, fitW) * 1.25, 120);
+        // tiny z offset keeps OrbitControls away from the exact pole
+        return {
+          targetPos: new THREE.Vector3(cx, height, cz + 0.5),
+          targetLookAt: new THREE.Vector3(cx, 0, cz),
+        };
+      }
+      return {
+        targetPos: new THREE.Vector3(0, 800, 0.5),
+        targetLookAt: new THREE.Vector3(0, 0, 0),
+      };
+    }
+
     if (!fitSelection) {
       return {
         targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
@@ -666,7 +714,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
     return { targetPos: pos, targetLookAt: lookAt };
-  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route, fitSelection]);
+  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route, fitSelection, topDown, highlightCategory, buildingMap]);
 
   const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${route ? `${route.fromId}>${route.toId}` : "noroute"}-${
     boundsMap.size > 0 ? 1 : 0
@@ -678,6 +726,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   const selectedBounds = selectedBuildingId ? boundsMap.get(selectedBuildingId) : undefined;
 
   const hoveredBuilding = hoveredBuildingId ? buildingMap.get(hoveredBuildingId) : undefined;
+  const inScope = (b?: Building) => !selectableCategory || b?.category === selectableCategory;
   const hoveredBounds = hoveredBuildingId ? boundsMap.get(hoveredBuildingId) : undefined;
 
   return (
@@ -735,11 +784,15 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
         {showRoute && <RouteLayer />}
 
         {/* Selected Beacon & Hover Tooltip */}
-        {selectedBuilding && (
-          <SelectedBuildingBeacon bounds={selectedBounds} building={selectedBuilding} />
+        {selectedBuilding && inScope(selectedBuilding) && (
+          <SelectedBuildingBeacon
+            bounds={selectedBounds}
+            building={selectedBuilding}
+            showLabel={showLabels}
+          />
         )}
 
-        {hoveredBuilding && hoveredBuildingId !== selectedBuildingId && (
+        {showLabels && hoveredBuilding && inScope(hoveredBuilding) && hoveredBuildingId !== selectedBuildingId && (
           <HoverTooltip bounds={hoveredBounds} building={hoveredBuilding} />
         )}
 
