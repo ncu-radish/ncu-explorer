@@ -61,7 +61,12 @@ interface SimulatorState {
   historyLogs: string[];
   error: string | null;
 
-  startSimulation: (userInput: string, department?: string, grade?: number) => Promise<void>;
+  startSimulation: (
+    userInput: string,
+    department?: string,
+    grade?: number,
+    dormId?: string
+  ) => Promise<void>;
   chooseOption: (optionKey: string) => Promise<any>;
   triggerDynamicActivity: (
     activityId: string,
@@ -69,7 +74,8 @@ interface SimulatorState {
     durationHours?: number,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) => Promise<any>;
   prePlanTomorrow: (
     targetDay: number,
@@ -98,10 +104,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   historyLogs: [],
   error: null,
 
-  startSimulation: async (userInput: string, department?: string, grade?: number) => {
+  startSimulation: async (userInput: string, department?: string, grade?: number, dormId?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const data = await simApi.start(userInput, department, grade);
+      const data = await simApi.start(userInput, department, grade, dormId);
       set({
         sessionId: data.session_id,
         playerProfile: data.player_profile,
@@ -164,7 +170,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
     durationHours: number = 1,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) => {
     const { sessionId } = get();
     if (!sessionId) return;
@@ -178,7 +185,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => ({
         durationHours,
         customTitle,
         durationMinutes,
-        customEndTime
+        customEndTime,
+        locationId
       );
       if ((res as any).is_game_over) {
         set({

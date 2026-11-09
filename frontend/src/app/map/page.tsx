@@ -20,6 +20,7 @@ import {
   Layers,
   Info,
   Bike,
+  Store,
   Route as RouteIcon,
   Bus,
   Trees,
@@ -47,6 +48,7 @@ const CATEGORIES = [
   { key: "function", label: "行政功能", icon: Landmark },
   { key: "sport", label: "運動場館", icon: Trophy },
   { key: "restaurant", label: "生活餐飲", icon: Utensils },
+  { key: "street", label: "美食街", icon: Store },
   { key: "youbike", label: "YouBike", icon: Bike },
   { key: "bus", label: "公車站", icon: Bus },
   { key: "view", label: "校園景觀", icon: Trees },
@@ -69,6 +71,9 @@ function CategoryBadge({ category }: { category?: string | null }) {
       break;
     case "restaurant":
       label = "生活餐飲";
+      break;
+    case "street":
+      label = "美食街";
       break;
     case "youbike":
       label = "YouBike";

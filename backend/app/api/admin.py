@@ -309,7 +309,7 @@ async def live_sandbox_test(
 # 校園動態活動管理 (早餐、午餐、晚餐、宿舍休閒、校園休閒)
 # ==========================================
 
-DEFAULT_CAMPUS_ACTIVITIES = [
+DEFAULT_CAMPUS_ACTIVITIES: list[dict[str, Any]] = [
     {
         "id": "act_breakfast",
         "title": "晨光活力早餐",
@@ -474,14 +474,54 @@ DEFAULT_CAMPUS_ACTIVITIES = [
                 "marks_activity": True
             }
         ]
+    },
+    {
+        "id": "act_campus_sport",
+        "title": "運動",
+        "category": "campus_leisure",
+        "trigger_type": "free_time",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": None,
+        "location_name": "校園運動場館",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "空檔時間想動一動。校園裡有田徑場、球場、游泳池、羽球館與攀岩場，可以在 3D 地圖上挑一處前往運動。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "約同學在球場或羽球館打一場球，邊打邊聊",
+                "effects": {"stamina": 12, "study": 0, "social": 10, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "一個人慢跑或重訓，專心把腦袋放空",
+                "effects": {"stamina": 15, "study": 0, "social": 0, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "C",
+                "intent_hint": "挑戰游泳或攀岩，換個方式流身汗",
+                "effects": {"stamina": 18, "study": 0, "social": 3, "money": -30},
+                "marks_activity": True
+            }
+        ]
     }
 ]
+
+# 程式邏輯會用到的活動：即使資料庫已有其他活動，缺少時也要補上
+REQUIRED_ACTIVITY_IDS = {"act_campus_sport"}
+
 
 def ensure_activities_seeded(db: Session):
     Base.metadata.create_all(bind=engine)
     count = db.query(CampusActivity).count()
-    if count == 0:
+    existing_ids = {a.id for a in db.query(CampusActivity.id).all()} if count else set()
+    if count == 0 or REQUIRED_ACTIVITY_IDS - existing_ids:
         for item in DEFAULT_CAMPUS_ACTIVITIES:
+            if count != 0 and (item["id"] not in REQUIRED_ACTIVITY_IDS or item["id"] in existing_ids):
+                continue
             act = CampusActivity(
                 id=item["id"],
                 title=item["title"],

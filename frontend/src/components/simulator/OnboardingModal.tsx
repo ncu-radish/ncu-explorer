@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Compass, Send, CheckCircle2, GraduationCap, Building2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, Compass, Send, CheckCircle2, GraduationCap, Building2, Home } from "lucide-react";
 import { useSimulatorStore } from "@/store/useSimulatorStore";
+import { exploreApi, Building } from "@/lib/api";
+
+const DEFAULT_DORM_ID = "bldg_dorm_b9a";
 
 const POPULAR_DEPTS = [
   "資訊管理學系",
@@ -37,7 +40,21 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
   const [dept, setDept] = useState("資訊管理學系");
   const [grade, setGrade] = useState(1);
   const [input, setInput] = useState("");
+  const [dorms, setDorms] = useState<Building[]>([]);
+  const [dormId, setDormId] = useState(DEFAULT_DORM_ID);
   const { startSimulation, isLoading, error } = useSimulatorStore();
+
+  useEffect(() => {
+    exploreApi
+      .getBuildings({ category: "dorm" })
+      .then((list) => {
+        setDorms(list);
+        if (list.length > 0 && !list.some((d) => d.id === DEFAULT_DORM_ID)) {
+          setDormId(list[0].id);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -45,7 +62,7 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
     if (e) e.preventDefault();
     if (isLoading) return;
     const finalInput = input.trim() || `我是${dept}大${["一", "二", "三", "四"][grade - 1]}學生，希望能體驗豐富的中央大學校園生活。`;
-    startSimulation(finalInput, dept, grade);
+    startSimulation(finalInput, dept, grade, dormId);
   };
 
   const handleSelectPreset = (preset: { dept: string; grade: number; text: string }) => {
@@ -116,6 +133,26 @@ export function OnboardingModal({ isOpen }: { isOpen: boolean }) {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Dormitory selector */}
+          <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
+            <label className="block text-xs font-semibold text-stone-800 mb-1.5 flex items-center gap-1.5">
+              <Home className="w-3.5 h-3.5 text-stone-500" />
+              <span>居住宿舍（每天從這裡出發、回到這裡）：</span>
+            </label>
+            <select
+              value={dormId}
+              onChange={(e) => setDormId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer shadow-2xs"
+            >
+              {dorms.length === 0 && <option value={dormId}>載入宿舍清單中...</option>}
+              {dorms.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name_zh}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

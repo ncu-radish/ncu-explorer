@@ -29,14 +29,15 @@ const CampusScene = dynamic(
   }
 );
 
-// Where the player wakes up each morning (route origin for the first stop of a day)
-const HOME_LOCATION_ID = "loc_dorm_boy9";
+// Fallback home when the session has no chosen dorm
+const DEFAULT_HOME_LOCATION_ID = "bldg_dorm_b9a";
 
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 export default function SimulatorPage() {
   const {
     sessionId,
+    playerProfile,
     weeklySchedule,
     currentTurn,
     currentTime,
@@ -91,12 +92,13 @@ export default function SimulatorPage() {
   }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
 
   // Show the walking route from the previous stop to the current one on the 3D map
+  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
   const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
   const routeToId = currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
   const routeFromId =
     prevSlot && prevSlot.day === currentSlotInfo.day && !prevSlot.is_skipped && prevSlot.location_id
       ? prevSlot.location_id
-      : HOME_LOCATION_ID;
+      : homeLocationId;
 
   useEffect(() => {
     const { setRoute } = useMapStore.getState();
@@ -285,7 +287,8 @@ export default function SimulatorPage() {
     durationHours: number,
     customTitle?: string,
     durationMinutes?: number,
-    customEndTime?: string
+    customEndTime?: string,
+    locationId?: string
   ) => {
     await executeWithTimeFlow(() =>
       triggerDynamicActivity(
@@ -294,7 +297,8 @@ export default function SimulatorPage() {
         durationHours,
         customTitle,
         durationMinutes,
-        customEndTime
+        customEndTime,
+        locationId
       )
     );
   };
@@ -336,6 +340,7 @@ export default function SimulatorPage() {
         isOpen={activityModalOpen}
         onClose={() => setActivityModalOpen(false)}
         category={activityCategory}
+        sessionId={sessionId}
         activities={activities}
         maxAvailableHours={calcAvailableHours()}
         currentStartTime={currentStartTime}

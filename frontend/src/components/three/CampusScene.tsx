@@ -21,6 +21,7 @@ const CATEGORY_MATERIALS: Record<string, { color: string; emissive?: string }> =
   youbike: { color: "#D4C27A" },    // Muted yellow
   bus: { color: "#B87671" },        // Muted brick
   view: { color: "#2F8FA8" },       // Teal
+  street: { color: "#E0B04A" },     // Amber (food street entrance)
   default: { color: "#B8B4AC" },
 };
 
@@ -34,9 +35,22 @@ interface CampusModelProps {
   buildings: Building[];
   onSelectBuilding: (id: string) => void;
   onBoundsComputed: (boundsMap: Map<string, BuildingBounds>) => void;
+  /** Light up buildings of this category and dim the rest. */
+  highlightCategory?: string;
+  /** Only buildings of this category react to hover / click. */
+  selectableCategory?: string;
 }
 
-function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusModelProps) {
+const HIGHLIGHT_STYLE = { color: "#4ADE80", emissive: "#22C55E" };
+const DIM_STYLE = { color: "#3A4050" };
+
+function CampusModel({
+  buildings,
+  onSelectBuilding,
+  onBoundsComputed,
+  highlightCategory,
+  selectableCategory,
+}: CampusModelProps) {
   const { scene } = useGLTF("/models/campus_buildings.glb");
   const { selectedBuildingId, hoveredBuildingId, setHoveredBuilding } = useMapStore();
   const groupRef = useRef<THREE.Group>(null);
@@ -122,8 +136,19 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
         } else {
           // Base material based on building category
           const bldg = buildingMap.get(bldgId);
-          const cat = bldg?.category || "default";
-          const config = CATEGORY_MATERIALS[cat] || CATEGORY_MATERIALS.default;
+          const baseCat = bldg?.category || "default";
+          // In highlight mode every building is either lit or dimmed
+          const cat = highlightCategory
+            ? baseCat === highlightCategory
+              ? "__highlight"
+              : "__dim"
+            : baseCat;
+          const config: { color: string; emissive?: string } =
+            cat === "__highlight"
+              ? HIGHLIGHT_STYLE
+              : cat === "__dim"
+                ? DIM_STYLE
+                : CATEGORY_MATERIALS[cat] || CATEGORY_MATERIALS.default;
 
           if (!materials.cache.has(cat)) {
             materials.cache.set(
@@ -132,6 +157,9 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
                 color: config.color,
                 roughness: 0.6,
                 metalness: 0.05,
+                ...(config.emissive
+                  ? { emissive: config.emissive, emissiveIntensity: 0.45 }
+                  : {}),
               })
             );
           }
@@ -142,7 +170,10 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
         mesh.receiveShadow = true;
       }
     });
-  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials]);
+  }, [scene, selectedBuildingId, hoveredBuildingId, buildingMap, materials, highlightCategory]);
+
+  const isSelectable = (name?: string) =>
+    !selectableCategory || (!!name && buildingMap.get(name)?.category === selectableCategory);
 
   return (
     <group
@@ -150,6 +181,7 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
       position={CAMPUS_OFFSET}
       onPointerOver={(e) => {
         e.stopPropagation();
+        if (!isSelectable(e.object?.name)) return;
         if (e.object && e.object.name) {
           document.body.style.cursor = "pointer";
           setHoveredBuilding(e.object.name);
@@ -162,6 +194,7 @@ function CampusModel({ buildings, onSelectBuilding, onBoundsComputed }: CampusMo
       }}
       onClick={(e) => {
         e.stopPropagation();
+        if (!isSelectable(e.object?.name)) return;
         if (e.object && e.object.name) {
           onSelectBuilding(e.object.name);
         }
@@ -470,12 +503,24 @@ interface CampusSceneProps {
   onSelectBuilding?: (id: string) => void;
   focusedLocationId?: string | null;
   interactive?: boolean;
+  /** Light up this category and dim everything else (e.g. "sport"). */
+  highlightCategory?: string;
+  /** Only this category can be hovered / clicked. */
+  selectableCategory?: string;
+  /** false = always show the whole campus instead of zooming to the selection. */
+  fitSelection?: boolean;
+  /** false = hide the planned route overlay. */
+  showRoute?: boolean;
 }
 
 export function CampusScene({
   buildings: propBuildings,
   onSelectBuilding,
   focusedLocationId,
+  highlightCategory,
+  selectableCategory,
+  fitSelection = true,
+  showRoute = true,
 }: CampusSceneProps) {
   const {
     selectedBuildingId,
@@ -509,6 +554,8 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
   loc_dorm_girl14: "bldg_dorm_g14",
   loc_pine_restaurant: "bldg_res_core",
   loc_bus_station: "bldg_bus_guard",
+  loc_night_street: "bldg_street_night",
+  loc_backgate: "bldg_street_back",
   I1: "bldg_mgmt_2",
   I: "bldg_mgmt_1",
   E6: "bldg_eng_5",
@@ -568,6 +615,13 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     void resetTrigger;
     void focusTrigger;
 
+    if (!fitSelection) {
+      return {
+        targetPos: new THREE.Vector3(...DEFAULT_CAMERA_POS),
+        targetLookAt: new THREE.Vector3(...DEFAULT_CAMERA_TARGET),
+      };
+    }
+
     // Fit the whole planned route in view (while its destination is the selected building)
     if (route && route.path.length >= 2 && selectedBuildingId === route.toId) {
       const xs = route.path.map((p) => p[0]);
@@ -612,7 +666,7 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
     const lookAt = new THREE.Vector3(center.x, center.y + 4, center.z);
 
     return { targetPos: pos, targetLookAt: lookAt };
-  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route]);
+  }, [selectedBuildingId, boundsMap, resetTrigger, focusTrigger, route, fitSelection]);
 
   const animationKey = `${resetTrigger}-${focusTrigger}-${selectedBuildingId || "none"}-${route ? `${route.fromId}>${route.toId}` : "noroute"}-${
     boundsMap.size > 0 ? 1 : 0
@@ -673,10 +727,12 @@ const LEGACY_OR_CODE_TO_BLDG: Record<string, string> = {
           buildings={buildings}
           onSelectBuilding={handleSelect}
           onBoundsComputed={setBoundsMap}
+          highlightCategory={highlightCategory}
+          selectableCategory={selectableCategory}
         />
 
         <RoadNetworkLayer />
-        <RouteLayer />
+        {showRoute && <RouteLayer />}
 
         {/* Selected Beacon & Hover Tooltip */}
         {selectedBuilding && (

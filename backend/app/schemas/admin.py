@@ -100,7 +100,7 @@ class RandomEventUpdate(BaseModel):
 class SandboxTestRequest(BaseModel):
     event_prompt: str
     preset_options: list[dict[str, Any]]
-    location_id: str | None = "loc_park_creek"
+    location_id: str | None = "loc_pine_restaurant"
     slot: str | None = "morning"
 
 class SandboxTestResponse(BaseModel):

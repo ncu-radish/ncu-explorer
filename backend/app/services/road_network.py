@@ -26,7 +26,7 @@ CAMPUS_OFFSET = (-535.8, 0.0, 344.54)
 Point = tuple[float, float, float]
 
 # 模擬器沿用的舊地點代碼 (campus_locations) -> 3D 地圖建築 id。
-# 沒有對應建築的地點（如後門美食街、百花川步道）不在表內，無法規劃路線。
+# 沒有對應建築的地點不在表內，無法規劃路線。
 LEGACY_LOCATION_TO_BUILDING: dict[str, str] = {
     "loc_mgt2": "bldg_mgmt_2",
     "loc_eng5": "bldg_eng_5",
@@ -36,6 +36,9 @@ LEGACY_LOCATION_TO_BUILDING: dict[str, str] = {
     "loc_yiren": "bldg_yireng",
     "loc_dorm_boy9": "bldg_dorm_b9a",
     "loc_dorm_girl14": "bldg_dorm_g14",
+    "loc_gym": "bldg_badminton",
+    "loc_night_street": "bldg_street_night",
+    "loc_backgate": "bldg_street_back",
     "loc_pine_restaurant": "bldg_res_core",
     "loc_bus_station": "bldg_bus_guard",
 }

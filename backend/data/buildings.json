@@ -860,9 +860,29 @@
   },
   {
     "id": "bldg_view_lake",
-    "name_zh": "中大胡",
+    "name_zh": "中大湖",
     "name_en": "NCU Lake",
     "category": "view",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_street_night",
+    "name_zh": "宵夜街",
+    "name_en": "Night Snack Street",
+    "category": "street",
+    "classroom_code": null,
+    "departments": [],
+    "alias": null,
+    "description": ""
+  },
+  {
+    "id": "bldg_street_back",
+    "name_zh": "後門美食街",
+    "name_en": "Back Gate Food Street",
+    "category": "street",
     "classroom_code": null,
     "departments": [],
     "alias": null,

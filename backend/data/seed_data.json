@@ -253,48 +253,6 @@
       "image_url": "/images/locations/night_street.jpg"
     },
     {
-      "id": "loc_park_creek",
-      "name": "百花川步道",
-      "category": "leisure",
-      "three_mesh_name": "mesh_park_creek",
-      "camera_pos": {
-        "pos": [
-          5.0,
-          20.0,
-          -10.0
-        ],
-        "target": [
-          5.0,
-          0.0,
-          -10.0
-        ]
-      },
-      "short_desc": "林蔭蓊鬱的浪漫水道，松鼠出沒與校園漫步的首選路徑。",
-      "full_content": "百花川貫穿中大校區，沿線綠樹成蔭，水流潺潺，兩側林木常有許多親人又敏捷的中大松鼠在枝頭躍動。",
-      "image_url": "/images/locations/park_creek.jpg"
-    },
-    {
-      "id": "loc_cathay_tree",
-      "name": "國泰大榕樹",
-      "category": "leisure",
-      "three_mesh_name": "mesh_cathay_tree",
-      "camera_pos": {
-        "pos": [
-          20.0,
-          25.0,
-          -5.0
-        ],
-        "target": [
-          20.0,
-          0.0,
-          -5.0
-        ]
-      },
-      "short_desc": "中央大學經典精神象徵，綠意盎然的大草坪中心標誌。",
-      "full_content": "廣闊的大草坪正中央聳立著巨大茂密的國泰樹，每逢晴朗午後，常有學生在此野餐、吉他彈唱與放風箏。",
-      "image_url": "/images/locations/cathay_tree.jpg"
-    },
-    {
       "id": "loc_bus_station",
       "name": "中大正門圓環警衛室",
       "category": "transport",
@@ -2660,7 +2618,7 @@
     {
       "info_type": "food",
       "title": "路易莎咖啡 中央大學門市",
-      "location_id": "loc_park_creek",
+      "location_id": "loc_pine_restaurant",
       "tags": [
         "下午茶",
         "校內",
@@ -2674,7 +2632,7 @@
     {
       "info_type": "food",
       "title": "小木屋鬆餅 中央大學店",
-      "location_id": "loc_park_creek",
+      "location_id": "loc_pine_restaurant",
       "tags": [
         "下午茶",
         "校內",
@@ -3060,7 +3018,7 @@
         "morning",
         "afternoon"
       ],
-      "cond_location": "loc_park_creek",
+      "cond_location": null,
       "cond_min_stamina": 0,
       "cond_max_stamina": 100,
       "event_prompt": "突發事件：你走在百花川步道上，樹上一隻身手敏捷的中大胖松鼠突然俯衝而下，盯上了你手上的早餐麵包！",
@@ -3283,7 +3241,7 @@
       "cond_slots": [
         "afternoon"
       ],
-      "cond_location": "loc_cathay_tree",
+      "cond_location": null,
       "cond_min_stamina": 0,
       "cond_max_stamina": 100,
       "event_prompt": "突發事件：你在大草坪國泰樹下散步沉思時，一顆飽滿巨大的中大松果正好從樹頂落下，精準砸中你的頭頂！",
@@ -3464,7 +3422,7 @@
       "cond_activity_title": null,
       "cond_prev_activity": null,
       "cond_prev_event_id": "evt_squirrel_attack",
-      "cond_location": "loc_park_creek",
+      "cond_location": null,
       "cond_min_stamina": 0,
       "cond_max_stamina": 100,
       "event_prompt": "突發事件：當你再度經過百花川步道時，上次偷襲你的那隻胖松鼠竟然帶了兩隻同夥在樹枝上居高臨下盯著你，似乎在謀劃新的搶劫作戰！",

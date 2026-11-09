@@ -9,6 +9,7 @@ class SimStartRequest(BaseModel):
     user_input: str
     department: str | None = None
     grade: int | None = None
+    dorm_id: str | None = None  # 玩家住的宿舍（buildings 的 dorm 建築 id）
 
 class ScheduleSlot(BaseModel):
     day: int  # 1~5 (週一至週五)
@@ -70,6 +71,14 @@ class SimTriggerActivityRequest(BaseModel):
     duration_minutes: int | None = None  # Flexible minutes e.g. 45, 90, 120
     custom_end_time: str | None = None  # e.g. '22:30'
     custom_title: str | None = None
+    location_id: str | None = None  # 玩家選擇的地點（午晚餐／運動活動需要）
+
+
+class MealOptionResponse(BaseModel):
+    id: str
+    name_zh: str
+    category: str | None = None
+    distance: float | None = None  # 從目前位置沿路網走過去的距離
 
 
 class SimTriggerActivityResponse(BaseModel):

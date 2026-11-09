@@ -54,7 +54,6 @@ const PRESET_LOCATIONS = [
   { id: "loc_dorm_boy9", name: "男九舍 / 學生宿舍" },
   { id: "loc_dorm_girl14", name: "女十四舍 / 學生宿舍" },
   { id: "loc_yiren", name: "依仁堂體育館與健身房" },
-  { id: "loc_park_creek", name: "百花川林蔭道與大草坪" },
   { id: "loc_library", name: "中大總圖書館與K書中心" },
 ];
 
@@ -427,7 +426,7 @@ function EventsContent() {
       const data = await adminApi.testSandbox({
         event_prompt: rePrompt || "突發狀況發生",
         preset_options: reOptions,
-        location_id: reCondLocation || selectedRandomEvent?.cond_location || "loc_park_creek",
+        location_id: reCondLocation || selectedRandomEvent?.cond_location || "loc_pine_restaurant",
       });
       setReSandboxStory(data.generated_story);
     } catch (err) {
