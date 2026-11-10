@@ -411,66 +411,183 @@ DEFAULT_CAMPUS_ACTIVITIES: list[dict[str, Any]] = [
     },
     {
         "id": "act_dorm_leisure",
-        "title": "宿舍休閒放鬆",
+        "title": "宿舍小憩與深度補眠",
         "category": "dorm_leisure",
         "trigger_type": "class_break",
         "trigger_timing": "下課空閒時間",
         "trigger_mode": "manual_choice",
         "location_id": "loc_dorm_girl14",
-        "location_name": "學生宿舍",
+        "location_name": "學生宿舍房內",
         "is_active": True,
         "weight": 15,
-        "event_prompt": "下課後迎來難得的空閒時間，這段時間沒有課程安排。你可以選擇回到宿舍享受愜意的個人時光，洗滌一天的疲勞。",
+        "event_prompt": "下課後迎來難得的空閒時間，回到宿舍的房間，床鋪正在召喚你。",
         "preset_options": [
             {
                 "option_key": "A",
-                "intent_hint": "回到宿舍吹著冷氣躺上床痛快補眠一小時，徹底恢復充沛元氣",
-                "effects": {"stamina": 30, "study": -5, "social": 0, "money": 0},
+                "intent_hint": "戴上眼罩深度補眠充電",
+                "effects": {"stamina": 25, "study": 0, "social": 0, "money": 0},
                 "marks_activity": True
             },
             {
                 "option_key": "B",
-                "intent_hint": "戴上耳機與室友開黑打一場英雄聯盟或手遊連線，笑聲不斷",
-                "effects": {"stamina": 10, "study": 0, "social": 15, "money": 0},
+                "intent_hint": "躺床上聽音樂放空放鬆",
+                "effects": {"stamina": 18, "study": 0, "social": 0, "money": 0},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_dorm_gaming",
+        "title": "手遊開黑 / 線上追劇",
+        "category": "dorm_leisure",
+        "trigger_type": "class_break",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_dorm_girl14",
+        "location_name": "學生宿舍書桌",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "回到宿舍，打開電腦與手機，今晚想和室友開黑，還是追追最新的影集？",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "與室友開黑打傳說對決",
+                "effects": {"stamina": 15, "study": 0, "social": 10, "money": 0},
                 "marks_activity": True
             },
             {
-                "option_key": "C",
-                "intent_hint": "洗衣服整理房間書桌，泡杯熱可可悠閒追最新一集動漫或影集",
-                "effects": {"stamina": 15, "study": 0, "social": 0, "money": -30},
+                "option_key": "B",
+                "intent_hint": "吃零食追最新熱門影集",
+                "effects": {"stamina": 15, "study": 0, "social": 5, "money": 0},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_dorm_chores",
+        "title": "洗衣服整理寢室環境",
+        "category": "dorm_leisure",
+        "trigger_type": "class_break",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "loc_dorm_girl14",
+        "location_name": "宿舍洗衣間 / 寢室",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "衣服堆了一籃，書桌也有點亂，是時候整理一下寢室環境了。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "排隊洗烘衣物、收拾書桌",
+                "effects": {"stamina": 10, "study": 5, "social": 5, "money": 0},
                 "marks_activity": True
             }
         ]
     },
     {
         "id": "act_campus_leisure",
-        "title": "校園設施與戶外休閒",
+        "title": "宵夜街 / 後門炭烤美食探訪",
         "category": "campus_leisure",
         "trigger_type": "free_time",
         "trigger_timing": "下課空閒時間",
         "trigger_mode": "manual_choice",
-        "location_id": "loc_yiren",
-        "location_name": "依仁堂與校園運動休閒設施",
+        "location_id": "bldg_street_night",
+        "location_name": "後門宵夜街",
         "is_active": True,
         "weight": 15,
-        "event_prompt": "下課或午後迎來一段空檔自由時間。校園微風徐徐，正是踏出教室，前往健身房、K書中心、圖書館或散步放空的大好時機。",
+        "event_prompt": "夜色漸濃，後門宵夜街的炭烤香氣飄了過來，要不要去探訪一下？",
         "preset_options": [
             {
                 "option_key": "A",
-                "intent_hint": "前往依仁堂健身房重量訓練，或到大草坪與環校道路慢跑揮灑汗水",
-                "effects": {"stamina": 15, "study": 0, "social": 5, "money": -20},
+                "intent_hint": "炭烤雞排配冰鎮奶茶",
+                "effects": {"stamina": 22, "study": 0, "social": 12, "money": -120},
                 "marks_activity": True
             },
             {
                 "option_key": "B",
-                "intent_hint": "前往中大總圖書館或地下K書中心找個靠窗座位靜心自習閱讀",
-                "effects": {"stamina": -5, "study": 25, "social": 0, "money": 0},
+                "intent_hint": "滷味鹹酥雞宵夜小聚",
+                "effects": {"stamina": 18, "study": 0, "social": 15, "money": -100},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_campus_gym",
+        "title": "依仁堂體育館揮灑汗水",
+        "category": "campus_leisure",
+        "trigger_type": "free_time",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "bldg_yireng",
+        "location_name": "依仁堂體育館 / 健身房",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "空檔時間想動一動，依仁堂的健身房與球場隨時歡迎你。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "重訓器材核心自主鍛鍊",
+                "effects": {"stamina": 12, "study": 0, "social": 8, "money": 0},
                 "marks_activity": True
             },
             {
-                "option_key": "C",
-                "intent_hint": "漫步百花川林蔭步道與中大湖畔，看黑天鵝優雅划水放空思緒",
-                "effects": {"stamina": 20, "study": 0, "social": 5, "money": 0},
+                "option_key": "B",
+                "intent_hint": "室內慢跑或打羽球交流",
+                "effects": {"stamina": 15, "study": 0, "social": 10, "money": 0},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_campus_library",
+        "title": "總圖書館 / K書中心沉浸充實",
+        "category": "campus_leisure",
+        "trigger_type": "free_time",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "bldg_lib_main",
+        "location_name": "總圖書館 / 舊圖K書中心",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "找個安靜的座位，把課業進度往前推一些。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "安靜閱覽區溫習課程講義",
+                "effects": {"stamina": 0, "study": 22, "social": 0, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "翻閱科技新知與課外讀物",
+                "effects": {"stamina": 0, "study": 15, "social": 5, "money": 0},
+                "marks_activity": True
+            }
+        ]
+    },
+    {
+        "id": "act_campus_lake",
+        "title": "中大湖夜景散步",
+        "category": "campus_leisure",
+        "trigger_type": "free_time",
+        "trigger_timing": "下課空閒時間",
+        "trigger_mode": "manual_choice",
+        "location_id": "bldg_view_lake",
+        "location_name": "中大湖畔",
+        "is_active": True,
+        "weight": 15,
+        "event_prompt": "晚風徐徐，中大湖畔的夜景很適合散步沉澱心情。",
+        "preset_options": [
+            {
+                "option_key": "A",
+                "intent_hint": "湖畔夜風散心放鬆",
+                "effects": {"stamina": 16, "study": 0, "social": 8, "money": 0},
+                "marks_activity": True
+            },
+            {
+                "option_key": "B",
+                "intent_hint": "大草坪看星空沉澱心靈",
+                "effects": {"stamina": 18, "study": 0, "social": 0, "money": 0},
                 "marks_activity": True
             }
         ]
@@ -499,32 +616,54 @@ DEFAULT_CAMPUS_ACTIVITIES: list[dict[str, Any]] = [
 ]
 
 # 程式邏輯會用到的活動：即使資料庫已有其他活動，缺少時也要補上
-REQUIRED_ACTIVITY_IDS = {"act_campus_sport"}
+REQUIRED_ACTIVITY_IDS = {
+    "act_campus_sport",
+    "act_dorm_gaming", "act_dorm_chores",
+    "act_campus_gym", "act_campus_library", "act_campus_lake",
+}
+# 舊版把整類活動塞在同一筆資料裡（A/B/C 三個方案）；偵測到仍是舊內容才改寫，不會蓋掉管理員改過的資料
+LEGACY_ACTIVITY_TITLES = {"act_dorm_leisure": "宿舍休閒放鬆", "act_campus_leisure": "校園設施與戶外休閒"}
+
+
+def _activity_from_default(item: dict[str, Any]) -> CampusActivity:
+    return CampusActivity(
+        id=item["id"],
+        title=item["title"],
+        category=item["category"],
+        trigger_type=item["trigger_type"],
+        trigger_timing=item["trigger_timing"],
+        trigger_mode=item["trigger_mode"],
+        location_id=item.get("location_id"),
+        location_name=item.get("location_name"),
+        is_active=item["is_active"],
+        weight=item["weight"],
+        event_prompt=item["event_prompt"],
+        preset_options=item["preset_options"],
+    )
 
 
 def ensure_activities_seeded(db: Session):
     Base.metadata.create_all(bind=engine)
     count = db.query(CampusActivity).count()
-    existing_ids = {a.id for a in db.query(CampusActivity.id).all()} if count else set()
-    if count == 0 or REQUIRED_ACTIVITY_IDS - existing_ids:
-        for item in DEFAULT_CAMPUS_ACTIVITIES:
-            if count != 0 and (item["id"] not in REQUIRED_ACTIVITY_IDS or item["id"] in existing_ids):
-                continue
-            act = CampusActivity(
-                id=item["id"],
-                title=item["title"],
-                category=item["category"],
-                trigger_type=item["trigger_type"],
-                trigger_timing=item["trigger_timing"],
-                trigger_mode=item["trigger_mode"],
-                location_id=item.get("location_id"),
-                location_name=item.get("location_name"),
-                is_active=item["is_active"],
-                weight=item["weight"],
-                event_prompt=item["event_prompt"],
-                preset_options=item["preset_options"],
-            )
-            db.add(act)
+    existing = {a.id: a for a in db.query(CampusActivity).all()} if count else {}
+    changed = False
+    for item in DEFAULT_CAMPUS_ACTIVITIES:
+        current = existing.get(item["id"])
+        if current is None:
+            # 全新資料庫補齊全部預設；已有資料時只補程式邏輯需要的活動
+            if count == 0 or item["id"] in REQUIRED_ACTIVITY_IDS:
+                db.add(_activity_from_default(item))
+                changed = True
+        elif LEGACY_ACTIVITY_TITLES.get(item["id"]) == current.title:
+            # 舊版把整類活動擠在同一筆（A/B/C 三個方案），升級成拆開後的版本
+            fresh = _activity_from_default(item)
+            for col in (
+                "title", "category", "trigger_type", "trigger_timing", "trigger_mode",
+                "location_id", "location_name", "is_active", "weight", "event_prompt", "preset_options",
+            ):
+                setattr(current, col, getattr(fresh, col))
+            changed = True
+    if changed:
         db.commit()
 
 @router.get("/activities", response_model=list[CampusActivityDTO])

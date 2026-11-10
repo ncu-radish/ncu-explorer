@@ -13,7 +13,7 @@ import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
 import { PrePlanModal } from "@/components/simulator/PrePlanModal";
-import { adminApi, exploreApi, CampusActivity } from "@/lib/api";
+import { simApi, exploreApi, PlayerActivity } from "@/lib/api";
 import { useMapStore, routeWalkSeconds, WALK_METERS_PER_MIN } from "@/store/useMapStore";
 
 // Dynamic import for 3D Canvas Scene
@@ -75,7 +75,7 @@ export default function SimulatorPage() {
   const [isTimeFlowing, setIsTimeFlowing] = useState(false);
 
   // Activity Database State
-  const [activities, setActivities] = useState<CampusActivity[]>([]);
+  const [activities, setActivities] = useState<PlayerActivity[]>([]);
 
   // Modal States
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -100,7 +100,7 @@ export default function SimulatorPage() {
 
   // Load backend activities
   useEffect(() => {
-    adminApi.getActivities().then((res) => {
+    simApi.getActivities().then((res) => {
       if (res && res.length > 0) {
         setActivities(res);
       }

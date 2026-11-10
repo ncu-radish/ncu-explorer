@@ -13,6 +13,7 @@ from app.schemas.llm import TurnGenerationSchema
 from app.schemas.sim import (
     MealOptionResponse,
     ScheduleSlot,
+    SimActivityResponse,
     SimNextTurnRequest,
     SimNextTurnResponse,
     SimPrePlanRequest,
@@ -336,6 +337,32 @@ def schedule_sort_key(s: dict) -> tuple[int, int]:
         return (d, h * 60 + m)
     except Exception:
         return (d, 0)
+
+@router.get("/activities", response_model=list[SimActivityResponse])
+def list_player_activities(db: Session = Depends(get_db)):
+    """玩家可選的校園活動（不需管理員權限）。每筆活動就是活動視窗裡的一張卡片。"""
+    ensure_activities_seeded(db)
+    rows = db.query(CampusActivity).filter(CampusActivity.is_active == True).all()  # noqa: E712
+    return [
+        SimActivityResponse(
+            id=a.id,
+            title=a.title,
+            category=a.category,
+            location_id=a.location_id,
+            location_name=a.location_name,
+            preset_options=[
+                {
+                    "option_key": o.get("option_key"),
+                    "intent_hint": o.get("intent_hint"),
+                    "effects": o.get("effects") or {},
+                }
+                for o in (a.preset_options or [])
+                if isinstance(o, dict)
+            ],
+        )
+        for a in rows
+    ]
+
 
 @router.get("/session/{session_id}", response_model=SimSessionResponse)
 def get_session_state(session_id: str, db: Session = Depends(get_db)):

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Utensils, Home, Compass, Clock, Check, X, Sparkles, MapPin, Coffee, Moon } from "lucide-react";
-import { Building, CampusActivity, MealOption, exploreApi, simApi } from "@/lib/api";
+import { Building, PlayerActivity, MealOption, exploreApi, simApi } from "@/lib/api";
 
 const SPORT_ACTIVITY_ID = "act_campus_sport";
 
@@ -25,7 +25,7 @@ interface ActivitySelectionModalProps {
   onClose: () => void;
   category: "lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | "night_leisure" | string;
   sessionId?: string | null;
-  activities: CampusActivity[];
+  activities: PlayerActivity[];
   maxAvailableHours?: number;
   currentStartTime?: string;
   onConfirm: (
@@ -63,7 +63,8 @@ export function ActivitySelectionModal({
   onConfirm,
   isLoading = false,
 }: ActivitySelectionModalProps) {
-  const [selectedActId, setSelectedActId] = useState<string>("");
+  // 以清單位置（而不是 id）辨識選中的卡片：備援清單裡多張卡片共用同一個 activity id
+  const [selectedIdx, setSelectedIdx] = useState<number>(0);
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>("A");
   const [nightTab, setNightTab] = useState<"dorm" | "campus">("dorm");
   const effectiveMaxHours = Math.max(1, Math.min(4, maxAvailableHours));
@@ -104,10 +105,26 @@ export function ActivitySelectionModal({
   useEffect(() => {
     if (!isOpen) return;
     setSelectedSportId("");
+    setSelectedIdx(0);
+    setSelectedOptionKey("A");
     exploreApi.getBuildings({ category: "sport" }).then(setSportBuildings).catch(() => setSportBuildings([]));
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // 把每小時的數值效果轉成「+25體力, -$65 /小時」這類文字
+  const formatEffects = (effects: Record<string, number> | string | undefined): string => {
+    if (!effects) return "";
+    if (typeof effects === "string") return effects;
+    const labels: [string, string][] = [["stamina", "體力"], ["study", "學業"], ["social", "社交"]];
+    const parts: string[] = [];
+    for (const [k, label] of labels) {
+      const v = effects[k];
+      if (v) parts.push(`${v > 0 ? "+" : ""}${v}${label}`);
+    }
+    if (effects.money) parts.push(`${effects.money > 0 ? "+" : "-"}$${Math.abs(effects.money)}`);
+    return parts.length ? `${parts.join(", ")} /小時` : "";
+  };
 
   const adjustMinutes = (delta: number) => {
     const maxMins = effectiveMaxHours * 60;
@@ -119,80 +136,6 @@ export function ActivitySelectionModal({
     : category;
 
   const categoryActivities = activities.filter((act) => act.category === targetCategory);
-
-  const dormItems = [
-    {
-      id: "act_dorm_leisure",
-      title: "宿舍小憩與深度補眠",
-      location_name: "學生宿舍房內",
-      options: [
-        { key: "A", name: "戴上眼罩深度補眠充電", effects: "+25體力/小時" },
-        { key: "B", name: "躺床上聽音樂放空放鬆", effects: "+18體力/小時" },
-      ],
-    },
-    {
-      id: "act_dorm_leisure",
-      title: "手遊開黑 / 線上追劇",
-      location_name: "學生宿舍書桌",
-      options: [
-        { key: "A", name: "與室友開黑打傳說對決", effects: "+15體力, +10社交/小時" },
-        { key: "B", name: "吃零食追最新熱門影集", effects: "+15體力, +5社交/小時" },
-      ],
-    },
-    {
-      id: "act_dorm_leisure",
-      title: "洗衣服整理寢室環境",
-      location_name: "宿舍洗衣間 / 寢室",
-      options: [
-        { key: "A", name: "排隊洗烘衣物、收拾書桌", effects: "+10學術, +5社交/小時" },
-      ],
-    },
-  ];
-
-  const campusItems = [
-    {
-      id: SPORT_ACTIVITY_ID,
-      title: "運動",
-      location_name: "在 3D 地圖選擇運動場館",
-      options: [{ key: "A", name: "運動", effects: "+15體力, +5社交/小時" }],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "宵夜街 / 後門炭烤美食探訪",
-      location_name: "後門宵夜街",
-      options: [
-        { key: "A", name: "炭烤雞排配冰鎮奶茶", effects: "+22體力, +12社交/小時, -$120" },
-        { key: "B", name: "滷味鹹酥雞宵夜小聚", effects: "+18體力, +15社交/小時, -$100" },
-      ],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "依仁堂體育館揮灑汗水",
-      location_name: "依仁堂體育館 / 健身房",
-      options: [
-        { key: "A", name: "重訓器材核心自主鍛鍊", effects: "+12體力, +8社交/小時" },
-        { key: "B", name: "室內慢跑或打羽球交流", effects: "+15體力, +10社交/小時" },
-      ],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "總圖書館 / K書中心沉浸充實",
-      location_name: "總圖書館 / 舊圖K書中心",
-      options: [
-        { key: "A", name: "安靜閱覽區溫習課程講義", effects: "+22學術/小時" },
-        { key: "B", name: "翻閱科技新知與課外讀物", effects: "+15學術, +5社交/小時" },
-      ],
-    },
-    {
-      id: "act_campus_leisure",
-      title: "中大湖夜景散步",
-      location_name: "中大湖畔",
-      options: [
-        { key: "A", name: "湖畔夜風散心放鬆", effects: "+16體力, +8社交/小時" },
-        { key: "B", name: "大草坪看星空沉澱心靈", effects: "+18體力/小時" },
-      ],
-    },
-  ];
 
   const lunchItems = [
     {
@@ -226,12 +169,9 @@ export function ActivitySelectionModal({
     },
   ];
 
-  let fallbackList = lunchItems;
-  if (category === "dorm_leisure") fallbackList = dormItems;
-  if (category === "campus_leisure") fallbackList = campusItems;
-  if (category === "night_leisure") fallbackList = nightTab === "dorm" ? dormItems : campusItems;
-
-  const activeList = categoryActivities.length > 0 ? categoryActivities : fallbackList;
+  // 休閒活動一律來自後端（每張卡片的效果就是實際套用的效果）；只有午餐沒有清單時才用備援
+  const activeList: any[] =
+    categoryActivities.length > 0 ? categoryActivities : category === "lunch" ? lunchItems : [];
 
   const getHeaderInfo = () => {
     if (category === "lunch") {
@@ -282,7 +222,7 @@ export function ActivitySelectionModal({
   const header = getHeaderInfo();
 
   const effectiveMealId = selectedMealId || mealOptions[0]?.id || "";
-  const selectedItem = activeList.find((a: any) => a.id === selectedActId) || activeList[0];
+  const selectedItem = activeList[selectedIdx] || activeList[0];
   const isSportSelected =
     !isMealMode && targetCategory === "campus_leisure" && selectedItem?.id === SPORT_ACTIVITY_ID;
   const confirmBlocked = isMealMode ? !effectiveMealId : isSportSelected && !selectedSportId;
@@ -298,7 +238,7 @@ export function ActivitySelectionModal({
             activities.find((a) => a.category === category)?.id ||
             (category === "dinner" ? "act_dinner" : "act_lunch"),
         }
-      : activeList.find((a) => a.id === selectedActId) || activeList[0];
+      : activeList[selectedIdx] || activeList[0];
     const locationId = isMealMode
       ? effectiveMealId || undefined
       : isSportSelected
@@ -368,7 +308,7 @@ export function ActivitySelectionModal({
                 type="button"
                 onClick={() => {
                   setNightTab("dorm");
-                  setSelectedActId("");
+                  setSelectedIdx(0);
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   nightTab === "dorm"
@@ -383,7 +323,7 @@ export function ActivitySelectionModal({
                 type="button"
                 onClick={() => {
                   setNightTab("campus");
-                  setSelectedActId("");
+                  setSelectedIdx(0);
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   nightTab === "campus"
@@ -553,15 +493,20 @@ export function ActivitySelectionModal({
               選擇活動地點與具體項目：
             </label>
             <div className="space-y-3">
+              {activeList.length === 0 && (
+                <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs text-stone-600">
+                  目前沒有可選的活動，請稍後再試。
+                </p>
+              )}
               {activeList.map((item: any, idx: number) => {
-                const isSelected = (selectedActId ? item.id === selectedActId : idx === 0);
+                const isSelected = (activeList[selectedIdx] ? idx === selectedIdx : idx === 0);
                 const itemOptions = item.preset_options || item.options || [];
 
                 return (
                   <div
                     key={item.id + idx}
                     onClick={() => {
-                      setSelectedActId(item.id);
+                      setSelectedIdx(idx);
                       setSelectedOptionKey("A");
                     }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
@@ -618,9 +563,9 @@ export function ActivitySelectionModal({
                                 </span>
                                 <span>{optText}</span>
                               </div>
-                              {opt.effects && typeof opt.effects === "string" ? (
+                              {formatEffects(opt.effects) ? (
                                 <span className="text-xs font-mono text-stone-600 font-medium">
-                                  {opt.effects}
+                                  {formatEffects(opt.effects)}
                                 </span>
                               ) : null}
                             </button>

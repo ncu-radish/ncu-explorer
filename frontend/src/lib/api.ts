@@ -42,6 +42,15 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   return res.json() as Promise<T>;
 }
 
+export interface PlayerActivity {
+  id: string;
+  title: string;
+  category: string;
+  location_id?: string | null;
+  location_name?: string | null;
+  preset_options: { option_key: string; intent_hint: string; effects: Record<string, number> }[];
+}
+
 // Simulator API
 export const simApi = {
   start: (userInput: string, department?: string, grade?: number, dormId?: string) =>
@@ -61,6 +70,8 @@ export const simApi = {
     }),
   getSession: (sessionId: string) =>
     fetchApi<any>(`/sim/session/${encodeURIComponent(sessionId)}`),
+  // 玩家可選的校園活動（公開，不需管理員權限）；每筆就是活動視窗裡的一張卡片
+  getActivities: () => fetchApi<PlayerActivity[]>("/sim/activities"),
   getMealOptions: (sessionId: string, category: "lunch" | "dinner") => {
     const query = new URLSearchParams({ session_id: sessionId, category });
     return fetchApi<MealOption[]>(`/sim/meal-options?${query.toString()}`);
