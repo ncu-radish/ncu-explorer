@@ -1,5 +1,7 @@
 """C1／C2：社團與課程不衝突、系學會配對正確。"""
 
+import asyncio
+
 import pytest
 
 from app.schemas.llm import OnboardingParseSchema
@@ -114,3 +116,44 @@ def test_empty_days_still_get_daily_checkpoints():
     schedule = sim_engine.build_weekly_schedule(None, profile)
     for day in range(1, 6):
         assert any(s.day == day for s in schedule), f"週{day} 沒有任何行程"
+
+
+# ---------------------------------------------------------------- 沒提社團就不參加
+def test_no_club_request_means_no_club_slots():
+    profile = OnboardingParseSchema(department="資訊管理學系", grade=1)
+    schedule = sim_engine.build_weekly_schedule(None, profile)
+    assert not any(s.type == "club" for s in schedule)
+
+
+def test_parse_onboarding_without_club_mention_has_no_clubs(monkeypatch):
+    import app.services.sim_engine as engine_module
+
+    async def llm_down(**kwargs):
+        return kwargs["fallback_instance"]
+
+    monkeypatch.setattr(engine_module, "call_ollama_structured", llm_down)
+    parsed = asyncio.run(sim_engine.parse_onboarding("我想體驗大學生活", "m", dept_hint="資訊管理學系", grade_hint=1))
+    assert parsed.clubs == []
+    assert not any(s.type == "club" for s in sim_engine.build_weekly_schedule(None, parsed))
+
+
+def test_clubs_invented_by_llm_are_dropped(monkeypatch):
+    import app.services.sim_engine as engine_module
+
+    async def llm_hallucinates(**kwargs):
+        return OnboardingParseSchema(department="資訊管理學系", grade=1, clubs=["熱門舞蹈社", "吉他社"], club="棋藝社")
+
+    monkeypatch.setattr(engine_module, "call_ollama_structured", llm_hallucinates)
+    parsed = asyncio.run(sim_engine.parse_onboarding("我想吉他社", "m", dept_hint="資訊管理學系", grade_hint=1))
+    assert parsed.clubs == ["吉他社"] and parsed.club is None
+
+
+def test_alias_and_dept_club_mentions_are_kept(monkeypatch):
+    import app.services.sim_engine as engine_module
+
+    async def llm_down(**kwargs):
+        return kwargs["fallback_instance"]
+
+    monkeypatch.setattr(engine_module, "call_ollama_structured", llm_down)
+    parsed = asyncio.run(sim_engine.parse_onboarding("我想加入熱舞和系學會", "m", dept_hint="資訊管理學系", grade_hint=1))
+    assert set(parsed.clubs) == {"熱門舞蹈社", "系學會"}

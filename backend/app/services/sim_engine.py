@@ -484,6 +484,19 @@ def commute_penalty(
     return {"stamina": stats["stamina"] - before}
 
 
+def club_mentioned(club: str, user_input: str) -> bool:
+    """社團名稱（或其別名、「系學會」）是否真的出現在使用者的輸入裡。"""
+    name = (club or "").strip()
+    text = user_input or ""
+    if not name or not text:
+        return False
+    if name in text:
+        return True
+    if name in ("系學會", "系會"):
+        return "系學會" in text or "系會" in text
+    return any(alias in text and target == name for alias, target in COMMON_CLUB_ALIASES.items())
+
+
 def pick_title(session: GameSession) -> str:
     """依結算數值、缺課與行程判定稱號（由嚴格到寬鬆）。"""
     stats = session.stats or {}
@@ -762,7 +775,7 @@ class SimEngine:
                 raw_candidates.append(single_c)
 
         if not raw_candidates:
-            raw_candidates = ["熱門舞蹈社", "系學會"]
+            return {d: [] for d in range(1, 6)}  # 沒有要求就不參加任何社團
 
         resolved_clubs: list[dict[str, Any]] = []
         seen_ids: set[Any] = set()
@@ -910,7 +923,7 @@ class SimEngine:
             semester_term=1,
             secondary_type=sec_type,
             secondary_department=sec_dept,
-            clubs=["熱舞社", "系學會"],
+            clubs=[],  # 使用者沒提到社團就不參加任何社團
             interest_query="校園生活"
         )
 
@@ -939,6 +952,11 @@ class SimEngine:
                 parsed.secondary_type = sec_type
             if sec_dept and not parsed.secondary_department:
                 parsed.secondary_department = sec_dept
+
+            # 只保留使用者真的提過的社團，避免小模型憑空補上社團
+            parsed.clubs = [c for c in parsed.clubs if club_mentioned(c, user_input)]
+            if parsed.club and not club_mentioned(parsed.club, user_input):
+                parsed.club = None
 
             # 啟發式社團關鍵字萃取補強 (當 LLM 未成功萃取使用者輸入時)
             if not parsed.clubs:
