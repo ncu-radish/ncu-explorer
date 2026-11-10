@@ -82,6 +82,8 @@ export default function SimulatorPage() {
   const [activityCategory, setActivityCategory] = useState<"lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | "night_leisure">("lunch");
 
   const [prePlanModalOpen, setPrePlanModalOpen] = useState(false);
+  // 任何彈窗開啟時先隱藏地圖上的建築標籤，避免標籤浮在彈窗上遮住選項
+  const anyDialogOpen = activityModalOpen || prePlanModalOpen || isGameOver || (!sessionId && !isRestoring);
   const [prePlanTargetDay, setPrePlanTargetDay] = useState<number>(2);
 
   // 重新整理後還原上一局（沒有存檔或存檔失效時維持開局畫面）
@@ -576,6 +578,7 @@ export default function SimulatorPage() {
               focusedLocationId={focusedLoc}
               onSelectBuilding={(id) => setFocusedLoc(id)}
               interactive={true}
+              showLabels={!anyDialogOpen}
             />
           </div>
 
