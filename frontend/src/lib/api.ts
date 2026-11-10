@@ -29,7 +29,15 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     if (res.status === 401 && typeof window !== "undefined" && endpoint.startsWith("/admin")) {
       localStorage.removeItem("ncu_admin_token");
     }
-    throw new Error(`API Error [${res.status}]: ${errorText || res.statusText}`);
+    // FastAPI 的錯誤格式是 {"detail": "..."}；能解析就只顯示人看得懂的那句
+    let detail = errorText || res.statusText;
+    try {
+      const parsed = JSON.parse(errorText);
+      if (typeof parsed?.detail === "string") detail = parsed.detail;
+    } catch {
+      /* 不是 JSON，沿用原文 */
+    }
+    throw new Error(`API Error [${res.status}]: ${detail}`);
   }
   return res.json() as Promise<T>;
 }
@@ -51,6 +59,8 @@ export const simApi = {
       method: "POST",
       body: JSON.stringify({ session_id: sessionId, option_key: optionKey }),
     }),
+  getSession: (sessionId: string) =>
+    fetchApi<any>(`/sim/session/${encodeURIComponent(sessionId)}`),
   getMealOptions: (sessionId: string, category: "lunch" | "dinner") => {
     const query = new URLSearchParams({ session_id: sessionId, category });
     return fetchApi<MealOption[]>(`/sim/meal-options?${query.toString()}`);

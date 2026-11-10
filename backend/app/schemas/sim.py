@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.llm import TurnGenerationSchema
 
@@ -48,7 +48,7 @@ class SimStartResponse(BaseModel):
 
 class SimNextTurnRequest(BaseModel):
     session_id: str
-    option_key: str  # A, B, or C
+    option_key: str = Field(pattern=r"^[A-C]$")  # A, B, or C
 
 class SimNextTurnResponse(BaseModel):
     session_id: str
@@ -62,12 +62,14 @@ class SimNextTurnResponse(BaseModel):
     current_location_id: str | None = None
     current_location_name: str | None = None
     weekly_schedule: list[ScheduleSlot] | None = None
+    ending: str | None = None  # 提前結束的原因，例如 "faint"（體力歸零昏倒）
+    event_outcome: str | None = None  # 剛處理完突發事件時的結果說明，前端可提示「事件已處理，開始本時段」
 
 
 class SimTriggerActivityRequest(BaseModel):
     session_id: str
     activity_id: str  # e.g., act_lunch, act_breakfast, act_dorm_leisure, act_campus_leisure
-    option_key: str = "A"  # A, B, or C
+    option_key: str = Field(default="A", pattern=r"^[A-C]$")  # A, B, or C
     duration_hours: float = 1.0  # Flexible hours e.g. 1.5, 2.0
     duration_minutes: int | None = None  # Flexible minutes e.g. 45, 90, 120
     custom_end_time: str | None = None  # e.g. '22:30'
@@ -95,16 +97,17 @@ class SimTriggerActivityResponse(BaseModel):
     delta_stats: dict[str, int]
     story: TurnGenerationSchema | None = None
     is_game_over: bool = False
+    ending: str | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None
 
 
 class SimPrePlanRequest(BaseModel):
     session_id: str
-    target_day: int
+    target_day: int = Field(ge=2, le=5)  # 明天（週二~週五）
     slots: list[dict[str, Any]] = []
-    sleep_time: str | None = "22:00"
-    alarm_time: str | None = "07:30"
+    sleep_time: str | None = Field(default="22:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    alarm_time: str | None = Field(default="07:30", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 class SimPrePlanResponse(BaseModel):
@@ -132,3 +135,18 @@ class SimSummaryResponse(BaseModel):
     visited_locations: list[dict[str, Any]]
     enrolled_courses: list[dict[str, Any]]
     total_credits: float | None = None
+
+
+class SimSessionResponse(BaseModel):
+    session_id: str
+    player_profile: dict[str, Any]
+    weekly_schedule: list[ScheduleSlot]
+    current_turn: int
+    current_time: str | None = None
+    current_day: int | None = None
+    stats: dict[str, int]
+    story: TurnGenerationSchema | None = None
+    is_game_over: bool = False
+    ending: str | None = None
+    current_location_id: str | None = None
+    current_location_name: str | None = None

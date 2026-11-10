@@ -59,7 +59,7 @@
      2. LLM 解析意圖 ➔ 產生專屬一週課表              │    ├─ 系所四年必選修課程地圖
         (SQL 撈必修 + Vector DB 撈興趣選修)          │    └─ 課程 vs. 課程 / 系所 vs. 系所比較
                  │                                   │
-     3. 進入一週回合制循環 (週一早 ~ 週日晚，共21回合)├── 模組 2：校園生活百科
+     3. 進入一週回合制循環 (週一早 ~ 週五晚，依課表約 30~45 回合；實作未含週末)├── 模組 2：校園生活百科
         ├─ 後端依時段讀取「固定課程/社團/自由時間」  │    ├─ 社團與系學會圖鑑
         ├─ 條件過濾並依權重隨機抽取「預設突發事件」  │    ├─ 宿舍生活指南
         ├─ 撈取該館舍之「飲食/交通/環境背景碎片」    │    └─ 飲食(後門/宵夜街/學餐)與交通指南
@@ -184,7 +184,7 @@
 | `session_id` | VARCHAR(36) | PK | UUID 字串 |
 | `player_profile` | JSON | NOT NULL | 解析後之玩家設定 `{"department": "資訊管理學系", "grade": 1, "clubs": ["熱舞社"], "interests": ["電影"]}` |
 | `weekly_schedule` | JSON | NOT NULL | 排定之一週 21 個時段行程表（綁定 `course_id`、`club_id` 或 `"free"`） |
-| `current_turn` | INT | DEFAULT 0 | 當前進度索引（`0` ~ `20`，對應週一早至週日晚） |
+| `current_turn` | INT | DEFAULT 0 | 當前進度索引（`0` ~ 課表長度，對應週一早至週五晚；等於課表長度即結束） |
 | `stats` | JSON | NOT NULL | 玩家四維數值 `{"stamina": 80, "study": 50, "social": 50, "money": 1500}` |
 | `visited_locs` | JSON | NOT NULL | 累積造訪過的 `location_id` 陣列（供結算時連動 3D 地圖） |
 | `triggered_evts` | JSON | NOT NULL | 本局已觸發過的 `event_id` 陣列（避免同一週重複抽中相同突發事件） |
@@ -376,7 +376,7 @@ passage: 【開課系所】{department} 【課程名稱】{course_name} 【必�
 | --- | --- | --- |
 | **模擬遊戲** | `POST /api/sim/start` | 接收玩家自然語言志向，由 LLM 解析並結合 SQL + RAG 排定一週 21 時段課表，建立 Session。 |
 | **模擬遊戲** | `POST /api/sim/next-turn` | 傳入 `session_id` 與上一回合選項 `A/B/C`，結算數值、判定突發事件，回傳下一時段劇情與選項 JSON。 |
-| **模擬遊戲** | `POST /api/sim/summary` | 第 21 回合結束後呼叫，計算新鮮人稱號並生成一週回顧週記與推薦課程/館舍連結。 |
+| **模擬遊戲** | `POST /api/sim/summary` | 遊戲結束（走完課表或體力歸零昏倒）後呼叫，計算新鮮人稱號並生成一週回顧週記與推薦課程/館舍連結。 |
 | **課程探索** | `GET /api/courses/search` | 一般 SQL 多條件篩選查詢（支援系所、年級、必選修、星期節次、關鍵字與分頁）。 |
 | **課程探索** | `POST /api/courses/ai-query` | 接收自然語言找課需求，執行 FastEmbed + Qdrant 混合檢索，回傳 AI 顧問導讀與推薦課程列表。 |
 | **課程探索** | `GET /api/courses/roadmap/{dept}` | 取得指定系所大一上至大四下共 8 學期必選修課程地圖，以及 AI 系所學習脈絡摘要。 |

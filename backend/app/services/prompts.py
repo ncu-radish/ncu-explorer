@@ -11,7 +11,7 @@ ONBOARDING_PROMPT_TEMPLATE = """
 - 若使用者提及「雙主修」或「雙修」某系（例如：雙主修資工、雙修電機），請將 secondary_type 設為 "雙主修"，secondary_department 設為該目標系所全名（如：資訊工程學系）。
 - 若使用者提及「輔系」或「輔修」某系（例如：輔系財金、輔修企管），請將 secondary_type 設為 "輔系"，secondary_department 設為該目標系所全名（如：財務金融學系）。
 - 若未提及雙主修或輔系，secondary_type 與 secondary_department 設為 null。
-- 社團清單請萃取其中想參加的社團名稱。
+- 社團清單請萃取其中想參加的社團名稱；使用者沒有提到任何社團時，clubs 必須是空清單，不要自行推薦或補上社團。
 - interest_query 請濃縮為 2~10 字的修課興趣關鍵字（例如：人工智慧、前端開發、投資理財）。
 """
 

@@ -10,12 +10,12 @@ function barTone(ratio: number) {
   return "bg-rose-500";
 }
 
-export function StatsBar({ stats }: { stats: Stats }) {
+export function StatsBar({ stats, moneyMax = 1500 }: { stats: Stats; moneyMax?: number }) {
   const items = [
     { label: "體力", value: stats.stamina, max: 100, unit: "%", icon: Activity, iconBg: "bg-rose-50 text-rose-600" },
     { label: "學業", value: stats.study, max: 100, unit: "分", icon: BookOpen, iconBg: "bg-violet-50 text-violet-600" },
     { label: "社交", value: stats.social, max: 100, unit: "點", icon: Users, iconBg: "bg-purple-50 text-purple-600" },
-    { label: "生活費", value: stats.money, max: 3000, unit: "元", icon: Coins, iconBg: "bg-amber-50 text-amber-600" },
+    { label: "生活費", value: stats.money, max: Math.max(moneyMax, stats.money), unit: "元", icon: Coins, iconBg: "bg-amber-50 text-amber-600" },
   ];
 
   return (

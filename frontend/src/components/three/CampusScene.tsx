@@ -351,12 +351,29 @@ function RouteLayer() {
     return { points: pts, cumulative: cum, total: cum[cum.length - 1] ?? 0 };
   }, [route]);
 
+  // One-shot routes (simulator commute) start from zero and remove themselves on arrival
+  const startRef = useRef<number | null>(null);
+  useEffect(() => {
+    startRef.current = null;
+  }, [route]);
+
   useFrame((state) => {
     const marker = markerRef.current;
     if (!marker || points.length < 2 || total <= 0) return;
     const pause = 0.8; // seconds to rest at the destination
     const duration = total / WALK_SPEED;
-    const t = state.clock.getElapsedTime() % (duration + pause);
+    const now = state.clock.getElapsedTime();
+    let t: number;
+    if (route?.once) {
+      if (startRef.current === null) startRef.current = now;
+      t = now - startRef.current;
+      if (t >= duration + pause) {
+        useMapStore.getState().setRoute(null);
+        return;
+      }
+    } else {
+      t = now % (duration + pause);
+    }
     const dist = Math.min(t / duration, 1) * total;
     let i = 1;
     while (i < cumulative.length - 1 && cumulative[i] < dist) i++;

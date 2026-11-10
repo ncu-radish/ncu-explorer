@@ -16,6 +16,8 @@ export interface MapRoute {
   toId: string;
   distance: number;
   path: [number, number, number][];
+  /** true = walk the route once, then remove it (simulator commute). */
+  once?: boolean;
 }
 
 interface MapState {

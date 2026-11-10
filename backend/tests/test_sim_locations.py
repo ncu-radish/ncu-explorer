@@ -17,16 +17,15 @@ needs_assets = pytest.mark.skipif(
 )
 
 
-@pytest.fixture()
-def session_id():
+def _create_session(second_slot_type: str, second_slot_title: str):
     sid = str(uuid.uuid4())
     db = SessionLocal()
     ensure_buildings_seeded(db)
     schedule = [
         {"day": 1, "slot": "10:00", "title": "課", "type": "course", "location_id": "bldg_mgmt_2",
          "start_time": "10:00", "end_time": "12:00"},
-        {"day": 1, "slot": "12:00", "title": "午餐", "type": "lunch_prompt", "location_id": "loc_pine_restaurant",
-         "start_time": "12:00", "end_time": "13:00"},
+        {"day": 1, "slot": "12:00", "title": second_slot_title, "type": second_slot_type,
+         "location_id": "loc_pine_restaurant", "start_time": "12:00", "end_time": "13:00"},
     ]
     db.add(GameSession(
         session_id=sid,
@@ -40,11 +39,30 @@ def session_id():
     ))
     db.commit()
     db.close()
-    yield sid
+    return sid
+
+
+def _delete_session(sid: str):
     db = SessionLocal()
     db.query(GameSession).filter(GameSession.session_id == sid).delete()
     db.commit()
     db.close()
+
+
+@pytest.fixture()
+def session_id():
+    """停在午餐提示（lunch_prompt）的 session。"""
+    sid = _create_session("lunch_prompt", "午餐")
+    yield sid
+    _delete_session(sid)
+
+
+@pytest.fixture()
+def leisure_session_id():
+    """停在課餘空閒（leisure_prompt）的 session，可進行校園休閒／運動。"""
+    sid = _create_session("leisure_prompt", "課餘空閒")
+    yield sid
+    _delete_session(sid)
 
 
 @needs_assets
@@ -64,8 +82,8 @@ def test_meal_options_rejects_bad_category(session_id):
 
 
 @needs_assets
-def test_sport_activity_requires_sport_building(session_id):
-    base = {"session_id": session_id, "activity_id": "act_campus_sport", "option_key": "A", "duration_hours": 1}
+def test_sport_activity_requires_sport_building(leisure_session_id):
+    base = {"session_id": leisure_session_id, "activity_id": "act_campus_sport", "option_key": "A", "duration_hours": 1}
     bad = client.post("/api/sim/trigger-activity", json={**base, "location_id": "bldg_mgmt_2"})
     assert bad.status_code == 400
     ok = client.post("/api/sim/trigger-activity", json={**base, "location_id": "bldg_badminton"})
@@ -94,12 +112,12 @@ def test_walking_minutes_rounds_up():
 
 
 @needs_assets
-def test_trigger_activity_includes_walking_time(session_id):
+def test_trigger_activity_includes_walking_time(leisure_session_id):
     from app.api.sim import travel_minutes_between
 
     walk = travel_minutes_between("bldg_mgmt_2", "bldg_badminton")
     assert walk > 0
-    base = {"session_id": session_id, "activity_id": "act_campus_sport", "option_key": "A", "duration_hours": 1}
+    base = {"session_id": leisure_session_id, "activity_id": "act_campus_sport", "option_key": "A", "duration_hours": 1}
     r = client.post("/api/sim/trigger-activity", json={**base, "location_id": "bldg_badminton"})
     assert r.status_code == 200
     slot = r.json()["marked_slot"]

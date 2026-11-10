@@ -64,7 +64,7 @@ export function DailyTimelineView({
     .filter(({ slot, index }) => {
       if (slot.day !== activeDay) return false;
       if (
-        (slot.type === "lunch_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") &&
+        (slot.type === "lunch_prompt" || slot.type === "dinner_prompt" || slot.type === "leisure_prompt" || slot.type === "day_end") &&
         index !== currentTurn
       ) {
         return false;

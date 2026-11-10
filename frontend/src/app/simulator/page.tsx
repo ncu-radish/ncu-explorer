@@ -32,6 +32,9 @@ const CampusScene = dynamic(
 // Fallback home when the session has no chosen dorm
 const DEFAULT_HOME_LOCATION_ID = "bldg_dorm_b9a";
 
+// 與後端起始生活費一致，生活費條以此為滿格
+const INITIAL_MONEY = 1500;
+
 const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 export default function SimulatorPage() {
@@ -48,6 +51,11 @@ export default function SimulatorPage() {
     currentLocationName,
     isGameOver,
     isLoading,
+    error,
+    eventOutcome,
+    clearError,
+    restoreSession,
+    isRestoring,
     chooseOption,
     triggerDynamicActivity,
     prePlanTomorrow,
@@ -62,15 +70,24 @@ export default function SimulatorPage() {
 
   const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
 
+  // While the clock is running through the previous activity the map stays put;
+  // the commute and the new focus only play once the time flow is done.
+  const [isTimeFlowing, setIsTimeFlowing] = useState(false);
+
   // Activity Database State
   const [activities, setActivities] = useState<CampusActivity[]>([]);
 
   // Modal States
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityCategory, setActivityCategory] = useState<"lunch" | "dorm_leisure" | "campus_leisure" | "night_leisure">("lunch");
+  const [activityCategory, setActivityCategory] = useState<"lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | "night_leisure">("lunch");
 
   const [prePlanModalOpen, setPrePlanModalOpen] = useState(false);
   const [prePlanTargetDay, setPrePlanTargetDay] = useState<number>(2);
+
+  // 重新整理後還原上一局（沒有存檔或存檔失效時維持開局畫面）
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
 
   // Load backend activities
   useEffect(() => {
@@ -84,11 +101,12 @@ export default function SimulatorPage() {
   }, []);
 
   useEffect(() => {
+    if (isTimeFlowing) return;
     const locId = currentLocationId || currentSlotInfo?.location_id;
     if (locId) {
       setFocusedLoc(locId);
     }
-  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id]);
+  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing]);
 
   // Show the walking route from the previous stop to the current one on the 3D map
   const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
@@ -100,6 +118,7 @@ export default function SimulatorPage() {
       : homeLocationId;
 
   useEffect(() => {
+    if (isTimeFlowing) return;
     const { setRoute } = useMapStore.getState();
     if (!routeToId || routeToId === routeFromId) {
       setRoute(null);
@@ -113,7 +132,7 @@ export default function SimulatorPage() {
         setRoute(
           r.distance < 1
             ? null
-            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path }
+            : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true }
         );
       })
       .catch(() => {
@@ -122,7 +141,7 @@ export default function SimulatorPage() {
     return () => {
       cancelled = true;
     };
-  }, [routeFromId, routeToId, currentTurn]);
+  }, [routeFromId, routeToId, currentTurn, isTimeFlowing]);
 
   // The route lives in a global store; clear it when leaving the simulator
   useEffect(() => {
@@ -130,7 +149,6 @@ export default function SimulatorPage() {
   }, []);
 
   // Time Transition Pipeline States
-  const [isTimeFlowing, setIsTimeFlowing] = useState(false);
   const [flowFrom, setFlowFrom] = useState("08:00");
   const [flowTo, setFlowTo] = useState("12:00");
   const flowResolverRef = useRef<(() => void) | null>(null);
@@ -164,7 +182,13 @@ export default function SimulatorPage() {
 
     // Run linear ticking animation and action concurrently
     const flowPromise = startFlowingTransition(curStart, targetEnd);
-    const actionPromise = action().catch(() => {});
+    // 請求失敗時不再播放假的時間流轉：立刻結束動畫，錯誤訊息由頁面上的提示顯示
+    const stopFlow = () => handleFlowComplete();
+    const actionPromise = action()
+      .then(() => {
+        if (useSimulatorStore.getState().error) stopFlow();
+      })
+      .catch(stopFlow);
 
     await Promise.all([flowPromise, actionPromise]);
   };
@@ -197,6 +221,17 @@ export default function SimulatorPage() {
       return;
     }
 
+    // 晚餐提示：與午餐相同，A 開啟晚餐選擇、B 略過
+    if (slotType === "dinner_prompt") {
+      if (optionKey === "A") {
+        setActivityCategory("dinner");
+        setActivityModalOpen(true);
+        return;
+      }
+      await executeWithTimeFlow(() => chooseOption(optionKey));
+      return;
+    }
+
     // Phase 2: Leisure prompt (after classes or gap)
     if (slotType === "leisure_prompt") {
       if (optionKey === "A") {
@@ -225,6 +260,11 @@ export default function SimulatorPage() {
 
     if (isLateNight) {
       if (optionKey === "A") {
+        // 週五夜晚沒有明天可預排：直接結束這一週
+        if ((currentSlotInfo.day || currentDay || 1) >= 5) {
+          await executeWithTimeFlow(() => chooseOption(optionKey));
+          return;
+        }
         // 使用者點選「🛏️ 去睡覺」-> 自動進入設鬧鐘以及預排行程頁面
         const nextDay = Math.min(5, (currentSlotInfo.day || currentDay || 1) + 1);
         setPrePlanTargetDay(nextDay);
@@ -267,6 +307,7 @@ export default function SimulatorPage() {
         s.day === day &&
         (s.start_time || "00:00") > currentStart &&
         s.type !== "lunch_prompt" &&
+        s.type !== "dinner_prompt" &&
         s.type !== "leisure_prompt" &&
         s.type !== "day_end"
     );
@@ -329,7 +370,7 @@ export default function SimulatorPage() {
   return (
     <div className="flex-1 flex flex-col p-3 md:p-4 max-w-7xl mx-auto w-full gap-3 lg:h-dvh lg:flex-none lg:overflow-hidden">
       {/* Onboarding Dialog */}
-      <OnboardingModal isOpen={!sessionId} />
+      <OnboardingModal isOpen={!sessionId && !isRestoring} />
 
       {/* Week End Summary Dialog */}
       <SummaryModal isOpen={isGameOver} />
@@ -358,6 +399,35 @@ export default function SimulatorPage() {
         isLoading={isLoading}
       />
 
+      {/* 操作失敗的提示 */}
+      {error && sessionId && (
+        <div
+          role="alert"
+          className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+        >
+          <span>{error}（請再試一次，或重新開局）</span>
+          <button onClick={clearError} className="shrink-0 cursor-pointer font-semibold hover:text-rose-900">
+            關閉
+          </button>
+        </div>
+      )}
+
+      {/* 課表備註（例如找不到的社團、學分超過上限） */}
+      {Array.isArray(playerProfile?.schedule_notes) && playerProfile.schedule_notes.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+          {playerProfile.schedule_notes.map((note: string) => (
+            <p key={note}>• {note}</p>
+          ))}
+        </div>
+      )}
+
+      {/* 剛處理完突發事件 */}
+      {eventOutcome && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm text-violet-800">
+          事件已處理：{eventOutcome}
+        </div>
+      )}
+
       {/* Top Simulator Control Bar */}
       {/* Merged top banner: controls + weekday/clock/current activity */}
       <CampusTimeWidget
@@ -380,8 +450,15 @@ export default function SimulatorPage() {
           <>
             <button
               onClick={handleOpenSleepModal}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 transition hover:border-violet-300 hover:text-violet-700"
-              title="預先規劃明日行程"
+              disabled={!canGoToSleep || activeDay >= 5}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200 disabled:hover:text-stone-700"
+              title={
+                activeDay >= 5
+                  ? "週五是最後一天，沒有明天可以預排"
+                  : canGoToSleep
+                    ? "預先規劃明日行程"
+                    : "21:00 之後才能就寢並預排明日行程"
+              }
             >
               <CalendarDays className="h-3.5 w-3.5" />
               預排明日活動
@@ -456,7 +533,7 @@ export default function SimulatorPage() {
             />
           </div>
 
-          <div className="shrink-0"><StatsBar stats={stats} /></div>
+          <div className="shrink-0"><StatsBar stats={stats} moneyMax={INITIAL_MONEY} /></div>
         </div>
       </div>
     </div>

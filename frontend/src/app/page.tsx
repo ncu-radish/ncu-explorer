@@ -17,7 +17,7 @@ export default function HomePage() {
           width={112}
           height={112}
           priority
-          className="animate-rise h-20 w-20 drop-shadow-lg"
+          className="animate-rise h-30 w-30 drop-shadow-lg"
         />
         <h1 className="animate-rise delay-1 mt-6 text-5xl font-extrabold tracking-tight sm:text-7xl">
           <span className="gradient-text">NCU Explorer</span>
