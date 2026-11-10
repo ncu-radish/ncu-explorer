@@ -150,3 +150,12 @@ class SimSessionResponse(BaseModel):
     ending: str | None = None
     current_location_id: str | None = None
     current_location_name: str | None = None
+
+
+class SimActivityResponse(BaseModel):
+    id: str
+    title: str
+    category: str
+    location_id: str | None = None
+    location_name: str | None = None
+    preset_options: list[dict[str, Any]]  # option_key / intent_hint / effects（每小時）

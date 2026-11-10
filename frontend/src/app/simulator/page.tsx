@@ -13,8 +13,8 @@ import { SummaryModal } from "@/components/simulator/SummaryModal";
 import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
 import { PrePlanModal } from "@/components/simulator/PrePlanModal";
-import { adminApi, exploreApi, CampusActivity } from "@/lib/api";
-import { useMapStore } from "@/store/useMapStore";
+import { simApi, exploreApi, PlayerActivity } from "@/lib/api";
+import { useMapStore, routeWalkSeconds, WALK_METERS_PER_MIN } from "@/store/useMapStore";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -75,13 +75,15 @@ export default function SimulatorPage() {
   const [isTimeFlowing, setIsTimeFlowing] = useState(false);
 
   // Activity Database State
-  const [activities, setActivities] = useState<CampusActivity[]>([]);
+  const [activities, setActivities] = useState<PlayerActivity[]>([]);
 
   // Modal States
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityCategory, setActivityCategory] = useState<"lunch" | "dinner" | "dorm_leisure" | "campus_leisure" | "night_leisure">("lunch");
 
   const [prePlanModalOpen, setPrePlanModalOpen] = useState(false);
+  // 任何彈窗開啟時先隱藏地圖上的建築標籤，避免標籤浮在彈窗上遮住選項
+  const anyDialogOpen = activityModalOpen || prePlanModalOpen || isGameOver || (!sessionId && !isRestoring);
   const [prePlanTargetDay, setPrePlanTargetDay] = useState<number>(2);
 
   // 重新整理後還原上一局（沒有存檔或存檔失效時維持開局畫面）
@@ -89,9 +91,18 @@ export default function SimulatorPage() {
     restoreSession();
   }, [restoreSession]);
 
+  // 建築 id → 中文名稱，供 3D 場景左上角標籤顯示目前聚焦的地點
+  const [buildingNames, setBuildingNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    exploreApi
+      .getBuildings()
+      .then((list) => setBuildingNames(Object.fromEntries(list.map((b) => [b.id, b.name_zh]))))
+      .catch(() => {});
+  }, []);
+
   // Load backend activities
   useEffect(() => {
-    adminApi.getActivities().then((res) => {
+    simApi.getActivities().then((res) => {
       if (res && res.length > 0) {
         setActivities(res);
       }
@@ -100,22 +111,24 @@ export default function SimulatorPage() {
     });
   }, []);
 
+  // Show the walking route from the previous stop to the current one on the 3D map
+  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
+  const sameDayStop = (slot: ScheduleSlot | undefined, day?: number) =>
+    slot && slot.day === day && !slot.is_skipped && slot.location_id ? slot.location_id : undefined;
+  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
+
+  // 午餐／晚餐／空閒提示還沒選地點：不顯示路線，地圖停在玩家目前所在的位置
+  const isPromptSlot = ["lunch_prompt", "dinner_prompt", "leisure_prompt"].includes(currentSlotInfo.type);
+  const routeToId = isPromptSlot || currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
+  const routeFromId = sameDayStop(prevSlot, currentSlotInfo.day) ?? homeLocationId;
+
   useEffect(() => {
     if (isTimeFlowing) return;
-    const locId = currentLocationId || currentSlotInfo?.location_id;
+    const locId = isPromptSlot ? routeFromId : currentLocationId || currentSlotInfo?.location_id;
     if (locId) {
       setFocusedLoc(locId);
     }
-  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing]);
-
-  // Show the walking route from the previous stop to the current one on the 3D map
-  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
-  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
-  const routeToId = currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
-  const routeFromId =
-    prevSlot && prevSlot.day === currentSlotInfo.day && !prevSlot.is_skipped && prevSlot.location_id
-      ? prevSlot.location_id
-      : homeLocationId;
+  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing, isPromptSlot, routeFromId]);
 
   useEffect(() => {
     if (isTimeFlowing) return;
@@ -151,6 +164,7 @@ export default function SimulatorPage() {
   // Time Transition Pipeline States
   const [flowFrom, setFlowFrom] = useState("08:00");
   const [flowTo, setFlowTo] = useState("12:00");
+  const [flowWalk, setFlowWalk] = useState<{ minutes: number; seconds: number } | null>(null);
   const flowResolverRef = useRef<(() => void) | null>(null);
 
   const startFlowingTransition = (fromTime: string, toTime: string): Promise<void> => {
@@ -165,6 +179,7 @@ export default function SimulatorPage() {
 
   const handleFlowComplete = () => {
     setIsTimeFlowing(false);
+    setFlowWalk(null);
     if (flowResolverRef.current) {
       flowResolverRef.current();
       flowResolverRef.current = null;
@@ -320,6 +335,13 @@ export default function SimulatorPage() {
     return Math.max(1, Math.min(3, Math.floor(diffHours)));
   };
 
+  // 標籤跟著地圖實際聚焦的地點走（點選建築、提示時段、選完餐廳都會改變聚焦）
+  const focusedLocationName =
+    (focusedLoc && buildingNames[focusedLoc]) ||
+    weeklySchedule.find((s) => s.location_id === focusedLoc && s.location_name)?.location_name ||
+    (focusedLoc && focusedLoc === playerProfile?.home_dorm_id ? playerProfile?.home_dorm_name : undefined) ||
+    "中大校園";
+
   // Activity Modal Confirm Callback
   const handleConfirmActivity = async (
     activityId: string,
@@ -330,6 +352,31 @@ export default function SimulatorPage() {
     customEndTime?: string,
     locationId?: string
   ) => {
+    // 一確認地點就立刻顯示前往該地點的路線並聚焦（時間流轉期間路線會保持不變）
+    const destinationId = locationId ?? (activityCategory === "dorm_leisure" ? homeLocationId : undefined);
+    if (destinationId) {
+      setFocusedLoc(destinationId);
+      const { setRoute } = useMapStore.getState();
+      if (destinationId !== routeFromId) {
+        try {
+          const r = await exploreApi.getRoute(routeFromId, destinationId);
+          if (r.distance < 1) {
+            setRoute(null);
+          } else {
+            setRoute({ fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true });
+            // 走路的這段時間，上方時鐘改成接近真實步行的速度，與地圖上的標記同步；抵達後才恢復快速
+            setFlowWalk({
+              minutes: Math.max(1, Math.ceil(r.distance / WALK_METERS_PER_MIN)),
+              seconds: routeWalkSeconds(r.path),
+            });
+          }
+        } catch {
+          setRoute(null);
+        }
+      } else {
+        setRoute(null);
+      }
+    }
     await executeWithTimeFlow(() =>
       triggerDynamicActivity(
         activityId,
@@ -482,6 +529,7 @@ export default function SimulatorPage() {
         isFlowing={isTimeFlowing}
         flowFromTime={flowFrom}
         flowToTime={flowTo}
+        flowWalk={flowWalk}
         onFlowComplete={handleFlowComplete}
         onSkip={handleSkipFlow}
         onFocusLocation={() => {
@@ -523,13 +571,14 @@ export default function SimulatorPage() {
           <div className="surface h-[55vh] min-h-[360px] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden relative">
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
               <MapPin className="w-3 h-3 text-violet-600" />
-              <span>3D 場景：{currentLocationName || "中大校園"}</span>
+              <span>3D 場景：{focusedLocationName}</span>
             </div>
 
             <CampusScene
               focusedLocationId={focusedLoc}
               onSelectBuilding={(id) => setFocusedLoc(id)}
               interactive={true}
+              showLabels={!anyDialogOpen}
             />
           </div>
 

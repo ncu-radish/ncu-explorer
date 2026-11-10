@@ -26,6 +26,8 @@ interface CampusTimeWidgetProps {
   isFlowing?: boolean;
   flowFromTime?: string;
   flowToTime?: string;
+  /** 移動期間：時鐘在 seconds 秒內只前進 minutes 分鐘（接近實際步行速度），之後才恢復快速。 */
+  flowWalk?: { minutes: number; seconds: number } | null;
   onFlowComplete?: () => void;
   onSkip?: () => void;
   onFocusLocation?: () => void;
@@ -38,6 +40,7 @@ export function CampusTimeWidget({
   isFlowing = false,
   flowFromTime = "08:00",
   flowToTime = "12:00",
+  flowWalk = null,
   onFlowComplete,
   onSkip,
   onFocusLocation,
@@ -49,7 +52,13 @@ export function CampusTimeWidget({
   const [clockMinutes, setClockMinutes] = useState<number>(() => timeToMinutes(staticTimeStr));
 
   const animFrameRef = useRef<number | null>(null);
-  const lastTickRef = useRef<number>(0);
+  // 父層每次重繪都會產生新的函式／物件；用 ref 讀最新值，避免時鐘動畫被重繪打斷而重新計時
+  const onFlowCompleteRef = useRef(onFlowComplete);
+  const flowWalkRef = useRef(flowWalk);
+  useEffect(() => {
+    onFlowCompleteRef.current = onFlowComplete;
+    flowWalkRef.current = flowWalk;
+  });
 
   // If not flowing, freeze clock at current slot start time
   useEffect(() => {
@@ -67,25 +76,30 @@ export function CampusTimeWidget({
     if (isFlowing) {
       const fromMin = timeToMinutes(flowFromTime);
       const toMin = Math.max(fromMin + 30, timeToMinutes(flowToTime));
-      let cur = fromMin;
-      setClockMinutes(cur);
-      lastTickRef.current = performance.now();
+      const walk = flowWalkRef.current;
+      const walkMinutes = walk ? Math.min(Math.max(0, walk.minutes), toMin - fromMin) : 0;
+      const walkMs = walk ? Math.max(0, walk.seconds) * 1000 : 0;
+      const startedAt = performance.now();
+      setClockMinutes(fromMin);
 
       const step = (now: number) => {
-        if (now - lastTickRef.current >= 40) {
-          cur += 1;
-          lastTickRef.current = now;
-          setClockMinutes(cur);
+        const elapsed = now - startedAt;
+        let cur: number;
+        if (walkMs > 0 && elapsed < walkMs) {
+          // 移動中：照步行的真實速度走，與 3D 地圖上的標記同步
+          cur = fromMin + (walkMinutes * elapsed) / walkMs;
+        } else {
+          // 抵達後：每 40ms 前進 1 分鐘的快速模式
+          cur = fromMin + walkMinutes + (elapsed - walkMs) / 40;
         }
 
         if (cur < toMin) {
+          setClockMinutes(Math.floor(cur));
           animFrameRef.current = requestAnimationFrame(step);
         } else {
           setClockMinutes(toMin);
           animFrameRef.current = null;
-          if (onFlowComplete) {
-            onFlowComplete();
-          }
+          onFlowCompleteRef.current?.();
         }
       };
 
@@ -98,7 +112,7 @@ export function CampusTimeWidget({
         }
       };
     }
-  }, [isFlowing, flowFromTime, flowToTime, onFlowComplete]);
+  }, [isFlowing, flowFromTime, flowToTime]);
 
   if (!slot) {
     return leading || actions ? (
