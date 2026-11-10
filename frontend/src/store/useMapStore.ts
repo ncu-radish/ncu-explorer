@@ -20,6 +20,24 @@ export interface MapRoute {
   once?: boolean;
 }
 
+/** 3D 場景裡標記沿路線行走的速度（場景單位／秒）。 */
+export const WALK_SPEED = 60;
+/** 抵達目的地後標記停留的秒數。 */
+export const WALK_PAUSE_SECONDS = 0.8;
+/** 後端 walking_minutes 使用的步行速度（公尺／分鐘）。 */
+export const WALK_METERS_PER_MIN = 80;
+
+/** 標記走完整條路線（含停留）實際花的真實秒數。 */
+export function routeWalkSeconds(path: [number, number, number][]): number {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const [x0, y0, z0] = path[i - 1];
+    const [x1, y1, z1] = path[i];
+    total += Math.hypot(x1 - x0, y1 - y0, z1 - z0);
+  }
+  return total / WALK_SPEED + WALK_PAUSE_SECONDS;
+}
+
 interface MapState {
   routeOriginId: string | null;
   route: MapRoute | null;

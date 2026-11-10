@@ -14,7 +14,7 @@ import { CampusTimeWidget } from "@/components/simulator/CampusTimeWidget";
 import { ActivitySelectionModal } from "@/components/simulator/ActivitySelectionModal";
 import { PrePlanModal } from "@/components/simulator/PrePlanModal";
 import { adminApi, exploreApi, CampusActivity } from "@/lib/api";
-import { useMapStore } from "@/store/useMapStore";
+import { useMapStore, routeWalkSeconds, WALK_METERS_PER_MIN } from "@/store/useMapStore";
 
 // Dynamic import for 3D Canvas Scene
 const CampusScene = dynamic(
@@ -162,6 +162,7 @@ export default function SimulatorPage() {
   // Time Transition Pipeline States
   const [flowFrom, setFlowFrom] = useState("08:00");
   const [flowTo, setFlowTo] = useState("12:00");
+  const [flowWalk, setFlowWalk] = useState<{ minutes: number; seconds: number } | null>(null);
   const flowResolverRef = useRef<(() => void) | null>(null);
 
   const startFlowingTransition = (fromTime: string, toTime: string): Promise<void> => {
@@ -176,6 +177,7 @@ export default function SimulatorPage() {
 
   const handleFlowComplete = () => {
     setIsTimeFlowing(false);
+    setFlowWalk(null);
     if (flowResolverRef.current) {
       flowResolverRef.current();
       flowResolverRef.current = null;
@@ -352,19 +354,25 @@ export default function SimulatorPage() {
     const destinationId = locationId ?? (activityCategory === "dorm_leisure" ? homeLocationId : undefined);
     if (destinationId) {
       setFocusedLoc(destinationId);
+      const { setRoute } = useMapStore.getState();
       if (destinationId !== routeFromId) {
-        exploreApi
-          .getRoute(routeFromId, destinationId)
-          .then((r) => {
-            useMapStore.getState().setRoute(
-              r.distance < 1
-                ? null
-                : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true }
-            );
-          })
-          .catch(() => useMapStore.getState().setRoute(null));
+        try {
+          const r = await exploreApi.getRoute(routeFromId, destinationId);
+          if (r.distance < 1) {
+            setRoute(null);
+          } else {
+            setRoute({ fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true });
+            // 走路的這段時間，上方時鐘改成接近真實步行的速度，與地圖上的標記同步；抵達後才恢復快速
+            setFlowWalk({
+              minutes: Math.max(1, Math.ceil(r.distance / WALK_METERS_PER_MIN)),
+              seconds: routeWalkSeconds(r.path),
+            });
+          }
+        } catch {
+          setRoute(null);
+        }
       } else {
-        useMapStore.getState().setRoute(null);
+        setRoute(null);
       }
     }
     await executeWithTimeFlow(() =>
@@ -519,6 +527,7 @@ export default function SimulatorPage() {
         isFlowing={isTimeFlowing}
         flowFromTime={flowFrom}
         flowToTime={flowTo}
+        flowWalk={flowWalk}
         onFlowComplete={handleFlowComplete}
         onSkip={handleSkipFlow}
         onFocusLocation={() => {

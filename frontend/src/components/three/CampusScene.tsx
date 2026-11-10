@@ -4,7 +4,13 @@ import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
-import { useMapStore, DEFAULT_CAMERA_POS, DEFAULT_CAMERA_TARGET } from "@/store/useMapStore";
+import {
+  useMapStore,
+  DEFAULT_CAMERA_POS,
+  DEFAULT_CAMERA_TARGET,
+  WALK_SPEED,
+  WALK_PAUSE_SECONDS,
+} from "@/store/useMapStore";
 import { Building, RoadNetworkData, exploreApi } from "@/lib/api";
 
 // Campus geometry center offset to bring the model origin to (0, 0, 0)
@@ -336,7 +342,6 @@ function RoadNetworkLayer() {
 
 // Route line along the road network with a marker walking along it
 const ROUTE_LIFT = 0.8; // keep the line above the ground plane
-const WALK_SPEED = 60; // scene units per second
 
 function RouteLayer() {
   const route = useMapStore((s) => s.route);
@@ -360,7 +365,7 @@ function RouteLayer() {
   useFrame((state) => {
     const marker = markerRef.current;
     if (!marker || points.length < 2 || total <= 0) return;
-    const pause = 0.8; // seconds to rest at the destination
+    const pause = WALK_PAUSE_SECONDS; // seconds to rest at the destination
     const duration = total / WALK_SPEED;
     const now = state.clock.getElapsedTime();
     let t: number;
