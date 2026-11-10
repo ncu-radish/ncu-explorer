@@ -1,9 +1,8 @@
 "use client";
 
-import { Clock, MapPin, CheckCircle2, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Coffee, Compass, AlertCircle, Ban } from "lucide-react";
+import { MapPin, CheckCircle2, User, BookOpen, Moon, Sun, Sunrise, Utensils, Music, Coffee, Compass, AlertCircle, Ban } from "lucide-react";
 import { ScheduleSlot } from "@/store/useSimulatorStore";
 
-const DAYS = ["週一", "週二", "週三", "週四", "週五"];
 
 function getEventIcon(slot: ScheduleSlot) {
   if (slot.type === "breakfast") {
@@ -59,7 +58,6 @@ export function DailyTimelineView({
 }) {
   const currentSlot = schedule[currentTurn];
   const activeDay = currentSlot?.day || 1;
-  const dayName = DAYS[Math.max(0, Math.min(4, activeDay - 1))];
 
   const todaySlots = schedule
     .map((slot, index) => ({ slot, index }))
@@ -81,26 +79,6 @@ export function DailyTimelineView({
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3.5 border-b border-stone-200 bg-stone-50/70">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 flex items-center justify-center">
-            <Clock className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-              <span>{dayName}日程</span>
-              <span className="text-xs font-normal text-stone-500 font-mono">
-                (本日共 {todaySlots.length} 個時段)
-              </span>
-            </h3>
-          </div>
-        </div>
-        <span className="text-xs font-mono text-violet-700 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-200 font-medium">
-          模擬當日
-        </span>
-      </div>
-
       {/* Chronological Timeline List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {todaySlots.map(({ slot, index }) => {

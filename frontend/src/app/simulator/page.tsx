@@ -67,7 +67,6 @@ export default function SimulatorPage() {
   const dayName = DAYS[Math.max(0, Math.min(4, activeDay - 1))];
   const slotTime = currentSlotInfo.start_time || currentTime || "08:00";
   const slotName = currentSlotInfo.display_time || `${slotTime}`;
-  const totalTurns = weeklySchedule.length || 30;
 
   const [focusedLoc, setFocusedLoc] = useState<string | null>(null);
 
@@ -369,7 +368,7 @@ export default function SimulatorPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full gap-4 sm:gap-5">
+    <div className="flex-1 flex flex-col p-3 md:p-4 max-w-7xl mx-auto w-full gap-3 lg:h-dvh lg:flex-none lg:overflow-hidden">
       {/* Onboarding Dialog */}
       <OnboardingModal isOpen={!sessionId && !isRestoring} />
 
@@ -430,9 +429,11 @@ export default function SimulatorPage() {
       )}
 
       {/* Top Simulator Control Bar */}
-      <header className="surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* Merged top banner: controls + weekday/clock/current activity */}
+      <CampusTimeWidget
+        slot={currentSlotInfo}
+        leading={
+          <div className="flex items-center gap-2">
             <Link
               href="/"
               className="inline-flex items-center gap-1 rounded-full border border-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-600 transition hover:border-violet-300 hover:text-violet-700"
@@ -440,60 +441,44 @@ export default function SimulatorPage() {
               <ArrowLeft className="h-3 w-3" />
               首頁
             </Link>
-            <span className="eyebrow">Week Simulator</span>
-            <span className="rounded-full bg-violet-50 px-2.5 py-0.5 font-mono text-xs font-medium text-violet-700">
-              Turn {Math.min(totalTurns, currentTurn + 1)} / {totalTurns}
-            </span>
+            <h1 className="text-sm font-bold tracking-tight text-stone-900 sm:text-base">
+              中央大學一週生活模擬器
+            </h1>
           </div>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
-            中央大學一週生活模擬器
-          </h1>
-          <p className="mt-0.5 truncate text-sm text-stone-500">
-            {currentSlotInfo.title ? `當前行程：${currentSlotInfo.title}` : "正在排程中..."}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleOpenSleepModal}
-            disabled={!canGoToSleep || activeDay >= 5}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200 disabled:hover:text-stone-700"
-            title={
-              activeDay >= 5
-                ? "週五是最後一天，沒有明天可以預排"
-                : canGoToSleep
-                  ? "預先規劃明日行程"
-                  : "21:00 之後才能就寢並預排明日行程"
-            }
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            預排明日活動
-          </button>
-          <button
-            onClick={resetSimulation}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 transition hover:border-rose-300 hover:text-rose-600"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            重新開局
-          </button>
-          <Link
-            href="/map"
-            className="inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            全螢幕 3D 地圖
-          </Link>
-        </div>
-      </header>
-
-      {/* Four Dimensions Stats Bar */}
-      <StatsBar stats={stats} moneyMax={INITIAL_MONEY} />
-
-      {/* Dedicated Campus Time & Atmosphere Widget */}
-      <CampusTimeWidget
-        slot={currentSlotInfo}
-        currentTurn={currentTurn}
-        totalTurns={totalTurns}
+        }
+        actions={
+          <>
+            <button
+              onClick={handleOpenSleepModal}
+              disabled={!canGoToSleep || activeDay >= 5}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200 disabled:hover:text-stone-700"
+              title={
+                activeDay >= 5
+                  ? "週五是最後一天，沒有明天可以預排"
+                  : canGoToSleep
+                    ? "預先規劃明日行程"
+                    : "21:00 之後才能就寢並預排明日行程"
+              }
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              預排明日活動
+            </button>
+            <button
+              onClick={resetSimulation}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 transition hover:border-rose-300 hover:text-rose-600"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              重新開局
+            </button>
+            <Link
+              href="/map"
+              className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              全螢幕 3D 地圖
+            </Link>
+          </>
+        }
         isFlowing={isTimeFlowing}
         flowFromTime={flowFrom}
         flowToTime={flowTo}
@@ -504,23 +489,38 @@ export default function SimulatorPage() {
         }}
       />
 
-      {/* Main Game Interface: Left Calendar + Right Narrative & 3D PiP */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
-        {/* Left Column: Calendar (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col h-full min-h-[350px]">
-          <WeeklySchedule
-            schedule={weeklySchedule}
-            currentTurn={currentTurn}
-            onSelectSlot={(slot) => {
-              if (slot.location_id) setFocusedLoc(slot.location_id);
-            }}
-          />
+      {/* Main Game Interface: everything fits in one viewport on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 lg:min-h-0">
+        {/* Left Column: Story + choices (top) and schedule (bottom, scrolls internally) */}
+        <div className="lg:col-span-4 flex flex-col gap-3 lg:min-h-0">
+          <div className="lg:max-h-[58%] lg:overflow-y-auto lg:shrink-0 rounded-3xl">
+            <StoryDialog
+              story={story}
+              dayName={dayName}
+              slotName={slotName}
+              locationName={currentLocationName || "中大校園"}
+              slot={currentSlotInfo}
+              isLoading={isLoading || isTimeFlowing}
+              onChoose={handleChooseOption}
+              onFocusLocation={() => {
+                if (currentLocationId) setFocusedLoc(currentLocationId);
+              }}
+            />
+          </div>
+          <div className="flex-1 flex flex-col min-h-[320px] lg:min-h-0">
+            <WeeklySchedule
+              schedule={weeklySchedule}
+              currentTurn={currentTurn}
+              onSelectSlot={(slot) => {
+                if (slot.location_id) setFocusedLoc(slot.location_id);
+              }}
+            />
+          </div>
         </div>
 
-        {/* Right Column: 3D PiP + Story Narrative (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
-          {/* 3D PiP Mini Map */}
-          <div className="surface h-48 sm:h-52 overflow-hidden relative">
+        {/* Right Column: 3D map (same size as before) + stats */}
+        <div className="lg:col-span-8 flex flex-col gap-3 lg:min-h-0">
+          <div className="surface h-[55vh] min-h-[360px] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden relative">
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
               <MapPin className="w-3 h-3 text-violet-600" />
               <span>3D 場景：{currentLocationName || "中大校園"}</span>
@@ -533,19 +533,7 @@ export default function SimulatorPage() {
             />
           </div>
 
-          {/* Central Story Dialog */}
-          <StoryDialog
-            story={story}
-            dayName={dayName}
-            slotName={slotName}
-            locationName={currentLocationName || "中大校園"}
-            slot={currentSlotInfo}
-            isLoading={isLoading || isTimeFlowing}
-            onChoose={handleChooseOption}
-            onFocusLocation={() => {
-              if (currentLocationId) setFocusedLoc(currentLocationId);
-            }}
-          />
+          <div className="shrink-0"><StatsBar stats={stats} moneyMax={INITIAL_MONEY} /></div>
         </div>
       </div>
     </div>

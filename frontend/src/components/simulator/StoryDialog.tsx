@@ -28,7 +28,7 @@ export function StoryDialog({
 
   return (
     <div
-      className={`bg-white rounded-3xl p-6 sm:p-7 flex flex-col justify-between border shadow-xs relative overflow-hidden transition-all ${
+      className={`bg-white rounded-3xl p-4 sm:p-5 flex flex-col justify-between border shadow-xs relative overflow-hidden transition-all ${
         isRandomEvent
           ? "border-amber-400 ring-4 ring-amber-400/15"
           : "border-stone-200"
@@ -36,7 +36,7 @@ export function StoryDialog({
     >
       <div>
         {/* Header Badges */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           {/* Prominent Random Event Pill */}
           {isRandomEvent ? (
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-bold shadow-xs animate-pulse">
@@ -121,14 +121,14 @@ export function StoryDialog({
         )}
 
         {/* Narrative Text */}
-        <div className="min-h-[110px] mb-6 flex items-center">
+        <div className="min-h-[64px] mb-4 flex items-center">
           {isLoading ? (
             <div className="flex items-center gap-3 text-violet-600 animate-pulse text-sm py-4">
               <Sparkles className="w-5 h-5 animate-spin text-amber-600" />
               <span className="font-medium text-stone-700">活動進行中...</span>
             </div>
           ) : (
-            <p className="text-stone-800 text-base sm:text-lg leading-relaxed font-normal">
+            <p className="text-stone-800 text-sm sm:text-base leading-relaxed font-normal">
               {story?.narrative || "正在讀取當前校園情境..."}
             </p>
           )}
@@ -136,7 +136,7 @@ export function StoryDialog({
       </div>
 
       {/* Options Buttons */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {story?.options.map((opt) => {
           const isSleep = opt.display_text.includes("去睡覺");
           const isNightAct = opt.display_text.includes("進行活動");
@@ -146,7 +146,7 @@ export function StoryDialog({
               key={opt.option_key}
               disabled={isLoading}
               onClick={() => onChoose(opt.option_key)}
-              className={`w-full text-left p-3.5 sm:p-4 rounded-xl transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] cursor-pointer border ${
+              className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] cursor-pointer border ${
                 isRandomEvent
                   ? "bg-amber-50/40 hover:bg-amber-100/80 border-amber-300 hover:border-amber-500 text-stone-900 shadow-xs"
                   : isSleep
