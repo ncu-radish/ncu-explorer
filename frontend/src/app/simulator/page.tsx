@@ -89,6 +89,15 @@ export default function SimulatorPage() {
     restoreSession();
   }, [restoreSession]);
 
+  // 建築 id → 中文名稱，供 3D 場景左上角標籤顯示目前聚焦的地點
+  const [buildingNames, setBuildingNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    exploreApi
+      .getBuildings()
+      .then((list) => setBuildingNames(Object.fromEntries(list.map((b) => [b.id, b.name_zh]))))
+      .catch(() => {});
+  }, []);
+
   // Load backend activities
   useEffect(() => {
     adminApi.getActivities().then((res) => {
@@ -100,22 +109,24 @@ export default function SimulatorPage() {
     });
   }, []);
 
+  // Show the walking route from the previous stop to the current one on the 3D map
+  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
+  const sameDayStop = (slot: ScheduleSlot | undefined, day?: number) =>
+    slot && slot.day === day && !slot.is_skipped && slot.location_id ? slot.location_id : undefined;
+  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
+
+  // 午餐／晚餐／空閒提示還沒選地點：不顯示路線，地圖停在玩家目前所在的位置
+  const isPromptSlot = ["lunch_prompt", "dinner_prompt", "leisure_prompt"].includes(currentSlotInfo.type);
+  const routeToId = isPromptSlot || currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
+  const routeFromId = sameDayStop(prevSlot, currentSlotInfo.day) ?? homeLocationId;
+
   useEffect(() => {
     if (isTimeFlowing) return;
-    const locId = currentLocationId || currentSlotInfo?.location_id;
+    const locId = isPromptSlot ? routeFromId : currentLocationId || currentSlotInfo?.location_id;
     if (locId) {
       setFocusedLoc(locId);
     }
-  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing]);
-
-  // Show the walking route from the previous stop to the current one on the 3D map
-  const homeLocationId = playerProfile?.home_dorm_id || DEFAULT_HOME_LOCATION_ID;
-  const prevSlot = currentTurn > 0 ? weeklySchedule[currentTurn - 1] : undefined;
-  const routeToId = currentSlotInfo.is_skipped ? undefined : currentSlotInfo.location_id;
-  const routeFromId =
-    prevSlot && prevSlot.day === currentSlotInfo.day && !prevSlot.is_skipped && prevSlot.location_id
-      ? prevSlot.location_id
-      : homeLocationId;
+  }, [currentTurn, currentLocationId, currentSlotInfo?.location_id, isTimeFlowing, isPromptSlot, routeFromId]);
 
   useEffect(() => {
     if (isTimeFlowing) return;
@@ -320,6 +331,13 @@ export default function SimulatorPage() {
     return Math.max(1, Math.min(3, Math.floor(diffHours)));
   };
 
+  // 標籤跟著地圖實際聚焦的地點走（點選建築、提示時段、選完餐廳都會改變聚焦）
+  const focusedLocationName =
+    (focusedLoc && buildingNames[focusedLoc]) ||
+    weeklySchedule.find((s) => s.location_id === focusedLoc && s.location_name)?.location_name ||
+    (focusedLoc && focusedLoc === playerProfile?.home_dorm_id ? playerProfile?.home_dorm_name : undefined) ||
+    "中大校園";
+
   // Activity Modal Confirm Callback
   const handleConfirmActivity = async (
     activityId: string,
@@ -330,6 +348,25 @@ export default function SimulatorPage() {
     customEndTime?: string,
     locationId?: string
   ) => {
+    // 一確認地點就立刻顯示前往該地點的路線並聚焦（時間流轉期間路線會保持不變）
+    const destinationId = locationId ?? (activityCategory === "dorm_leisure" ? homeLocationId : undefined);
+    if (destinationId) {
+      setFocusedLoc(destinationId);
+      if (destinationId !== routeFromId) {
+        exploreApi
+          .getRoute(routeFromId, destinationId)
+          .then((r) => {
+            useMapStore.getState().setRoute(
+              r.distance < 1
+                ? null
+                : { fromId: r.from_id, toId: r.to_id, distance: r.distance, path: r.path, once: true }
+            );
+          })
+          .catch(() => useMapStore.getState().setRoute(null));
+      } else {
+        useMapStore.getState().setRoute(null);
+      }
+    }
     await executeWithTimeFlow(() =>
       triggerDynamicActivity(
         activityId,
@@ -523,7 +560,7 @@ export default function SimulatorPage() {
           <div className="surface h-[55vh] min-h-[360px] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden relative">
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-xs text-stone-800 border border-stone-300 shadow-xs">
               <MapPin className="w-3 h-3 text-violet-600" />
-              <span>3D 場景：{currentLocationName || "中大校園"}</span>
+              <span>3D 場景：{focusedLocationName}</span>
             </div>
 
             <CampusScene
